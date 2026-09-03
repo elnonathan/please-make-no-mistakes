@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node-version: "22"
+            python-version: "3.9"
+            profile: full
+          - os: ubuntu-latest
+            node-version: "24"
+            python-version: "3.13"
+            profile: full
+          - os: macos-latest
+            node-version: "24"
+            python-version: "3.13"
+            profile: full
+          - os: windows-latest
+            node-version: "24"
+            python-version: "3.13"
+            profile: portable
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          package-manager-cache: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run complete POSIX release gate
+        if: matrix.profile == 'full'
+        run: npm run release:verify
+      - name: Run host-neutral portable gate
+        if: matrix.profile == 'portable'
+        run: npm run ci:portable

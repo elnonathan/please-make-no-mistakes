@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "adapter": "codex-lifecycle-hooks",
+  "contract": "Procedural ordering for covered host paths, never semantic truth or complete mutation coverage.",
+  "cases": [
+    {
+      "id": "HG-001",
+      "claim": "A covered first write is denied before an activity route."
+    },
+    {
+      "id": "HG-002",
+      "claim": "Standard readiness cannot use current alignment in the same user turn."
+    },
+    {
+      "id": "HG-003",
+      "claim": "A later collaborator turn opens a prompt-bound write window only after its meaning is explicitly reconciled as accepted."
+    },
+    {
+      "id": "HG-004",
+      "claim": "A new user prompt invalidates unused readiness."
+    },
+    {
+      "id": "HG-005",
+      "claim": "Feedback after an observed implementation write requires explicit response reconciliation, and a changed basis enters recovery."
+    },
+    {
+      "id": "HG-006",
+      "claim": "An unknown shell command receives a one-use token bound to its exact bytes."
+    },
+    {
+      "id": "HG-007",
+      "claim": "A command with a definite mutation classification cannot be relabeled as investigation."
+    },
+    {
+      "id": "HG-008",
+      "claim": "Delegated durable content can use apply_patch without becoming implementation authority."
+    },
+    {
+      "id": "HG-009",
+      "claim": "An approved durable-record transition does not force a duplicate collaborator checkpoint."
+    },
+    {
+      "id": "HG-010",
+      "claim": "A stop after implementation receives one bounded continuation until closure is recorded."
+    },
+    {
+      "id": "HG-011",
+      "claim": "State is bounded and stores hashes or enums instead of raw prompts, commands, evidence, and context."
+    },
+    {
+      "id": "HG-012",
+      "claim": "Unsafe or corrupt persisted state fails closed for covered writes."
+    },
+    {
+      "id": "HG-013",
+      "claim": "A non-applicable exemption cannot authorize publication, external effects, or structural changes."
+    },
+    {
+      "id": "HG-014",
+      "claim": "Common verification commands are classified as verification effects rather than implementation."
+    },
+    {
+      "id": "HG-015",
+      "claim": "A collaborator prompt arriving while a covered implementation call is in flight preserves the pending event and enters recovery."
+    },
+    {
+      "id": "HG-016",
+      "claim": "Implementation readiness cannot absorb structure, dependency, environment, version-control, external, publication, durable-structure, movement, or deletion authority."
+    },
+    {
+      "id": "HG-017",
+      "claim": "A delegated activity requires an observed current capture before readiness and another observed capture after its latest implementation mutation before completion."
+    },
+    {
+      "id": "HG-018",
+      "claim": "A later collaborator prompt invalidates prior delegated-capture freshness, including a capture call that began before that prompt."
+    },
+    {
+      "id": "HG-019",
+      "claim": "A covered write in flight or an implemented activity without a closing disposition cannot be relabeled as another activity."
+    },
+    {
+      "id": "HG-020",
+      "claim": "Route and exemption controls cannot escape an active readiness, implementation, or recovery transition."
+    },
+    {
+      "id": "HG-021",
+      "claim": "Completion cannot race a covered write that has not produced its post-use result."
+    },
+    {
+      "id": "HG-022",
+      "claim": "Effort cannot be lowered and basis cannot move backward inside one active activity lifecycle."
+    },
+    {
+      "id": "HG-023",
+      "claim": "An authority-only checkpoint cannot be promoted into current direction or scenario alignment."
+    },
+    {
+      "id": "HG-024",
+      "claim": "A stop during unresolved recovery receives one bounded continuation and cannot loop indefinitely."
+    },
+    {
+      "id": "HG-025",
+      "claim": "Interrupting an implementation write in flight preserves its identity and enters recovery."
+    },
+    {
+      "id": "HG-026",
+      "claim": "A new collaborator prompt during a sensitive covered write preserves the pending result and enters recovery."
+    },
+    {
+      "id": "HG-027",
+      "claim": "A later prompt cannot erase an exempt write in flight, and clean orientation resumes after its result is observed."
+    },
+    {
+      "id": "HG-028",
+      "claim": "A later collaborator turn is not treated as agreement until its meaning is explicitly reconciled."
+    },
+    {
+      "id": "HG-029",
+      "claim": "Only one covered write may be in flight, and a missing post-use result has an executable conservative recovery path."
+    },
+    {
+      "id": "HG-030",
+      "claim": "A late post-use result cannot silently contradict an earlier failed-no-effect reconciliation."
+    },
+    {
+      "id": "HG-031",
+      "claim": "Verification passed requires current successful evidence after the latest implementation mutation."
+    },
+    {
+      "id": "HG-032",
+      "claim": "Loaded and created activity transitions require concrete record and locator receipts, and an approved creation digest remains bound."
+    },
+    {
+      "id": "HG-033",
+      "claim": "A missing durable store or same-session rationale cannot become a Standard or High no-record exception without a collaborator decision."
+    },
+    {
+      "id": "HG-034",
+      "claim": "Workspace, working-directory, exec, and direct forms of common verification commands are classified without repeated permits."
+    },
+    {
+      "id": "HG-035",
+      "claim": "Stop-hook configuration does not declare unsupported additional context and friendly status messages retain host-native event names."
+    },
+    {
+      "id": "HG-036",
+      "claim": "Spanish and English prompts select a bounded friendly message language without persisting raw prompt text or exposing diagnostic codes in ordinary output."
+    },
+    {
+      "id": "HG-037",
+      "claim": "The portable router recognizes trusted friendly capability headings instead of depending on the removed user-visible PMNM guard prefix."
+    }
+  ]
+}

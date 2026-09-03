@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "direct-regression-investigation",
+      "scenario": "The user asks the agent to investigate and fix a non-trivial regression. No task-specific investigation or readiness artifact exists yet.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "simple-factual-question",
+      "scenario": "The user asks for the meaning of one common compiler error and does not request repository investigation or a change.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "identified-activity-missing-record",
+      "scenario": "The user starts an identified security-sensitive activity. Its registry has been resolved, no record exists, and a durable-record gate condition applies. No creation plan has been approved.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "scenario-alignment-pending",
+      "scenario": "A Standard-risk behavior change has evidence-backed understanding and a draft Scenario Coverage Contract, but no current collaborator response or prior scope-specific delegation covers the material scenario decisions.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "epistemic-break-after-dependent-work",
+      "scenario": "Code and tests already depend on an active direction. New direct evidence removes the basis for that direction and materially changes what should be implemented.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation continue now?"
+    },
+    {
+      "id": "required-tool-unavailable",
+      "scenario": "A project adapter requires a semantic navigation tool to support a blast-radius claim. The skill describing the tool is readable, but the executable tool is absent from the current session and no contract-valid fallback is established.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "ready-with-bounded-authority",
+      "scenario": "A material change has current evidence-backed understanding, all triggered protocols are complete, required human alignment is current, the Scenario Coverage Contract is mapped, readiness is READY, and the planned mutation is inside exact current authority.",
+      "question": "Should PMNM remain active, what is the next material state, and may the authorized implementation mutation begin?"
+    },
+    {
+      "id": "resumption-source-not-established",
+      "scenario": "A software investigation appears to resume after a client restart because earlier messages are visible, but no durable record, locator result, or current-source revalidation has been established.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "historical-contract-lineage-unresolved",
+      "scenario": "An old engineering artifact is proposed as the current regression oracle and its author as reviewer, but successor decisions and current contract authority have not been inspected.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "missing-context-location-before-record",
+      "scenario": "An identified Standard activity needs durable continuity. No authorized record store or locator exists, several writable locations are technically available, and the collaborator has not selected one.",
+      "question": "Should PMNM activate, what is the next material state, and may material investigation or implementation begin now?"
+    },
+    {
+      "id": "epistemic-break-before-dependent-work",
+      "scenario": "A material direction was selected, but no solution-shaped artifact or mutation exists yet. New direct evidence removes the basis for that direction.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "current-capacity-cannot-resolve-conflict",
+      "scenario": "Material sources conflict. The current model and connected tools cannot trace the required relationship responsibly, but the gathered evidence and a precise resume point can be handed to a stronger model, tool, or collaborator.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "static-candidates-without-observable-bridge",
+      "scenario": "A semantic or static tool reports candidate references for a changed symbol. Their runtime reachability, observable contracts, and generated or test-only status have not been established, but the proposed blast-radius conclusion depends on them.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "tool-suggestions-after-material-gap-is-closed",
+      "scenario": "All current readiness requirements are satisfied inside exact authority. A tool result resolves its named claim and suggests unrelated follow-up pages that cannot change scope, verification, readiness, or next action.",
+      "question": "Should PMNM remain active, what is the next material state, and may the authorized implementation mutation begin?"
+    },
+    {
+      "id": "current-diagnostic-error-after-mutation",
+      "scenario": "Focused tests pass after an implementation mutation, but current diagnostics report an introduced error in one changed supported artifact. No final clean or authorized bounded-residual diagnostic result exists.",
+      "question": "Should PMNM remain active, what is the next material state, and may another material implementation mutation begin immediately?"
+    },
+    {
+      "id": "identified-standard-defaults-to-durable",
+      "scenario": "A newly identified Standard-effort activity has no durable record. No traditional continuity trigger has yet been reported, but the work will require evidence-backed investigation and scenario alignment. No bounded creation plan has been approved.",
+      "question": "Should PMNM activate, what is the next material state, and may implementation mutation begin now?"
+    },
+    {
+      "id": "storage-preflight-before-location-choice",
+      "scenario": "An identified activity needs a durable record. Several writable locations exist, but ownership, audience, repository relationship, synchronization exposure, sensitivity, retention, recovery, and existing-store status have not been resolved.",
+      "question": "Should PMNM activate, what is the next material state, and may broad investigation or implementation begin now?"
+    },
+    {
+      "id": "material-event-awaits-capture",
+      "scenario": "An active delegated record is current. Investigation has just refuted a material hypothesis and changed the next action, but that event and the canonical recovery state have not yet been captured.",
+      "question": "Should PMNM remain active, what is the next material state, and may dependent investigation or implementation continue now?"
+    },
+    {
+      "id": "scenario-seed-precedes-broad-investigation",
+      "scenario": "A non-trivial behavior change has a provisional user-reported contract, but no initial happy path, preserved behavior, negative case, or material uncertainty has been named yet. Broad repository investigation has not begun.",
+      "question": "Should PMNM activate, what is the next material state, and may broad investigation or implementation begin now?"
+    },
+    {
+      "id": "audit-correction-awaits-capture",
+      "scenario": "An active delegated record was current before final audit. The audit found that a material completion claim and next action must change, but the correction has not been captured or reconciled.",
+      "question": "Should PMNM remain active, what is the next material state, and may the final report claim completion now?"
+    },
+    {
+      "id": "capture-incomplete-awaits-reconciliation",
+      "scenario": "A delegated durable update wrote its history event but failed before updating its canonical index. The same event identity names the exact completed and pending effects, and capture state is capture-incomplete.",
+      "question": "Should PMNM remain active, what is the next material state, and may dependent investigation, implementation, or completion continue now?"
+    },
+    {
+      "id": "light-local-work-stays-light",
+      "scenario": "A Light-effort local implementation has no identified external activity, no continuity trigger, no sensitive boundary, a current evidence-backed contract, proportional scenario coverage, current READY, and exact authority for one bounded source edit.",
+      "question": "Should PMNM remain active, what is the next material state, and may the bounded implementation mutation begin now?"
+    },
+    {
+      "id": "harmless-corroboration-keeps-readiness",
+      "scenario": "A Standard change is currently READY within exact authority. New evidence independently corroborates the same contract, scope, source state, scenarios, and direction without changing any material basis or next action.",
+      "question": "Should PMNM remain active, what is the next material state, and may the already authorized implementation mutation begin now?"
+    }
+  ]
+}

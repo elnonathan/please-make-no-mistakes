@@ -1,0 +1,212 @@
+[
+  {
+    "id": "ambiguous-defect",
+    "query": "Investigate why saved addresses bypass normalization, implement the fix, and verify every affected path.",
+    "should_trigger": true,
+    "reason": "Ambiguous defect with implementation and verification."
+  },
+  {
+    "id": "submitted-change-security-audit",
+    "query": "Audit the current submitted change for regressions and security issues before it advances to the next lifecycle state.",
+    "should_trigger": true,
+    "reason": "Complete change-set and security review."
+  },
+  {
+    "id": "resume-durable-record",
+    "query": "Resume the payment retry investigation from the existing snapshot and tell me what is still unverified.",
+    "should_trigger": true,
+    "reason": "Cross-session durable context and uncertainty."
+  },
+  {
+    "id": "resume-from-host-visible-thread",
+    "query": "Continue this software investigation from the messages restored by the host, and establish whether any durable record was actually loaded before relying on them.",
+    "should_trigger": true,
+    "reason": "Software-work resumption with material continuity provenance."
+  },
+  {
+    "id": "shared-authorization-refactor",
+    "query": "Refactor this shared authorization helper without changing behavior across its callers.",
+    "should_trigger": true,
+    "reason": "Shared contract and regression risk."
+  },
+  {
+    "id": "interface-backend-authorization",
+    "query": "The UI hides this action for viewers. Confirm whether direct API requests are also blocked and fix it if not.",
+    "should_trigger": true,
+    "reason": "Authorization invariant across interface and backend."
+  },
+  {
+    "id": "concurrent-stale-write",
+    "query": "This worker sometimes writes stale state. Trace the concurrency path and make the smallest safe change.",
+    "should_trigger": true,
+    "reason": "Concurrency and lifecycle investigation."
+  },
+  {
+    "id": "multi-lane-verification",
+    "query": "Use the HAR, screenshots, logs, and tests to determine whether the bug is actually fixed.",
+    "should_trigger": true,
+    "reason": "Multiple evidence lanes and provenance."
+  },
+  {
+    "id": "database-migration",
+    "query": "Implement this database migration and provide rollback, validation, and residual risks.",
+    "should_trigger": true,
+    "reason": "High-risk persistent and potentially destructive change."
+  },
+  {
+    "id": "evidence-bound-review",
+    "query": "Review this submitted change, but do not report speculative findings that you cannot tie to a reachable path.",
+    "should_trigger": true,
+    "reason": "Evidence-bound code review."
+  },
+  {
+    "id": "correction-propagation",
+    "query": "I corrected the product rule we used earlier. Update the implementation, tests, and durable record consistently.",
+    "should_trigger": true,
+    "reason": "Correction invalidates dependent work."
+  },
+  {
+    "id": "shared-service-migration-plan",
+    "query": "Design a safe migration plan for splitting this shared service, including assumptions, affected consumers, validation, and rollback.",
+    "should_trigger": true,
+    "reason": "Non-trivial software design and planning with shared contracts and migration risk."
+  },
+  {
+    "id": "simple-recursion-explanation",
+    "query": "Explain what recursion is with a simple example.",
+    "should_trigger": false,
+    "reason": "Simple factual explanation."
+  },
+  {
+    "id": "translate-code-comment",
+    "query": "Translate this code comment from Spanish to English.",
+    "should_trigger": false,
+    "reason": "Isolated prose transformation."
+  },
+  {
+    "id": "simple-tool-fact",
+    "query": "What does a checksum do?",
+    "should_trigger": false,
+    "reason": "General factual question."
+  },
+  {
+    "id": "format-json",
+    "query": "Format this JSON with two-space indentation.",
+    "should_trigger": false,
+    "reason": "Mechanical one-step formatting."
+  },
+  {
+    "id": "developer-tool-names",
+    "query": "Suggest names for my new developer tool.",
+    "should_trigger": false,
+    "reason": "Creative naming, not software engineering execution."
+  },
+  {
+    "id": "python-hello-world",
+    "query": "Write a five-line hello world in Python.",
+    "should_trigger": false,
+    "reason": "Trivial isolated implementation."
+  },
+  {
+    "id": "summarize-readme",
+    "query": "Summarize the README I pasted.",
+    "should_trigger": false,
+    "reason": "Content summarization without engineering work."
+  },
+  {
+    "id": "typescript-syntax-fact",
+    "query": "What is the syntax for an optional property in TypeScript?",
+    "should_trigger": false,
+    "reason": "Simple language syntax question."
+  },
+  {
+    "id": "rewrite-slack-message",
+    "query": "Rewrite this Slack message to sound clearer.",
+    "should_trigger": false,
+    "reason": "Communication editing without software-work investigation."
+  },
+  {
+    "id": "convert-css-color",
+    "query": "Convert this single CSS color from hex to RGB.",
+    "should_trigger": false,
+    "reason": "Simple deterministic conversion."
+  },
+  {
+    "id": "explicit-invocation-small-task",
+    "query": "Use $please-make-no-mistakes to explain recursion with one small example.",
+    "should_trigger": true,
+    "reason": "Explicit invocation overrides the normal exclusion for a simple explanation."
+  },
+  {
+    "id": "inspect-existing-context-store",
+    "query": "Inspect my existing software-work context store, map its current files to the required capabilities, and propose only the missing pieces without changing anything.",
+    "should_trigger": true,
+    "reason": "Context-store inspection and adaptation planning that do not change store content or structure."
+  },
+  {
+    "id": "context-scaffold-needs-plan-approval",
+    "query": "Set up a reusable engineering context store inside this existing folder.",
+    "should_trigger": true,
+    "reason": "Context-store scaffolding must activate the inspection, exact-plan, and approval workflow before mutation."
+  },
+  {
+    "id": "authorized-context-scaffold",
+    "query": "I approve the exact plan digest you just presented for its canonical root and normalized operations. Scaffold those files, register the project, and validate every new pointer.",
+    "should_trigger": true,
+    "reason": "Explicitly authorized context scaffolding and registration."
+  },
+  {
+    "id": "validate-context-registry",
+    "query": "Validate this engineering context registry for broken pointers, ambiguous matches, and privacy-boundary problems without modifying it.",
+    "should_trigger": true,
+    "reason": "Read-only validation of a software-engineering context store."
+  },
+  {
+    "id": "generic-folder-scaffold",
+    "query": "Create an empty notes folder with a blank README.",
+    "should_trigger": false,
+    "reason": "Mechanical filesystem scaffolding without a software-work context contract."
+  },
+  {
+    "id": "unrelated-personal-memory",
+    "query": "Remember my favorite movie for future casual conversations.",
+    "should_trigger": false,
+    "reason": "Unrelated personal memory is outside software-engineering context management."
+  },
+  {
+    "id": "switch-identified-activity",
+    "query": "Switch to the software activity identified as work-4821 and investigate its reported failure.",
+    "should_trigger": true,
+    "reason": "Starting or switching to an identified software activity must resolve activity continuity before material work."
+  },
+  {
+    "id": "material-rule-existing-activity",
+    "query": "For software activity work-4822, an authorized source changed a material behavior requirement; continue the implementation.",
+    "should_trigger": true,
+    "reason": "An identified activity receives a material business-rule update that requires continuous durable capture when delegated."
+  },
+  {
+    "id": "localize-observable-regression-boundary",
+    "query": "Find the earliest revision where this reproducible request changed from the expected response to the failing response, and report any revisions that cannot be tested.",
+    "should_trigger": true,
+    "reason": "Material historical localization of an observable software behavior."
+  },
+  {
+    "id": "separate-regression-attribution-roles",
+    "query": "Determine whether this change introduced the defect, exposed an older condition, amplified its impact, merely detected it, or fixed it.",
+    "should_trigger": true,
+    "reason": "Multidimensional software-regression attribution."
+  },
+  {
+    "id": "non-git-history-localization",
+    "query": "Our project history is not Git-based. Use its ordered revisions to bound when this verified property changed without inventing a unique culprit.",
+    "should_trigger": true,
+    "reason": "Mechanism-neutral historical localization in software work."
+  },
+  {
+    "id": "historical-contract-lineage",
+    "query": "Determine whether this old engineering decision still defines the current contract before using its test as regression protection or its author as a reviewer signal.",
+    "should_trigger": true,
+    "reason": "Historical contract lineage affects verification and review."
+  }
+]

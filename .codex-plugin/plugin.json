@@ -1,0 +1,35 @@
+{
+  "name": "please-make-no-mistakes",
+  "version": "0.1.0",
+  "description": "Epistemic integrity for AI-assisted software engineering.",
+  "author": {
+    "name": "Jonathan Muñoz Lucas",
+    "email": "git@jonathanmunoz.dev",
+    "url": "https://github.com/elnonathan"
+  },
+  "homepage": "https://github.com/elnonathan/please-make-no-mistakes#readme",
+  "repository": "https://github.com/elnonathan/please-make-no-mistakes",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "software-engineering",
+    "code-review",
+    "debugging",
+    "verification",
+    "epistemic-integrity"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Please, Make No Mistakes",
+    "shortDescription": "Evidence-first discipline for software work",
+    "longDescription": "Keeps shared understanding, human-aligned scenario coverage, observable bridges, evidence, readiness, epistemic reconciliation, verification, durable continuity, and human judgment explicit during non-trivial software work.",
+    "developerName": "Jonathan Muñoz Lucas",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "Investigate this regression, plan what could break, then make the smallest defensible change.",
+      "Review this change and challenge every material claim.",
+      "Resume this work without losing decisions, evidence, or open risks."
+    ]
+  }
+}

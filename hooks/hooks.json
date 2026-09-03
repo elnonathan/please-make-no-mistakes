@@ -1,0 +1,85 @@
+{
+  "description": "Please, Make No Mistakes procedural interlock for covered Codex lifecycle events.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/pmnm-guard.mjs\"",
+            "commandWindows": "node \"${PLUGIN_ROOT}\\hooks\\pmnm-guard.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Please, Don't Lose the Thread",
+            "additionalContextLimit": 600
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/pmnm-guard.mjs\"",
+            "commandWindows": "node \"${PLUGIN_ROOT}\\hooks\\pmnm-guard.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 600
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/pmnm-guard.mjs\"",
+            "commandWindows": "node \"${PLUGIN_ROOT}\\hooks\\pmnm-guard.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Please, Guard the First Write",
+            "additionalContextLimit": 600
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/pmnm-guard.mjs\"",
+            "commandWindows": "node \"${PLUGIN_ROOT}\\hooks\\pmnm-guard.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/pmnm-guard.mjs\"",
+            "commandWindows": "node \"${PLUGIN_ROOT}\\hooks\\pmnm-guard.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/pmnm-guard.mjs\"",
+            "commandWindows": "node \"${PLUGIN_ROOT}\\hooks\\pmnm-guard.mjs\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

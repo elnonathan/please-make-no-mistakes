@@ -1,0 +1,4 @@
+interface:
+  display_name: "Please, Make No Mistakes"
+  short_description: "Evidence-bound software change-readiness workflow"
+  default_prompt: "Use $please-make-no-mistakes. Resolve applicable context and any identified activity before material investigation, then route through evidence, combined human alignment, current readiness, authorized effects, verification, continuous capture, and final audit."
