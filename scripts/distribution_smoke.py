@@ -205,7 +205,9 @@ def validate_hook_tree(root: Path) -> dict[str, str]:
     runtime = root / "hooks" / "pmnm-guard.mjs"
     if runtime.is_symlink() or not runtime.is_file():
         raise SmokeFailure("bundled host guard is missing or linked")
-    if runtime.stat().st_size > 100_000:
+    # Keep in step with validate_skill.py: 128,000 bytes since P0-21 (quote-aware lexer plus
+    # compiled bilingual first-person guidance, all inspectable text).
+    if runtime.stat().st_size > 128_000:
         raise SmokeFailure("bundled host guard exceeds its inspectable size budget")
     return tree_manifest(root / "hooks")
 

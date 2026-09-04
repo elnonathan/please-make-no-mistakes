@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "adapter": "codex-lifecycle-hooks",
+  "scope": "Codex-adapter-specific action oracle. Synthetic normalized event sequences with the expected next action, command shape, wait state, cursor disposition, and terminal phase. It is not a cross-host conformance claim and contains no identifiable transcript content.",
+  "vocabulary": {
+    "events": ["prompt", "control", "write", "post", "stop", "interrupt", "session"],
+    "placeholders": {
+      "$DIGEST": "sixty-four lowercase hexadecimal characters substituted by the runner",
+      "$PATCH": "a minimal apply_patch body substituted by the runner"
+    },
+    "decision": ["card", "deny", "control", "allow", "block", "warn", "context", "silent"],
+    "action": ["route", "checkpoint", "align", "grant", "ready", "verify", "complete", "reconcile", "invalidate", "permit", "none"],
+    "cursor": ["none", "pending", "in-flight"]
+  },
+  "sequences": [
+    {
+      "id": "AO-001",
+      "class": "normal-state",
+      "claim": "ORIENT records the activity transition as a decision and never pre-fills loaded.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" }
+      ],
+      "expect": { "decision": "card", "action": "route", "command": "transition=<", "forbid": ["transition=loaded", "pmnm-guard grant"], "wait": false, "cursor": "none", "phase": "ORIENT" }
+    },
+    {
+      "id": "AO-002",
+      "class": "missing-store",
+      "claim": "A structure denial in ORIENT compiles to the route decision, not to an inadmissible grant.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Create the durable record in the location I gave you" },
+        { "event": "write", "turn": "t1", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1" }
+      ],
+      "expect": { "decision": "deny", "action": "route", "forbid": ["pmnm-guard grant", "transition=loaded"], "wait": false, "cursor": "pending", "phase": "ORIENT" }
+    },
+    {
+      "id": "AO-003",
+      "class": "repeated-denial",
+      "claim": "The identical denied operation is reported as the same obligation with a denial count of two.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Create the record" },
+        { "event": "write", "turn": "t1", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1" },
+        { "event": "write", "turn": "t1", "tool": "Bash", "command": "mkdir /external/activity", "id": "w2" }
+      ],
+      "expect": { "decision": "deny", "action": "route", "text": "same", "cursor": "pending", "denials": 2, "phase": "ORIENT" }
+    },
+    {
+      "id": "AO-004",
+      "class": "repeated-denial",
+      "claim": "A different denied operation does not replace the earlier cursor; the earlier obligation is named first.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Create the record" },
+        { "event": "write", "turn": "t1", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1" },
+        { "event": "write", "turn": "t1", "tool": "Bash", "command": "mkdir /workspace/.ai/activity", "id": "w2" }
+      ],
+      "expect": { "decision": "deny", "action": "route", "text": "earlier", "cursor": "pending", "denials": 1, "cursor_command": "mkdir /external/activity", "phase": "ORIENT" }
+    },
+    {
+      "id": "AO-005",
+      "class": "normal-state",
+      "claim": "Standard investigation compiles to the combined checkpoint and waits.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=loaded basis=1 locator=registry-receipt record=record-receipt" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard status" }
+      ],
+      "expect": { "decision": "control", "action": "checkpoint", "command": "kind=combined basis=1", "wait": true, "cursor": "none", "phase": "INVESTIGATE" }
+    },
+    {
+      "id": "AO-006",
+      "class": "normal-state",
+      "claim": "A planned record in BLOCKED compiles to one checkpoint and waits.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard status" }
+      ],
+      "expect": { "decision": "control", "action": "checkpoint", "command": "kind=<authority\\|combined> basis=1", "wait": true, "cursor": "none", "phase": "BLOCKED" }
+    },
+    {
+      "id": "AO-007",
+      "class": "normal-state",
+      "claim": "A collaborator turn after a checkpoint compiles to explicit reconciliation.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" }
+      ],
+      "expect": { "decision": "card", "action": "align", "command": "pmnm-guard align result=<accepted\\|changed\\|unclear\\|rejected> basis=1", "wait": false, "cursor": "none", "phase": "COLLABORATOR_RESPONDED" }
+    },
+    {
+      "id": "AO-008",
+      "class": "multi-use-grant",
+      "claim": "Accepted authority for a planned record compiles to the structural grant, never to readiness.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" }
+      ],
+      "expect": { "decision": "control", "action": "grant", "command": "grant effect=durable-structure authority=$DIGEST", "forbid": ["pmnm-guard ready", "transition=created"], "wait": false, "cursor": "none", "phase": "ALIGNED" }
+    },
+    {
+      "id": "AO-009",
+      "class": "multi-use-grant",
+      "claim": "After the structural grant the next action is the pending operation, not the created declaration.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-structure authority=$DIGEST uses=2 basis=1" }
+      ],
+      "expect": { "decision": "control", "action": "none", "forbid": ["transition=created", "pmnm-guard "], "wait": false, "cursor": "none", "phase": "ALIGNED", "plan_required": 2, "plan_observed": 0 }
+    },
+    {
+      "id": "AO-010",
+      "class": "multi-use-grant",
+      "claim": "One observed operation of two keeps created unavailable and reports progress.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-structure authority=$DIGEST uses=2 basis=1" },
+        { "event": "write", "turn": "t2", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1" },
+        { "event": "post", "turn": "t2", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1", "result": "success" }
+      ],
+      "expect": { "decision": "context", "action": "none", "forbid": ["transition=created"], "cursor": "none", "phase": "ALIGNED", "plan_required": 2, "plan_observed": 1 }
+    },
+    {
+      "id": "AO-011",
+      "class": "multi-use-grant",
+      "claim": "When every approved operation is observed, the created transition becomes the next action.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-structure authority=$DIGEST uses=1 basis=1" },
+        { "event": "write", "turn": "t2", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1" },
+        { "event": "post", "turn": "t2", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1", "result": "success" }
+      ],
+      "expect": { "decision": "context", "action": "route", "command": "transition=created basis=1 locator=<locator-receipt> record=<record-receipt> authority=$DIGEST", "cursor": "none", "phase": "ALIGNED", "plan_required": 1, "plan_observed": 1 }
+    },
+    {
+      "id": "AO-012",
+      "class": "rejected-receipt",
+      "claim": "A rejected readiness receipt under authority-only alignment compiles to the combined checkpoint.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=loaded basis=1 locator=registry-receipt record=record-receipt" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard grant effect=durable-content authority=activity-record uses=1 basis=1" },
+        { "event": "write", "turn": "t1", "tool": "apply_patch", "command": "$PATCH", "id": "c1" },
+        { "event": "post", "turn": "t1", "tool": "apply_patch", "command": "$PATCH", "id": "c1", "result": "success" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve that bounded authority" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-content authority=activity-record uses=1 basis=1" },
+        { "event": "write", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "c2" },
+        { "event": "post", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "c2", "result": "success" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard ready basis=1 scope=focused-change effects=implementation,verification verification=focused-contract capture=current alignment=current scenarios=not-required constraints=repository-instructions capabilities=current-evidence-tools" }
+      ],
+      "expect": { "decision": "deny", "action": "checkpoint", "command": "kind=combined basis=1", "forbid": ["pmnm-guard ready"], "wait": true, "cursor": "none", "phase": "ALIGNED" }
+    },
+    {
+      "id": "AO-013",
+      "class": "unknown-command",
+      "claim": "An unknown shell command outside orientation compiles to one permit line bound to a token.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=light activity=none transition=not-applicable basis=1" },
+        { "event": "write", "turn": "t1", "tool": "Bash", "command": "python3 custom-check.py", "id": "u1" }
+      ],
+      "expect": { "decision": "deny", "action": "permit", "command": "pmnm-guard permit token=[0-9a-f]+ effect=<investigation\\|verification>", "wait": false, "cursor": "none", "phase": "INVESTIGATE" }
+    },
+    {
+      "id": "AO-014",
+      "class": "unknown-command",
+      "claim": "An unknown shell command in orientation compiles to the route decision without a permit token.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "write", "turn": "t1", "tool": "Bash", "command": "python3 custom-check.py", "id": "u1" }
+      ],
+      "expect": { "decision": "deny", "action": "route", "forbid": ["pmnm-guard permit"], "wait": false, "cursor": "none", "phase": "ORIENT" }
+    },
+    {
+      "id": "AO-015",
+      "class": "second-stop",
+      "claim": "A second Stop with an unresolved cursor warns without continuing again.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Create the record" },
+        { "event": "write", "turn": "t1", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1" },
+        { "event": "stop", "turn": "t1", "active": false },
+        { "event": "stop", "turn": "t1", "active": true }
+      ],
+      "expect": { "decision": "warn", "action": "route", "text": "not continue again automatically", "cursor": "pending", "phase": "ORIENT" }
+    },
+    {
+      "id": "AO-016",
+      "class": "recovery",
+      "claim": "Recovery with a missing covered result compiles to the conservative reconciliation with the next basis.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-structure authority=$DIGEST uses=1 basis=1" },
+        { "event": "write", "turn": "t2", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1" },
+        { "event": "prompt", "turn": "t3", "text": "Yes, go ahead and create it" }
+      ],
+      "expect": { "decision": "card", "action": "reconcile", "command": "pmnm-guard reconcile outcome=<unknown\\|failed-no-effect> reason=<reason-id> basis=3", "wait": false, "cursor": "none", "phase": "RECOVERY", "pending_response": true }
+    },
+    {
+      "id": "AO-017",
+      "class": "recovery",
+      "claim": "Result first: after a failed result the unclassified collaborator turn compiles to reconciliation of the response.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-structure authority=$DIGEST uses=1 basis=1" },
+        { "event": "write", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "p1" },
+        { "event": "prompt", "turn": "t3", "text": "Yes, go ahead and create it" },
+        { "event": "post", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "p1", "result": "failed" }
+      ],
+      "expect": { "decision": "context", "action": "align", "command": "pmnm-guard align result=<accepted\\|changed\\|unclear\\|rejected> basis=2", "wait": false, "cursor": "none", "phase": "RECOVERY", "pending_response": true }
+    },
+    {
+      "id": "AO-018",
+      "class": "recovery",
+      "claim": "An accepted response after a resolved result restores alignment and the structural grant without another human round.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-structure authority=$DIGEST uses=1 basis=1" },
+        { "event": "write", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "p1" },
+        { "event": "prompt", "turn": "t3", "text": "Yes, go ahead and create it" },
+        { "event": "post", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "p1", "result": "failed" },
+        { "event": "control", "turn": "t3", "command": "pmnm-guard align result=accepted basis=2" }
+      ],
+      "expect": { "decision": "control", "action": "grant", "command": "grant effect=durable-structure authority=$DIGEST", "wait": false, "cursor": "none", "phase": "ALIGNED", "pending_response": false }
+    },
+    {
+      "id": "AO-019",
+      "class": "recovery",
+      "claim": "An unknown reconciliation keeps recovery open after the response is accepted, so the authority checkpoint is compiled again.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-structure authority=$DIGEST uses=1 basis=1" },
+        { "event": "write", "turn": "t2", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1" },
+        { "event": "prompt", "turn": "t3", "text": "Yes, go ahead and create it" },
+        { "event": "control", "turn": "t3", "command": "pmnm-guard reconcile outcome=unknown reason=missing-post-use basis=3" },
+        { "event": "control", "turn": "t3", "command": "pmnm-guard align result=accepted basis=3" }
+      ],
+      "expect": { "decision": "control", "action": "checkpoint", "command": "kind=authority basis=3", "wait": true, "cursor": "none", "phase": "RECOVERY", "pending_response": false }
+    },
+    {
+      "id": "AO-020",
+      "class": "recovery",
+      "claim": "A late successful structural result after failed-no-effect records the effect and reopens recovery.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-structure authority=$DIGEST uses=1 basis=1" },
+        { "event": "write", "turn": "t2", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard reconcile outcome=failed-no-effect reason=tool-reported-failure basis=2" },
+        { "event": "post", "turn": "t2", "tool": "Bash", "command": "mkdir /external/activity", "id": "w1", "result": "success" }
+      ],
+      "expect": { "decision": "context", "action": "checkpoint", "command": "kind=authority basis=3", "text": "late host result", "wait": true, "cursor": "none", "phase": "RECOVERY", "basis": 3, "effect_count": 1, "plan_observed": 1 }
+    },
+    {
+      "id": "AO-021",
+      "class": "normal-state",
+      "claim": "Implementation closure names verification first, capture second, completion last.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=loaded basis=1 locator=registry-receipt record=record-receipt" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard grant effect=durable-content authority=activity-record uses=1 basis=1" },
+        { "event": "write", "turn": "t1", "tool": "apply_patch", "command": "$PATCH", "id": "c1" },
+        { "event": "post", "turn": "t1", "tool": "apply_patch", "command": "$PATCH", "id": "c1", "result": "success" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=combined basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "Proceed with that contract and coverage" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard grant effect=durable-content authority=activity-record uses=1 basis=1" },
+        { "event": "write", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "c2" },
+        { "event": "post", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "c2", "result": "success" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard ready basis=1 scope=focused-change effects=implementation,verification verification=focused-contract capture=current alignment=current scenarios=aligned constraints=repository-instructions capabilities=current-evidence-tools" },
+        { "event": "write", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "i1" },
+        { "event": "post", "turn": "t2", "tool": "apply_patch", "command": "$PATCH", "id": "i1", "result": "success" },
+        { "event": "stop", "turn": "t2", "active": false }
+      ],
+      "expect": { "decision": "block", "action": "verify", "forbid": ["pmnm-guard complete", "grant effect=durable-content"], "wait": false, "cursor": "none", "phase": "VERIFY" }
+    },
+    {
+      "id": "AO-022",
+      "class": "normal-state",
+      "claim": "Light work in investigation compiles to the proportional readiness receipt.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=light activity=none transition=not-applicable basis=1" },
+        { "event": "write", "turn": "t1", "tool": "apply_patch", "command": "$PATCH", "id": "i1" }
+      ],
+      "expect": { "decision": "deny", "action": "ready", "command": "alignment=not-required scenarios=not-required", "wait": false, "cursor": "pending", "phase": "INVESTIGATE" }
+    },
+    {
+      "id": "AO-023",
+      "class": "normal-state",
+      "claim": "A completed activity compiles to reporting with no control command.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=light activity=none transition=not-applicable basis=1" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard ready basis=1 scope=focused-change effects=implementation,verification verification=focused-contract capture=not-applicable alignment=not-required scenarios=not-required constraints=repository-instructions capabilities=current-evidence-tools" },
+        { "event": "write", "turn": "t1", "tool": "apply_patch", "command": "$PATCH", "id": "i1" },
+        { "event": "post", "turn": "t1", "tool": "apply_patch", "command": "$PATCH", "id": "i1", "result": "success" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard complete basis=1 verification=partial observable=reproducible-handoff protection=omitted-with-reason capture=not-applicable audit=partial" }
+      ],
+      "expect": { "decision": "control", "action": "none", "forbid": ["pmnm-guard "], "cursor": "none", "phase": "COMPLETE" }
+    },
+    {
+      "id": "AO-024",
+      "class": "recovery",
+      "claim": "Recovery without pending results under a pending plan approved by authority compiles the authority checkpoint, not a combined one.",
+      "events": [
+        { "event": "prompt", "turn": "t1", "text": "Investigate and implement the requested change" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard route effort=standard activity=work-1 transition=planned-and-awaiting-approval basis=1 digest=$DIGEST" },
+        { "event": "control", "turn": "t1", "command": "pmnm-guard checkpoint kind=authority basis=1" },
+        { "event": "prompt", "turn": "t2", "text": "I approve the proposed record" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard align result=accepted basis=1" },
+        { "event": "control", "turn": "t2", "command": "pmnm-guard invalidate reason=source-changed basis=2" }
+      ],
+      "expect": { "decision": "control", "action": "checkpoint", "command": "kind=authority basis=2", "wait": true, "cursor": "none", "phase": "RECOVERY" }
+    }
+  ]
+}

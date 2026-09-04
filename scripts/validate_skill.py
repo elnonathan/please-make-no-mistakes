@@ -37,6 +37,17 @@ AGENT_EVALUATION_FILE = PACKAGE_ROOT / "evals" / "agent-evaluation-cases.json"
 BEHAVIOR_FILE = PACKAGE_ROOT / "evals" / "behavior-cases.md"
 TRACE_SCHEMA_FILE = PACKAGE_ROOT / "evals" / "trace.schema.json"
 HOST_GUARD_CASES_FILE = PACKAGE_ROOT / "evals" / "host-guard-cases.json"
+HOST_GUARD_ORACLE_FILE = PACKAGE_ROOT / "evals" / "host-guard-action-oracle.json"
+HOST_GUARD_ORACLE_CLASSES = {
+    "normal-state",
+    "rejected-receipt",
+    "unknown-command",
+    "repeated-denial",
+    "second-stop",
+    "recovery",
+    "missing-store",
+    "multi-use-grant",
+}
 HOOK_CONFIG_FILE = PACKAGE_ROOT / "hooks" / "hooks.json"
 HOOK_RUNTIME_FILE = PACKAGE_ROOT / "hooks" / "pmnm-guard.mjs"
 HOOK_TEST_FILE = PACKAGE_ROOT / "scripts" / "test_host_guard.mjs"
@@ -488,7 +499,9 @@ def validate_host_hooks(errors: list[str]) -> None:
         return
     if HOOK_RUNTIME_FILE.is_symlink() or not HOOK_RUNTIME_FILE.is_file():
         fail(errors, "Bundled host guard must be a regular in-package file.")
-    if HOOK_RUNTIME_FILE.stat().st_size > 100_000:
+    # The budget rose from 100,000 to 128,000 bytes with P0-21: the quote-aware shell lexer and the
+    # compiled first-person guidance in two languages are inspectable text, not opaque bulk.
+    if HOOK_RUNTIME_FILE.stat().st_size > 128_000:
         fail(errors, "Bundled host guard exceeds its inspectable size budget.")
     imports = re.findall(r'(?:from\s+|import\s*\()\s*["\']([^"\']+)["\']', runtime)
     external = sorted({item for item in imports if not item.startswith("node:")})
@@ -505,6 +518,29 @@ def validate_host_hooks(errors: list[str]) -> None:
         fail(errors, "Host guard evaluation must contain at least ten adversarial cases.")
     elif len({case.get("id") for case in cases["cases"] if isinstance(case, dict)}) != len(cases["cases"]):
         fail(errors, "Host guard evaluation case IDs must be unique.")
+    oracle = load_json(HOST_GUARD_ORACLE_FILE, errors)
+    if not isinstance(oracle, dict) or oracle.get("schema_version") != 1:
+        fail(errors, "evals/host-guard-action-oracle.json must use schema_version 1.")
+    elif oracle.get("adapter") != "codex-lifecycle-hooks":
+        fail(errors, "Host guard action oracle must name the Codex adapter it describes.")
+    elif "not a cross-host conformance claim" not in str(oracle.get("scope", "")):
+        fail(errors, "Host guard action oracle must state that it is not a cross-host conformance claim.")
+    elif not isinstance(oracle.get("sequences"), list) or len(oracle["sequences"]) < 10:
+        fail(errors, "Host guard action oracle must contain at least ten normalized sequences.")
+    else:
+        sequences = [entry for entry in oracle["sequences"] if isinstance(entry, dict)]
+        if len(sequences) != len(oracle["sequences"]):
+            fail(errors, "Host guard action oracle sequences must be objects.")
+        if len({entry.get("id") for entry in sequences}) != len(sequences):
+            fail(errors, "Host guard action oracle sequence IDs must be unique.")
+        missing_classes = sorted(HOST_GUARD_ORACLE_CLASSES - {entry.get("class") for entry in sequences})
+        if missing_classes:
+            fail(errors, f"Host guard action oracle is missing output classes: {missing_classes}")
+        for entry in sequences:
+            if not isinstance(entry.get("events"), list) or not entry["events"]:
+                fail(errors, f"Host guard action oracle sequence {entry.get('id')} must list normalized events.")
+            if not isinstance(entry.get("expect"), dict) or "decision" not in entry["expect"] or "phase" not in entry["expect"]:
+                fail(errors, f"Host guard action oracle sequence {entry.get('id')} must declare an expected decision and phase.")
     if not HOOK_TEST_FILE.is_file() or HOOK_TEST_FILE.is_symlink():
         fail(errors, "scripts/test_host_guard.mjs must be a regular packaged test.")
 

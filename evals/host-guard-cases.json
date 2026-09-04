@@ -150,6 +150,98 @@
     {
       "id": "HG-037",
       "claim": "The portable router recognizes trusted friendly capability headings instead of depending on the removed user-visible PMNM guard prefix."
+    },
+    {
+      "id": "HG-038",
+      "claim": "Every phase card and denial names exactly one next action with at most one control command and no appended alternative branch."
+    },
+    {
+      "id": "HG-039",
+      "claim": "Every control command emitted by a phase card or denial is admissible from the state that emitted it after concrete field substitution."
+    },
+    {
+      "id": "HG-040",
+      "claim": "A denied covered write is retained as the unresolved cursor across a same-activity route and a later prompt; Stop blocks once for an agent-executable action, never loops, and never blocks a waiting-on-collaborator state."
+    },
+    {
+      "id": "HG-041",
+      "claim": "A repeated denied operation is counted as the same obligation, a later collaborator turn or externally created directory does not establish a created activity, and the blocked operation is not handed to the collaborator."
+    },
+    {
+      "id": "HG-042",
+      "claim": "Accepted authority-only alignment compiles to the combined checkpoint rather than readiness, and a planned activity reaches its durable-structure grant and then its created transition without an impossible command."
+    },
+    {
+      "id": "HG-043",
+      "claim": "An unexpected sensitive effect during READY, IMPLEMENT, or VERIFY compiles to basis invalidation and authority recovery instead of an inadmissible grant, and a blocked transition carrying its plan digest can later reach created."
+    },
+    {
+      "id": "HG-044",
+      "claim": "Closure is progressive with one requirement per output, and an activity whose authorized effects contained no implementation mutation has an honest completion path."
+    },
+    {
+      "id": "HG-045",
+      "claim": "Quoted shell operators do not split a read-only command, escaped or unterminated quotes fail conservatively, bounded host diagnostics need no permit, dynamic shell stays unknown, and dot-prefixed receipt values are accepted while parent traversal is rejected."
+    },
+    {
+      "id": "HG-046",
+      "claim": "Concurrent persisted events serialize without a busy failure, a recently orphaned lock recovers within the hook timeout, and only the lock owner removes its lock."
+    },
+    {
+      "id": "HG-047",
+      "claim": "Persisted state written before the cursor and effect counters loads with safe defaults, every ordinary output stays within the hook context budget without diagnostic labels in English or Spanish, a later prompt during aligned work requires explicit reconciliation, and fixtures contain only synthetic identifiers."
+    },
+    {
+      "id": "HG-048",
+      "claim": "A created transition requires every approved covered structural operation to be observed successful under the pending plan; a grant is authority, not execution, and the action after a grant is the pending operation rather than the created declaration."
+    },
+    {
+      "id": "HG-049",
+      "claim": "The denied cursor is bound to the exact tool and command: an admitted exact retry marks it in flight, only a successful matching result clears it, and a different operation of the same class, a failed retry, a missing result, or a second distinct denial preserves the original obligation."
+    },
+    {
+      "id": "HG-050",
+      "claim": "Conversational age never clears a denied cursor; only observed success, explicit reconciliation, collaborator redirection, or lifecycle closure does, each with a recorded cause."
+    },
+    {
+      "id": "HG-051",
+      "claim": "Stop decides from the cursor's own compiled action: an executable unresolved denial blocks once even when the general phase waits, and a genuine collaborator wait still stops silently."
+    },
+    {
+      "id": "HG-052",
+      "claim": "Shell classification lexes segments and quote boundaries first, applies mutation rules only to executable positions by verified command family, keeps interpreters and evaluation modes conservative, and still covers redirection, mutating subcommands, find execution, sed in-place editing, ripgrep preprocessors, and pipelines into mutations."
+    },
+    {
+      "id": "HG-053",
+      "claim": "Legacy persisted evidence without the effect counter is bound to zero effects: it remains current until the first newly observed effect and becomes stale afterwards."
+    },
+    {
+      "id": "HG-054",
+      "claim": "Every guard output names the one action justified by the observable state and its declared unknowns, proven by an action oracle of normalized sequences across normal states, rejected receipts, unknown commands, repeated denials, second Stop, recovery, missing stores, and multi-use grants."
+    },
+    {
+      "id": "HG-055",
+      "claim": "A collaborator turn during a pending nonimplementation covered result preserves the result, checkpoint, digest, and unclassified turn while removing the active grant; the result is settled first, then the response is classified, and only an accepted response after a resolved result restores alignment without another human round, while unknown or contradictory results keep recovery open and any late contradictory success records the effect and reopens recovery."
+    },
+    {
+      "id": "HG-056",
+      "claim": "Ordinary output speaks in the agent's own first-person guard voice under the full capability heading, stays calm, blames no one, claims no safety, correctness, or verification without evidence, and ends in exactly one NEXT action owned by the agent."
+    },
+    {
+      "id": "HG-057",
+      "claim": "A durable-structure grant is accepted only with the approved plan digest as its authority, and its uses value is the exact number of approved covered operations."
+    },
+    {
+      "id": "HG-058",
+      "claim": "Unequivocal sed write commands classify as writes, ambiguous sed scripts and script files stay unknown, and ripgrep compressed-search modes stay unknown."
+    },
+    {
+      "id": "HG-059",
+      "claim": "An activity with observed authorized effects cannot be relabeled as another activity without a closing disposition, exactly as an implemented activity cannot."
+    },
+    {
+      "id": "HG-060",
+      "claim": "A late covered result keeps the identity of its original activity and plan; it can reopen recovery but never advances another activity's plan or effect accounting."
     }
   ]
 }
