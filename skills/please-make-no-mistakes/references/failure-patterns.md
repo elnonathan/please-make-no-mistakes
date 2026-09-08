@@ -1,104 +1,75 @@
-# Please, Catch Familiar Mistakes — Root Challenges
+# Failure patterns
 
-Use this capability when a bias signal, unsupported leap, missing observable bridge, or premature closure appears. This is a compact router, not a second copy of every procedure.
+Mistakes with names. Recognize the pattern in the code in front of you; do not look for a remembered instance of it. Run through the relevant ones before you promote a direction, before the plan Digest, and before the audit. Do not run all of them mechanically.
 
-## Router contract
+## How a bad decision looks correct
 
-This reference implements `failure.challenge`.
+- The first working example becomes the mental model for the whole feature.
+- A helper removes duplication and quietly merges two contracts.
+- A field looks right in the browser, so it is assumed to be the saved value.
+- A library returns a convenient shape, so its fields are trusted without asking which are display, editable, persisted or authoritative.
+- A proof of concept shows the API can work and is kept as proof the product works.
+- The fix removes the symptom and the investigation stops before edit, save, reload, retry, navigation and stale responses.
 
-- Challenge resolves the named signal without changing direction -> return `CONTINUE` with the prior capability in `resumeWith`.
-- Accessible evidence can resolve it -> return `INVESTIGATE` and name the canonical procedure.
-- A collaborator-owned decision controls it -> return `ALIGN`.
-- It invalidates the active basis or the collaborator rejects the direction -> return `RECONCILE`.
-- Current capacity cannot responsibly resolve it -> return `ESCALATE`.
-- An exact prerequisite is unavailable -> return `BLOCKED`.
+## Code patterns
 
-Challenge never grants implementation authority. Keep one pending return target, re-evaluate all kernel guards, and discard the continuation if its basis revision becomes stale.
-
-Run a challenge at three boundaries when triggered: before promoting a preferred direction, before `Readiness: READY`, and before completion. Do not run every challenge mechanically.
-
-## Compact challenge record
-
-```text
-Signal:
-Material claim or decision at risk:
-Canonical owner and selected challenge:
-Evidence already considered:
-Strongest counterexample attempted:
-Literal result and remaining gap:
-Effect on basis revision, direction, scenarios, readiness, or completion:
-Result and resumeWith:
-```
-
-Stop counterexample search when the named material counterexample has been attempted and another accessible check cannot change the next decision. If risk still requires unavailable evidence, escalate or block rather than manufacture closure.
-
-An **independent challenge** differs from the author's work along at least one declared dimension: evidence source, search strategy, participant, model context, or oracle. If it shares the framing and evidence, call it additional challenge rather than independent.
-
-## Root challenge procedures
-
-### 1. Claim and state challenge
-
-Canonical owner: `epistemic-integrity.md`.
-
-Check the claim's exact wording, basis, source state, verification status, missing bridge, strongest counterevidence, and dependent claims. A search miss requires bounded scope and collection limits. A material correction increments the basis revision and invalidates dependent state.
-
-### 2. Contract and observable-path challenge
-
-Canonical owners: `workflow.md` and `review-and-security.md`.
-
-Trace input, normalization, identity, authorization, state, persistence, delivery, side effects, consumers, and observable result only where applicable. Shared implementation, proximity, configuration presence, interface state, or initiation does not prove equivalent contract, authorization, runtime propagation, or completion.
-
-### 3. Direction and solution challenge
-
-Canonical owner: `workflow.md`.
-
-Separate observable outcome from causal hypothesis and implementation suggestion. Search for existing mechanisms that handle the same event, compare viable solution classes by contract, and identify the decision criterion's authority. A small diff is not a small behavioral change. Do not promote a direction before the combined collaborator frontier when it is required.
-
-### 4. Tool and evidence-lane challenge
-
-Canonical owner: `context-layers.md`.
-
-Name the claim, verify actual capability availability, use the smallest sufficient operation, preserve literal collection limits, and stop following suggestions when they cannot change the decision. Structural reach is candidate evidence, not executed behavior or complete blast radius. A fallback must state lost coverage. An announcement is not execution.
-
-### 5. Scenario and verification challenge
-
-Canonical owner: `verification.md`.
-
-Confirm scenarios come from intent, inspected reachability, and risk rather than recall or matrix size. Keep coverage disposition, execution result, current evidence, repeatable protection, and independent challenge separate. A wiring, characterization, or auxiliary artifact is not a regression guard unless it can discriminate the observable violation. Environment failure is not product evidence. Passing tools prove only their declared scope.
-
-### 6. Continuity, capture, and authority challenge
-
-Canonical owners: `durable-record-protocol.md`, `continuous-activity-capture.md`, `durable-record-storage.md`, and `context-store-operations.md`.
-
-Check activity identity, source consistency, durable-gate triggers, storage preflight, exact effect authority, capture freshness, canonical-current-state agreement, and retrieval. A conversation, empty root, append-only history, writable path, or repeated permission request does not establish durable continuity. An incomplete capture blocks dependent completion claims.
-
-### 7. Asynchronous and historical challenge
-
-Canonical owners: `workflow.md` and `regression-localization.md`.
-
-For delayed or intermittent behavior, follow the value through operation identity, result, transformation, state, notification, derived consumer, terminal visibility, retry, stale-result, duplication, cancellation, and cleanup before replacing the source. For history, separate first observable failure, condition origin, exposure, amplification, detection, repair, authorship, and intent.
-
-### 8. Final-state and artifact challenge
-
-Canonical owners: `review-and-security.md`, `verification.md`, and `collaboration.md`.
-
-Inspect the complete current change, scope ledger, diagnostics, material scenarios, verification disposition, regression-protection disposition, residual risk, and delegated record. Remove process artifacts with no consumer or decision value. Internal checks do not close a stronger accessible observable contract. A manual handoff must be reproducible without guessing.
-
-## Signal index
-
-| Observed signal | Root challenge |
+| Pattern | What it is |
 | --- | --- |
-| Assumption promotion, search miss as absence, stale evidence, dirty baseline confusion | Claim and state |
-| Contract collapse, nearby pattern as equivalence, presence/content/visibility/persistence collapse, interface control as authorization, configuration as runtime behavior, initiation as completion | Contract and observable path |
-| Premature solution closure, unilateral direction promotion, implementation hint as requirement, causal-to-policy leap, small code delta as small behavior, existing mechanism as automatic preference | Direction and solution |
-| Rhetorical compliance, search-volume substitution, suggested-continuation chaining, structural reach as impact, silent fallback equivalence, unverified capability failure, unused applicable diagnostics | Tool and evidence lane |
-| Happy-path closure, scenario by recollection, matrix size as completeness, author plan as independent challenge, clean output as correctness, one-time proof as protection, artifact existence as future execution, wiring-test substitution, auxiliary-test promotion | Scenario and verification |
-| Orphaned capability result, repeated blocking request, effect-authority leakage, empty-root bootstrap, activity-source drift, deferred capture, append-only current-state drift | Continuity, capture, and authority |
-| Async or concurrency blindness, premature async source replacement, temporal proximity as causality, observable boundary as causal origin | Asynchronous and historical |
-| Changed line as finding, process theater, internal-check closure, vague verification handoff, environment replacement by convenience | Final state and artifact |
-| Capacity concealment | Return `ESCALATE` with evidence, lost coverage, safe boundary, and resume point |
-| Epistemic inertia or correction-churn continuation | Return `RECONCILE`; use `REALIGNMENT` or `RECOVERY` and end the turn |
+| **Contract collapse** | one variable, helper or event carries several meanings: label, input text, selected object, persisted value, validation input |
+| **Example overreach** | behavior inferred from one sample, one report, one provider response, one tested path |
+| **Display/value confusion** | text made for humans reused as data for saving, matching, permissions or routing |
+| **Summary/detail confusion** | a preview, search result, cache or optimistic state treated as final data |
+| **Authority confusion** | frontend required fields, backend minimums, provider validation and persisted truth treated as interchangeable |
+| **Lifecycle blindness** | correct on the first happy path only; wrong on edit, clear, reload, unmount, retry, concurrent or stale responses |
+| **PoC promotion** | exploratory code kept after the question changed from "can it work" to "is it correct" |
+| **Convenience inheritance** | a helper reused because it is nearby, not because it owns the same rule |
+| **Presence/content confusion** | not `null` treated as present; empty string, empty array, whitespace pass the check |
+| **Async state drift** | live state read after `await`, or a result written without checking the starting context still holds |
+| **Predicate optimism** | `isValid`, `canSave`, `hasTranslation` named as domain truths but implemented as weak technical checks |
+| **Fallback overtrust** | fallback treated as harmless while it hides the real failure or restores the bug |
+| **Selector/mutator drift** | the list excludes records a direct mutation still accepts, or the reverse |
+| **Partial contract review** | only the failing example and the changed function are checked, not every caller or every shape the helper accepts |
+| **Review surface gap** | app behavior checked; tests, build config, worker path, import resolution or background execution missed |
+
+## Process patterns
+
+| Pattern | What it is |
+| --- | --- |
+| **Search miss as absence** | "not found" reported as "does not exist" without stating what was searched and how |
+| **Assumption promotion** | an assumption stated once, then used as a fact two steps later |
+| **Suggested-continuation chaining** | following a tool's or a card's suggestion as if it were the next required step |
+| **Structural reach as impact** | a reference graph read as blast radius without confirming observable reachability |
+| **One-hop impact** | direct callers or references checked while a later reconstruction, overwrite, fallback or consumer remains untraced |
+| **Self-validating plan** | final review asks only whether the implementation matches the plan, so anything omitted by the plan is invisible |
+| **Static closure overclaim** | static reach or a search result treated as proof across runtime, configuration, data or dynamic-dispatch boundaries |
+| **Clean output as correctness** | a passing tool, empty diagnostic or clean diff read as proof beyond its declared scope |
+| **Non-discriminating check** | a neutral stub, identity transform or shared fixture gives the same observation when either the correct or incorrect branch runs |
+| **Happy-path closure** | verification of the requested path only; negative, repeated and concurrent paths untested |
+| **Internal-check closure** | "I ran the unit tests" when a stronger observable check was reachable |
+| **Administrative-check promotion** | a syntax, metadata or documentation check used as if it verified the unfinished task contract |
+| **Serial preflight loop** | one metadata defect revealed per approval attempt instead of validating the complete task contract first |
+| **Cross-task residue** | a prior task's plan, evidence, counters or authority used to block or satisfy the newly active task |
+| **Session-global task** | one repository-wide active-task slot makes independent conversations block, authorize or close each other's work |
+| **Stale-rule continuation** | work resumes after compaction or session discontinuity from remembered rules instead of reloading the durable rule basis |
+| **Premature handoff** | a Test Digest interrupts work after a check but before required review and final audit are complete |
+| **Blind environment start** | a generic start command runs before resolving indirection, ownership, health and whether the required resource already exists |
+| **Patch chain** | a task producing follow-up fixes one by one instead of stopping to ask whether the contract is wrong |
+| **Announced, not performed** | describing a run, a read or a check that did not happen |
+| **Silent scope widening** | a new file, dependency or surface added without a new Digest |
+| **Rule from a decision** | a one-time answer written as an always/never rule |
+
+## Ask before coding
+
+1. What exactly am I proving: API feasibility, UI behavior, saved shape, validation truth or workflow completion?
+2. Which values are display-only, and which may cross a persistence, validation, backend or integration boundary?
+3. What did I assume because one example passed? What felt off and I did not check?
+4. What existing code am I copying, and what contract was it written for?
+5. After every `await`, timeout, debounce or callback, is the starting context still current? If the fallback runs, can it reintroduce the defect?
+
+## When a pattern is found
+
+Write in the task folder: the decision that looked reasonable, the assumption behind it, the evidence that was available and underweighted, the boundary that should have stopped it, and the test or question that would have caught it. If it should never happen again, ask whether to save it as a rule.
 
 ## Forbidden shortcuts
 
-Never infer that plausible means true, shared means equivalent, hidden means forbidden, declared means active, started means completed, nearby means compatible, not found means absent, passing means complete, existing means future protection, large means comprehensive, structural means observable, small means low risk, recent means causal, appended means current, or announced means performed.
+Never infer that plausible means true, shared means equivalent, nearby means compatible, not found means absent, passing means complete, existing means protected, structural means observable, small means low risk, recent means causal, or announced means performed.

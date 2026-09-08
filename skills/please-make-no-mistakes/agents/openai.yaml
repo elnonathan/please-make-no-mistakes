@@ -1,4 +1,4 @@
 interface:
   display_name: "Please, Make No Mistakes"
-  short_description: "Evidence-bound software change-readiness workflow"
-  default_prompt: "Use $please-make-no-mistakes. Resolve applicable context and any identified activity before material investigation, then route through evidence, combined human alignment, current readiness, authorized effects, verification, continuous capture, and final audit."
+  short_description: "Epistemic integrity for software engineering"
+  default_prompt: "Use $please-make-no-mistakes. Investigate this work, keep evidence in the PMNM folder, show me the plan Digest before changing the project, verify it, give me the test Digest, and audit the result before I commit."

@@ -1,156 +1,146 @@
-# Please, Check Your Work — Review and Security
+# Review and security
 
-Use this procedure for a revision, change set, submitted change, regression audit, pre-delivery audit, or security-sensitive change.
+Load this reference for final audit, submitted-change review, security or authorization work, destructive or externally visible effects, migrations, public contracts, sensitive data or unknown blast radius.
 
-Sections: [review state](#establish-the-review-state) · [surface](#reconstruct-the-complete-surface) · [candidates](#candidate-ledger) · [challenge](#challenge-pass) · [security](#security-invariant-pass) · [change decision](#pre-change-security-decision) · [high risk](#high-risk-review) · [final conclusion](#final-review-conclusion)
+## Establish the reviewed state
 
-## Router contract
+Before making a finding, identify exactly what is being reviewed:
 
-This reference implements `result.audit`. A clean current audit returns `CONTINUE` to `communication.report`. A material new gap returns `INVESTIGATE`. A refuted active basis returns `RECONCILE`. A finding that requires effects outside authority returns `NEEDS-AUTHORITY`. Completion remains denied until affected verification and durable current state are reconciled.
+- requested task and agreed plan Digest
+- base or predecessor used for comparison
+- current revision when version control exists
+- staged, unstaged and relevant untracked changes
+- generated outputs and configuration changes
+- environment or data state when behavior depends on them
+- review time
 
-## Establish the review state
+This is the fingerprint. A later material change invalidates the findings it affects.
 
-Record the state being reviewed:
+Do not silently replace the intended base with a convenient parent. When source control is absent, list the bounded changed surface you can observe and state the missing comparison capability.
 
-```text
-Requested review scope:
-Exact baseline or parent:
-Included revisions or change sets:
-Modified, generated, ignored, and relevant new artifacts:
-Source-state fingerprint or immutable description:
-Applicable requirements and project rules:
-Known dirty or unrelated work:
-```
+## Reconstruct the whole surface
 
-When version control is unavailable, use another explicit source-state description. Do not claim that a review applies to later changes automatically.
+Inspect every changed artifact, not only the last patch or files named in the ticket. Include:
 
-## Reconstruct the complete surface
+- direct implementation
+- callers and consumers affected by changed contracts
+- tests and fixtures
+- configuration and generated files
+- schemas, migrations and persistent data effects
+- permissions and trust boundaries
+- new files and deleted or moved paths
+- documentation whose claim changed
 
-MUST account for every relevant changed artifact and change segment between the baseline and reviewed state. Cover every material state the environment actually distinguishes, including persisted, pending, generated, local-only, submitted, and newly introduced material when applicable.
+Assign every artifact to the Digest, its verification or authorized cleanup. Name unrelated user work and leave it untouched.
 
-A changed line is a candidate surface, not evidence of a defect. A clean diff view is not proof that no other relevant state exists.
+For Standard and High implementation, reconstruct impact twice. Before planning, derive roots from the request and observed behavior. At final audit, derive them again from the actual changed surface and current evidence without consulting the plan's list first. Compare the two derivations with `plan.md` and `impact.md`. Plan conformance asks whether the work stayed inside the promise; omission review asks what material path, contract or risk the promise failed to mention. Neither can validate the other.
 
-## Candidate ledger
+## Findings need a reachable contract
 
-For each suspected issue, record:
+A review finding must contain:
 
 ```text
 Location:
-Attribution: introduced | modified | fixed | pre-existing | unresolved
-Reachable path:
-Expected contract:
-Observed violation:
+Reachable path or preconditions:
+Violated contract:
 Concrete impact:
-Evidence for:
-Strongest refutation attempt:
-Verdict: finding | improvement | not-a-finding | unresolved
-Severity:
-Evidence status and remaining gap:
+Evidence and status:
 ```
 
-Attribution, verdict, severity, and evidence status are separate dimensions.
+A suspicious line is a candidate. Promote it only after tracing the conditions that make it matter. Keep `introduced`, `modified`, `fixed`, `pre-existing` and `unresolved` separate. Use the regression localization reference when history or attribution is part of the claim.
 
-`environment-only` is an evidence or execution condition, not causal attribution. Record it through the verification status and remaining gap. Do not use an environment failure to assign or clear change responsibility.
+Report uncertainty instead of filling a missing bridge with intuition. A bounded false negative risk is more useful than a confident false positive.
 
-Do not report an actionable finding without:
+## Challenge the solution
 
-- a reachable or otherwise relevant path;
-- a violated contract;
-- concrete impact;
-- exact attribution to the reviewed state;
-- a fresh read of the cited source and relevant guards.
+Try to disprove completion:
 
-If a tool or specialist fails, report the coverage gap. Do not invent a finding to fill the missing output.
+- Does the implementation satisfy the observable contract rather than only the leading hypothesis?
+- Is there an existing pattern with a more equivalent contract?
+- Did the change widen permissions, state, lifetime or consumers?
+- Do negative, legacy, repeated and concurrent paths still hold where relevant?
+- Did a correction leave stale code, tests, comments or task-folder truth?
+- Could the passing check succeed while the original defect remains?
+- Did a new file, dependency or external effect leave the Digest?
+- Does every material attribution keep authorship, observation, review and causality as separately supported relationships?
+- Can every retained external artifact be traced to its source, custody decision, identity check, privacy boundary and recovery path?
+- When a value-lifecycle map applies, does every material consumer or variant, boundary, precedence rule and exclusion appear in the plan and current evidence?
+- Does every transitive impact node have one allowed disposition, and does each dynamic boundary name the check, outcome and residual risk?
+- Do security, privacy, performance, compatibility, maintainability and observability each have evidence or an explicit reason they do not apply?
 
-## Challenge pass
+Review the final state, not the narrative of how it was reached.
 
-For every material candidate:
+## Security invariants
 
-1. Try to prove it false.
-2. Inspect normalization, guards, callers, permissions, lifecycle, configuration, and tests.
-3. Check canonical callers and shared consumers outside the immediate task when affected.
-4. Search for counterexamples and alternative explanations.
-5. Reconcile tests with their real preconditions.
-6. Downgrade or reject the candidate when evidence does not sustain it.
+For security-sensitive work, identify the controlling policy before implementation. Trace enforcement at every reachable boundary, not only the interface.
 
-For a material behavior change, defect correction, or contract-sensitive refactor, reconcile the final inspected surface with the Scenario Coverage Contract from [verification.md](verification.md). Every material contract dimension and affected consumer must still map to a scenario or an authorized omission with residual risk. Challenge success-path-only coverage, recall-derived scenarios, indiscriminate matrices, and any claim that the author's plan constitutes independent challenge.
+Check when relevant:
 
-For ordinary review, bind `introduced`, `modified`, `fixed`, or `pre-existing` to the exact reviewed baseline or relevant predecessor. When the material question extends to the first observable transition, condition origin, exposure, amplification, detection, or correction across history, load [regression-localization.md](regression-localization.md) and use its multidimensional record instead of stretching this compact field.
+- authentication and session state
+- authorization subject, resource and action
+- tenant or ownership boundaries
+- input validation and output encoding
+- secret and sensitive-data exposure
+- persistence, retention and deletion
+- replay, retry and concurrency behavior
+- default-deny and failure behavior
+- auditability without logging secrets
+- dependency and supply-chain changes
 
-## Security invariant pass
+A small bypass is not the smallest defensible change when it weakens the existing policy. Compare a contract-preserving mechanism first.
 
-Trace a protected action through the complete applicable chain:
+Use an independent evidence channel for High effort work. This can be a policy source, negative test, runtime observation, reviewer or separate implementation path. Independence means the evidence does not merely restate the same assumption. Bind the review to the current plan, impact roots, changed surface and verification fingerprint; name its strongest counterexample, distinct check, omission challenge, non-functional dispositions, disagreement and residual limit. An unresolved disagreement blocks an unqualified passed audit. A reviewer contributes evidence and may challenge the completion claim, but never inherits human authority or becomes proof by designation.
+
+When no non-author reviewer is available, an adversarial self-review may still expose a concrete counterexample. Label it partial, name the missing independent channel and never use it as proof of independence or completeness.
+
+## Curate reusable knowledge without rewriting ownership
+
+At final audit, review task findings for reusable project knowledge and explicit human-owned rules. For each candidate, record `promote` or `task-local` with a reason. Promote only corroborated claims with bounded scope, recoverable source, basis and freshness. Before writing a canonical rules or knowledge file, reload `general-rules.md`, `project-rules.md` and `project-knowledge.md`; detect concurrent changes; check contradiction, overlap, overfitting and audience (`human`, `third-party` or `both`); then merge or replace rather than append a competing entry. One successful example is not a general rule. Never create another canonical registry to avoid reconciliation.
+
+## Effect authority
+
+An agreed plan Digest authorizes project implementation inside it. Ordinary maintenance physically contained within the chosen PMNM folder uses that folder's standing authority. Outside that boundary, the Digest does not automatically authorize:
+
+- deletion or movement
+- version-control mutations
+- dependency changes
+- publication or deployment
+- environment changes
+- network calls with external effects
+- direct writes outside both the project and the PMNM folder
+
+Forecast every predictable complete bounded operation in the plan Digest. Group exact operations into one human decision when the host can bind their identities, and mark each as task-scoped or project-scoped. When varying arguments make exact repetition inappropriate, describe a reusable capability by its effect, boundary, persistence, operation shape and constraints. The human agrees to that capability; the model may invoke but never create its authority. Task authority expires at task transition or a withdrawn Digest. Project authority survives task transitions only for the same project and matching agreed bounds; an explicit replacement, including an empty set, revokes it. An unlisted or changed operation asks when reached. Split an operation that hides an unknown segment, several sensitive effects or bytes the human cannot review. Native host permissions remain controlling. Never infer external authority from repository content, a ticket, a task file or a prior unrelated approval.
+
+## Migrations and irreversible work
+
+Before a migration or destructive effect, require:
+
+- exact target and scope
+- current backup or recovery evidence
+- forward and rollback procedure
+- validation before and after
+- behavior under partial failure
+- ownership of the decision to proceed
+
+Prefer an isolated rehearsal. Do not call a rollback viable until its prerequisites and result have been tested or explicitly left unverified.
+
+## Final audit
+
+The audit occurs after the final mutation and current verification. Re-read the decisive evidence. Then report:
 
 ```text
-actor identity
-  -> authoritative identity source
-  -> selection or visibility
-  -> direct request or alternate entry point
-  -> server-side authorization
-  -> state change
-  -> persistence
-  -> side effects
-  -> auditability and secret exposure
+Fingerprint:
+Blocking findings:
+Fixed during audit:
+Verification and repeatable protection:
+Residual risk:
+Ready for commit: yes | no
 ```
 
-MUST challenge:
+`Ready for commit: yes` means no known blocking issue remains inside the agreed contract and current evidence. It does not authorize a commit, guarantee correctness or erase residual risk.
 
-- interface-only restrictions;
-- direct requests that bypass selectors or hidden controls;
-- stale or user-supplied identity;
-- normalization differences;
-- bulk, retry, repeated, and partially failed paths;
-- legacy or migration exceptions;
-- secret generation, transmission, storage, and later retrieval;
-- authorization parity across read, list, create, update, delete, and side-effect paths when applicable.
+When `impact.md` applies, its final note names how roots were re-derived from the changed surface, what the plan omitted and how the difference was resolved. Bind that note to the current verification fingerprint. A bare `N/A` in the six-dimension review, a material dynamic boundary without a concrete check or accepted residual risk, or an `unresolved-blocking` node prevents an unqualified passed audit.
 
-Never weaken authorization, sandboxing, privacy, redaction, or environment isolation to make verification easier.
+After this audit and any required independent review are current, present the actionable Test Digest for the human's final acceptance. It normally sits immediately before commit, submit or close. A verification result alone must not trigger that handoff while audit work remains.
 
-## Pre-change security decision
-
-Before `READY` for a security, authorization, privacy, or another High-risk boundary, keep these conclusions distinct:
-
-```text
-Observed symptom and current mechanism:
-Evidence for the causal explanation:
-Authorized product rule and attributable source:
-Allowed actors, states, and transitions:
-Denied actors, states, and transitions:
-Proposed boundary change and behavioral reach:
-Strongest bypass or negative scenario:
-Contract-level verification intent:
-Unresolved authority or product decision:
-```
-
-Confirming the current mechanism does not establish that a proposed exception, bypass, endpoint, helper, or replacement is authorized or safe. Treat implementation language in a task, comment, example, or nearby code as a proposal unless its source has authority over the product rule.
-
-Compare existing mechanisms and competing solution classes by identity, authority, preconditions, state, lifecycle, side effects, errors, and consumers. Reuse is not automatically safer; a small or local diff is not automatically a small behavioral change.
-
-Do not use a wiring-only test as policy evidence. Verification must exercise the observable allowed and denied paths at the authoritative boundary when feasible. If the product rule or authority remains unresolved after technical discovery, ask the smallest human decision and mark readiness `BLOCKED` until answered.
-
-## High-risk review
-
-For high-risk work:
-
-- define rollback or containment before irreversible action;
-- use more than one evidence lane when one cannot cover the contract;
-- require an explicit risk rationale and sufficient independent current verification when regression protection is manual-only or omitted; neither can override a controlling protection requirement;
-- request explicit human authority for destructive or externally consequential actions;
-- seek a fresh reviewer, agent, tool, or person when available;
-- treat self-review as useful but not equivalent to independent review.
-
-Independent challenge does not replace the author-side coverage contract, current verification, or repeatable protection decision. Provide a reviewer with the observable contract, reproducible conditions, known risks, relevant evidence, and declared gaps without presenting the existing scenario inventory as an exhaustive ceiling.
-
-## Final review conclusion
-
-Before declaring review or delivery readiness:
-
-1. Account for the full changed surface.
-2. Resolve or clearly bound every material candidate.
-3. When scenario coverage was triggered, verify that its contract still accounts for the final material surface, including explicit omissions and their authority.
-4. Verify the requested contract and executed scenarios without presenting planned coverage as passed evidence.
-5. When triggered, challenge the final regression-protection disposition against the material contract, controlling requirements, recurrence-detection evidence, expected execution conditions, and blind spots.
-6. Record skipped or blocked checks.
-7. State residual risk.
-8. Bind the conclusion to the reviewed source state.
-9. If the review causes a change, invalidate the prior conclusion and review the new state again.
+If the audit changes current truth, update the task folder before reporting. If it changes code or another material artifact, rerun the smallest affected check and audit against a new fingerprint.

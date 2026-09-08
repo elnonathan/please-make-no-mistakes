@@ -12,14 +12,14 @@
     "reason": "Complete change-set and security review."
   },
   {
-    "id": "resume-durable-record",
-    "query": "Resume the payment retry investigation from the existing snapshot and tell me what is still unverified.",
+    "id": "resume-task-folder",
+    "query": "Resume the payment retry investigation from its PMNM task folder and tell me what is still unverified.",
     "should_trigger": true,
-    "reason": "Cross-session durable context and uncertainty."
+    "reason": "Cross-session task continuity and uncertainty."
   },
   {
     "id": "resume-from-host-visible-thread",
-    "query": "Continue this software investigation from the messages restored by the host, and establish whether any durable record was actually loaded before relying on them.",
+    "query": "Continue this software investigation from the messages restored by the host, and establish whether its PMNM task folder was actually loaded before relying on them.",
     "should_trigger": true,
     "reason": "Software-work resumption with material continuity provenance."
   },
@@ -61,7 +61,7 @@
   },
   {
     "id": "correction-propagation",
-    "query": "I corrected the product rule we used earlier. Update the implementation, tests, and durable record consistently.",
+    "query": "I corrected the product rule we used earlier. Update the implementation, tests, and PMNM task folder consistently.",
     "should_trigger": true,
     "reason": "Correction invalidates dependent work."
   },
@@ -138,28 +138,28 @@
     "reason": "Explicit invocation overrides the normal exclusion for a simple explanation."
   },
   {
-    "id": "inspect-existing-context-store",
-    "query": "Inspect my existing software-work context store, map its current files to the required capabilities, and propose only the missing pieces without changing anything.",
+    "id": "inspect-existing-pmnm-folder",
+    "query": "Inspect my existing PMNM folder, map its projects and task folders, and propose only useful repairs without changing anything.",
     "should_trigger": true,
-    "reason": "Context-store inspection and adaptation planning that do not change store content or structure."
+    "reason": "Read-only inspection of PMNM continuity and retrieval."
   },
   {
-    "id": "context-scaffold-needs-plan-approval",
-    "query": "Set up a reusable engineering context store inside this existing folder.",
+    "id": "pmnm-folder-first-use",
+    "query": "Set up my PMNM folder here and begin using it for this software project.",
     "should_trigger": true,
-    "reason": "Context-store scaffolding must activate the inspection, exact-plan, and approval workflow before mutation."
+    "reason": "First-use PMNM folder and project bootstrap."
   },
   {
-    "id": "authorized-context-scaffold",
-    "query": "I approve the exact plan digest you just presented for its canonical root and normalized operations. Scaffold those files, register the project, and validate every new pointer.",
+    "id": "pmnm-project-bootstrap",
+    "query": "Use the PMNM folder I selected, create this project's folder, and begin task TASK-18.",
     "should_trigger": true,
-    "reason": "Explicitly authorized context scaffolding and registration."
+    "reason": "PMNM project and task setup for identified software work."
   },
   {
-    "id": "validate-context-registry",
-    "query": "Validate this engineering context registry for broken pointers, ambiguous matches, and privacy-boundary problems without modifying it.",
+    "id": "validate-pmnm-pointer",
+    "query": "Validate this PMNM pointer and project index for broken paths, ambiguous matches, and privacy-boundary problems without modifying it.",
     "should_trigger": true,
-    "reason": "Read-only validation of a software-engineering context store."
+    "reason": "Read-only validation of PMNM continuity."
   },
   {
     "id": "generic-folder-scaffold",
@@ -174,16 +174,16 @@
     "reason": "Unrelated personal memory is outside software-engineering context management."
   },
   {
-    "id": "switch-identified-activity",
-    "query": "Switch to the software activity identified as work-4821 and investigate its reported failure.",
+    "id": "switch-identified-task",
+    "query": "Switch to task work-4821 and investigate its reported failure.",
     "should_trigger": true,
-    "reason": "Starting or switching to an identified software activity must resolve activity continuity before material work."
+    "reason": "Starting or switching an identified task must resolve its task folder before material work."
   },
   {
-    "id": "material-rule-existing-activity",
-    "query": "For software activity work-4822, an authorized source changed a material behavior requirement; continue the implementation.",
+    "id": "material-rule-existing-task",
+    "query": "For task work-4822, an authorized source changed a material behavior requirement; continue the implementation.",
     "should_trigger": true,
-    "reason": "An identified activity receives a material business-rule update that requires continuous durable capture when delegated."
+    "reason": "An identified task receives a material rule correction that must update its current evidence before implementation continues."
   },
   {
     "id": "localize-observable-regression-boundary",

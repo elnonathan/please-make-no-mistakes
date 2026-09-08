@@ -16,20 +16,18 @@ ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
 FULL_CHECKS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("package-and-skill", (PYTHON, "scripts/validate_skill.py")),
+    ("source-validator-adversarial", (PYTHON, "scripts/test_validate_skill.py")),
     ("host-guard", ("node", "--test", "scripts/test_host_guard.mjs")),
     ("documentation-contract", (PYTHON, "scripts/documentation_gate.py")),
     ("documentation-adversarial", (PYTHON, "scripts/test_documentation_gate.py")),
     ("agent-evaluation", (PYTHON, "scripts/test_agent_evaluation.py")),
     ("release-aggregator", (PYTHON, "scripts/test_release_verify.py")),
-    ("context-store", (PYTHON, "scripts/test_context_store.py")),
-    ("record-conformance", (PYTHON, "scripts/test_record_conformance.py")),
     ("installed-tree", (PYTHON, "scripts/test_install_smoke.py")),
-    ("ordered-trace", (PYTHON, "scripts/test_trace_validator.py")),
     ("distribution-contract", (PYTHON, "scripts/test_distribution_smoke.py")),
     ("distribution-artifact", (PYTHON, "scripts/distribution_smoke.py")),
 )
 PORTABLE_CHECKS: tuple[tuple[str, tuple[str, ...]], ...] = tuple(
-    check for check in FULL_CHECKS if check[0] not in {"context-store", "installed-tree"}
+    check for check in FULL_CHECKS if check[0] != "installed-tree"
 )
 
 

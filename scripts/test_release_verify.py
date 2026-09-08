@@ -42,10 +42,11 @@ class ReleaseVerifyTests(unittest.TestCase):
     def test_portable_profile_omits_only_nonportable_runtime_checks(self) -> None:
         full_names = {name for name, _command in FULL_CHECKS}
         portable_names = {name for name, _command in PORTABLE_CHECKS}
-        self.assertEqual(full_names - portable_names, {"context-store", "installed-tree"})
+        self.assertEqual(full_names - portable_names, {"installed-tree"})
         self.assertIn("package-and-skill", portable_names)
+        self.assertIn("source-validator-adversarial", portable_names)
         self.assertIn("host-guard", portable_names)
-        self.assertIn("ordered-trace", portable_names)
+        self.assertIn("agent-evaluation", portable_names)
         self.assertIn("distribution-artifact", portable_names)
 
 

@@ -1,12 +1,12 @@
-# Please, Find Where It Changed — Regression Localization and Attribution
+# Regression localization and attribution
 
-Use this subworkflow only when locating a historical transition or assigning a change role would materially affect implementation, verification, risk, review, or communication. It composes **Please, Look Before You Change**, **Please, Prove It**, **Please, Check Before You Claim**, and **Please, Check Your Work**; it is not a separate top-level capability.
+Load this reference only when locating a historical transition or assigning a change role would materially affect implementation, verification, risk, review or communication.
 
 Sections: [trigger](#trigger-and-contract) · [oracle](#oracle-and-comparable-conditions) · [history](#history-model-and-narrowing) · [classifications](#revision-classifications) · [attribution](#multidimensional-attribution) · [lineage](#current-contract-lineage) · [safety](#operational-safety) · [adapters](#adapter-boundary) · [reporting](#stop-and-report)
 
-## Router contract
+## Before you begin
 
-This reference implements `history.localize`. Return the bounded observable transition, attribution dimensions, oracle limits, and `resumeWith` to the central router. Unsafe workspace mutation returns `NEEDS-AUTHORITY`. An unstable oracle or missing comparable states returns `INVESTIGATE`, `ESCALATE`, or `BLOCKED` rather than causal certainty.
+Establish the observable property, why its history matters, the available revision relation and a safe isolation method. Ask before any history operation that changes the working copy. An unstable oracle or missing comparable states yields bounded uncertainty rather than causal certainty.
 
 ## Trigger and contract
 
@@ -70,7 +70,7 @@ Declare the revision relation before selecting a search method:
 
 ```text
 Revision identity:
-History shape: ordered sequence | graph | snapshots | other
+History shape: ordered sequence | graph | saved states | other
 Traversal strategy:
 Relevant predecessors or parents:
 Assumption that permits narrowing:
@@ -132,7 +132,7 @@ Reachability effect:
 Impact effect:
   amplified | unchanged | mitigated | unresolved
 
-Activity or artifact role:
+Task or artifact role:
   detected | fixed | neither | unresolved
 
 Human motivation:
@@ -148,7 +148,7 @@ Apply these invariants:
 - `detected` describes discovery or observability and does not establish technical causality.
 - `fixed` means the declared contract was restored within tested scope; it does not prove every underlying condition was removed.
 - `unresolved` applies per dimension. Do not erase established dimensions because another remains unknown.
-- authorship, temporal proximity, activity ownership, revision text, and discovery date do not establish causal responsibility or human intent.
+- authorship, temporal proximity, task ownership, revision text, and discovery date do not establish causal responsibility or human intent.
 
 Identify revisions separately when evidence supports them:
 
@@ -157,11 +157,13 @@ First observed oracle failure:
 Condition-origin revision:
 Exposure revision:
 Amplification revision:
-Detection activity or artifact:
+Detection task or artifact:
 Fixing revision:
 ```
 
 These identities may all differ.
+
+When any of these identities materially affects the current decision or later handoff, preserve each supported link in the task's `provenance.md`. Use one relationship per claim so a revision's authorship, a task's ownership, an observer's report, a detector, a reviewer and a causal role can carry different evidence and status. Do not let one established link raise the certainty of another.
 
 ## Current contract lineage
 
@@ -209,7 +211,7 @@ Restoration and cleanup procedure:
 Known history or environment limits:
 ```
 
-Use adapter commands only after their applicability and availability are established under `context-layers.md`. Consult the adapter's declared authoritative documentation for traversal, result classifications, ambiguity, isolation, and restoration mechanics. Do not copy those mechanics into the portable core or assume another system shares them.
+Use a host tool or adapter command only after its availability is established, as `flow.md` requires for implementation tools. Consult the adapter's declared authoritative documentation for traversal, result classifications, ambiguity, isolation, and restoration mechanics. Do not copy those mechanics into the portable core or assume another system shares them.
 
 ## Stop and report
 

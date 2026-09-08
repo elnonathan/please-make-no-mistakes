@@ -2,7 +2,7 @@
 
 ## Contract
 
-Please, Make No Mistakes uses the same distribution shape as Semantic JS MCP, adapted to a plugin containing one portable skill and one optional Codex lifecycle guard:
+Please, Make No Mistakes uses a repository marketplace that selects one exact npm package version containing the portable skill and optional Codex lifecycle guard:
 
 ```text
 GitHub repository marketplace
@@ -18,7 +18,7 @@ This route does not depend on a listing in the OpenAI Plugins Directory. A futur
 
 ## Artifact
 
-The npm package contains the portable skill, the dependency-free Codex guard, public documentation, blind, trace, and host-guard evaluation definitions, and verification utilities. It declares no runtime registry dependency and no npm lifecycle script. The explicit `files` allowlist excludes repository workflows, marketplace metadata, maintainer state, personal or project context, and generated output.
+The npm package contains the portable skill, the dependency-free Codex guard, public documentation, blind behavior and host-guard evaluation definitions, and verification utilities. It declares no runtime registry dependency and no npm lifecycle script. The explicit `files` allowlist excludes repository workflows, marketplace metadata, maintainer state, PMNM folders, and generated output.
 
 Run the artifact check with:
 
@@ -41,7 +41,7 @@ The validators reject version drift and a marketplace that points to a mutable o
 
 ## Local Release Verification
 
-`npm run release:verify` runs every configured package, documentation, evaluation, context runtime, host-guard, trace, and distribution check under the declared Node.js envelope. It reports an aggregate result after every check has run instead of hiding later failures behind the first non-zero exit.
+`npm run release:verify` runs every configured package, documentation, evaluation, host-guard, installed-tree, and distribution check under the declared Node.js envelope. It reports an aggregate result after every check has run instead of hiding later failures behind the first non-zero exit.
 
 The documentation gate checks ownership and semantic setup boundaries. Its adversarial suite removes or changes those boundaries and requires each mutation to fail. The blind evaluation smoke verifies that model-facing cases omit expected answers and that incorrect routing decisions are rejected deterministically. These are source-level claims; model execution and clean-session host behavior remain separate evidence.
 
@@ -101,4 +101,4 @@ The result is `passed` (exit `0`), `failed` (`1`), `invalid` (`2`), or `blocked`
 
 ## Continuous Integration
 
-Repository CI runs the complete aggregate gate on Linux across the oldest and newest declared Node.js and Python versions and on current macOS. Windows runs the portable profile, which omits the explicitly POSIX-only context-store runtime and symlink-oriented installed-tree tests while retaining documentation, host-guard, evaluation, trace, package, and distribution checks. These deterministic checks validate configuration and state-machine behavior, not host trust or real lifecycle delivery. A local pass establishes only the current machine; hosted support remains unverified until those jobs pass on the exact committed candidate.
+Repository CI runs the complete aggregate gate on Linux across the oldest and newest declared Node.js and Python versions and on current macOS. Windows runs the portable profile, which omits symlink-oriented installed-tree tests while retaining documentation, host-guard, evaluation, package, and distribution checks. These deterministic checks validate configuration and covered state transitions, not host trust or real lifecycle delivery. A local pass establishes only the current machine; hosted support remains unverified until those jobs pass on the exact committed candidate.

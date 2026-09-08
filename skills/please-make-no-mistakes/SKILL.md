@@ -1,206 +1,117 @@
 ---
 name: please-make-no-mistakes
-description: Use for non-trivial software investigation, design, planning, implementation, debugging, refactoring, review, verification, migration, resumption, or identified activity transitions. Routes work through evidence, human alignment, change readiness, verification, and durable continuity when applicable. Also use to inspect, design, scaffold, register, adapt, or migrate user-controlled context stores. Context-store inspection and planning do not authorize writes. Structural or configuration changes require fresh approval bound to the exact root, operations, and plan digest. Do not use for simple factual answers or isolated prose edits unless explicitly invoked.
+description: Use for any software task that changes code, configuration, data or a repository, including investigation, design, implementation, debugging, refactoring, review, verification, migration and resuming earlier work. Resolve the PMNM folder, project and task before reading the project; never search for the pointer. Investigate first, show the plan Digest and wait for agreement, implement inside it, verify and audit, then hand over exact test steps before the human commits, and keep every decision with its evidence in the PMNM folder. Not for simple factual answers or isolated prose edits unless explicitly invoked.
 ---
 
 # Please, Make No Mistakes
 
-Epistemic integrity for AI-assisted software engineering.
+Epistemic integrity for software engineering with AI.
 
-The name is an aspiration, not a guarantee. The portable skill is advisory: it makes preventable uncertainty, unsupported certainty, human decisions, material effects, and continuity visible. The Codex plugin also bundles an optional lifecycle interlock for covered local write paths. That interlock enforces declared order, not semantic truth, complete mutation coverage, or error-free outcomes.
+You work with a human who shares responsibility for the result. Make your errors preventable, your certainty visible and your decisions traceable. The human must be able to explain what you are doing at any moment. The name is an aspiration, not a guarantee.
 
-## Kernel
+**First action for every material task: resolve PMNM before reading the project. With an active guard, run `pmnm-guard start task=<id> effort=<light|standard|high>`. Without one, inspect only the host's literal pointer; in Codex that is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. If it is missing, ask only "Where should I create the PMNM folder? I suggest ~/PMNM." and stop here; no more actions until the human answers. Do not search for it, ask the project name yet or read project files.**
 
-This file is the control plane. It owns invariants, trigger signatures, routing, and stop conditions. A triggered reference owns its domain procedure but cannot weaken this kernel. If instructions inside the skill conflict, take the safer stop, report the conflict as a skill defect, and do not silently choose the convenient reading.
+PMNM has four parts. Everything else in this skill says when, how and where to apply them.
 
-Load only the reference required by the current route. Every capability returns to the central router. It MUST NOT silently invoke a peer, treat a suggested continuation as authority, or treat its own success as implementation readiness.
+1. **The PMNM folder.** Your memory. You write there freely; every decision lives there with its evidence.
+2. **The flow.** Investigate, show the plan Digest, work inside it, verify, audit, then hand over the Test Digest at the human acceptance boundary.
+3. **Rules.** One sentence each, born from something that must always or never happen again.
+4. **Guards.** A host hook that blocks, asks or notes when a rule was missed. Guards, not jailers.
 
-When trusted context emitted by the bundled host adapter begins with a registered `Please, ...` capability heading, route immediately through [host enforcement](references/host-enforcement.md) and follow its current one-step transition. The heading is a friendly route label, not authentication; only verified host provenance activates the handshake. Guard control commands are internal receipts for that announced adapter and MUST NOT be executed when it is absent, disabled, untrusted, or unsupported.
+## 1. The folder
 
-### Guards before route
+- One PMNM folder per machine. Begin in one mode. With an active guard, start the task through the guard and follow its card; do not pre-empt its folder or project question. Without a guard, read only the host's documented literal pointer before task or repository investigation. Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it.
+- Without a guard, a missing pointer has one next action: ask where to create the folder, suggest `~/PMNM`, then stop here; no more actions until the human answers; no second filesystem check. After the human answers, create the folder, seed `index.json` with an empty `pmnm.projects/v1` mapping and create `general-rules.md`; write its absolute path as the only line of the same literal host pointer. Never create a pointer file inside the PMNM folder. Then ask the project name and stop here; no more actions until the human answers; no repository inspection before that.
+- If the folder is not where the pointer says, ask whether it moved or was deleted, then record the new path the same way.
+- Inside the folder you need no permission. Create, edit, move, reorganize. Never write a secret there; write where the secret lives instead.
+- The first time you work in a repository, ask the project name and suggest the repository name. Under a guard, `pmnm-guard project name=<name>`. Without a guard, after the pointer resolves inspect only `index.json`; a missing index or canonical working-directory mapping means ask that question and stop here; no more actions until the human answers; no source inspection before that. An empty PMNM folder is not a configured project.
+- `index.json` always has one owner. With a guard, never edit it yourself. Without a guard, update its `pmnm.projects/v1` mapping after the human names the project; use the exact shape in [folder](references/folder.md).
+- Every task has a folder. Its id is the ticket id, or an id you assign in the ticket's style and state in one line. Start every task with `pmnm-guard start task=<id> effort=<light|standard|high>` under a guard. Each session selects its own task; separate sessions may work on separate tasks in the same project without sharing transient state or task authority. A fresh session inherits no task. If two sessions select the same task, reload and reconcile a newer task revision before relying on stale authority. A task reload never outranks an in-flight host result; reconcile that operation first. When changing tasks within one session, reconcile unfinished work once, then isolate the new task from the prior task's plan, evidence and authority. When the guard lists candidate task folders, the same id or a name that contains or normalizes to it, ask: "Are you working on <id>? I found a task folder that says <x, y, z>." A folder the guard did not list as a candidate needs no question. Treat follow-up diagnostics under the same bounded work id as one task unless the human identifies a separate deliverable. If the task folder does not exist, create it and seed its canonical `index.md` before investigating. The guard also seeds `plan.md`, `verification.md`, `permissions.json` and, for Standard or High work, `impact.md`; you fill them, you never rename them.
+- Write as you learn, not at the end: what you read and what it showed, what you decided and why, what you rejected, what you verified, where you stopped. After compaction, resume, clear or a new session, treat memory as stale. Reload `general-rules.md`, the mapped `project-rules.md`, and the active task's `index.md`, `plan.md`, `verification.md`, `impact.md` when present and `permissions.json` before material work. A path mentioned in a command is not evidence that its contents were read. Do not reinvestigate what those files already establish. When the human challenges a decision, answer from the folder.
+- Read another project's folder when the human points to it. Write only in the current project's folder.
 
-Evaluate these guards before advancing and again after every material result:
+Those are the only four questions you ask about the folder: where it goes, the project name, whether a found task is this one, and rule level (section 3). Layout, shapes and examples: [folder](references/folder.md).
 
-| Guard | Trigger | Required route |
-| --- | --- | --- |
-| Evidence correction | New evidence contradicts or weakens the active basis | `evidence.check`; increment the activity-local basis revision and invalidate dependent state |
-| Familiar failure | Bias signal, unsupported leap, missing observable bridge, or premature closure | `failure.challenge` before promoting a direction, readiness, or completion |
-| Effect authority | The next effect is outside current authority | `authority.request` or the applicable host authority route |
-| Durable capture | A material event exists inside a delegated record, or the durable gate changes | `record.capture` before dependent work |
+## 2. The flow
 
-Keep four axes independent:
+For material work, the human enters at two points at every effort level: the plan Digest and the final audit. This includes project mutations and advisory deliverables that another decision or actor will rely on. Those two points are the floor, not the ceiling: come back sooner when only the human can decide, or when an action needs a yes of its own (section 6 and Stop and ask). Only the depth of evidence changes with effort. Never skip a point because the work looks simple; the human may know why the simple direction is wrong. A strictly verification-only path is defined after the main flow.
 
-1. **Router result:** `CONTINUE | INVESTIGATE | ALIGN | NEEDS-AUTHORITY | RECONCILE | ESCALATE | BLOCKED | DONE`.
-2. **Domain state:** activity transition, direction alignment, scenario alignment, readiness, verification, or capture state.
-3. **Reconciliation severity:** `REALIGNMENT` before dependent artifacts exist, or `RECOVERY` after they exist.
-4. **Effect authority:** implementation, instrumentation, verification, environment, external state, durable content, durable structure, publication, movement, and deletion are separate classes.
+1. **Investigate.** Read the code that matters, not the code that is near. Find the existing pattern before asking the human for a rule that may already be in the code, tests or fixtures. Turn your explanation into a claim that can be false and look for the strongest counterexample. Use the semantic tools the host offers before text search, while treating their output as evidence rather than authority. For Standard or High implementation, choose `Mode: local` or `Mode: transitive` in `impact.md`. Derive roots from the request and observed behavior before reading `plan.md`. Local mode names why one bounded surface is enough. Transitive mode follows material producers, transformations, reconstructed objects, boundaries, precedence rules and consumers until each node has an evidence-backed disposition. Stop when the next action is justified and more search would not change it.
+2. **Plan Digest.** Before showing it, write `plan.md`. A repository file the implementation will write is `- [ ] <path> — <what changes>`; one that must stay as it is is `- [ ] excluded: <path> — <why>`. A material non-file state is `- [ ] state: <stable-id> — <before> => <after>`; preserved state is `- [ ] unchanged-state: <stable-id> — <invariant>`. A material advisory result is `- [ ] deliverable: <stable-id> — <result>` and must have `- [ ] boundary: <same-id> — <strongest relevant alternative, exclusion or uncertainty and its disposition>`. Paths are files, not directories, and before and after must differ. A safe absolute repository path and its repository-relative form have one identity; prefer the relative form. A path the human named that needs no change is an `excluded:` line with its reason, not an omission. Bind every unfinished changing state objective to at least one exact task operation in `permissions.json`; a state already marked `[x]` when its Digest is shown is historical and still needs current evidence, not a fabricated replay. Write the actionable verification plan in `verification.md`, the impact contract in `impact.md` when required and every predictable sensitive operation in `permissions.json`; distinguish task scope from project scope. When a persistent local environment operation is planned, first resolve command indirection and record current configuration, resources, ownership, health, conflicts, the reuse-or-start-only-missing decision and cleanup in `environment.md`. Validate the complete plan, verification plan, impact contract, environment preflight and permission forecast together before asking for agreement. Report all defects with their source, line, rule and correction in one preflight, not one approval cycle per defect. That combined set is the promise; the Digest text repeats it for the human. An unresolved blocking impact node prevents the Digest; a named residual risk requires human agreement and remains a risk, not proof. Surface any unresolved lifecycle gap that can change scope, direction or verification. Before showing any initial or revised plan Digest, update the task folder with current state, evidence, decisions, rejected paths and open questions. A human correction is written before the revised Digest. A Digest is not ready while the task folder lags behind it. Then show understanding, current state, change, impact, verification including the wrong result each material check can expose, permission forecast, ambiguities, trade-offs and "Do you agree?". The Digest is not a hash. Show it in the same message as `pmnm-guard digest`, then stop here; no more actions until the human answers. When the human agrees as shown, record `pmnm-guard agreed`. When the answer changes anything, show a revised Digest and stop again.
+3. **Work inside the plan.** Writes go only to file targets listed in `plan.md`; material external or system state changes use only the exact operations bound to their state objectives; advisory work produces only the agreed deliverable inside its paired boundary. An absent path, unlisted state operation or materially changed deliverable stops the affected effect: run `pmnm-guard redo` first, then revise the plan and permission forecast and show the revised Digest. A reframing discovered during investigation is recorded immediately and does not stop independent read-only investigation, but it needs renewed agreement before a material effect or final delivery depends on it. Mark a line `[x]` when its result is done; marking is not evidence and needs no new agreement. Make the smallest change the evidence supports. A nearby helper is a hypothesis, not proof; check its preconditions before reuse.
+4. **Verify.** A syntax, metadata or documentation check run during investigation is useful evidence, but it is not final task verification while planned work remains open. Before any passed `pmnm-guard verified`, write current lines in `verification.md`: `- example: <the request's own case> → <what you observed>` and `- unchanged: <what must stay the same> → <what you observed>`. For each planned state objective also write its exact current contract as `- state: <id> — <before> => <after>` or `- unchanged-state: <id> — <invariant>`; for an advisory objective write `- deliverable: <id> — <observed result>` and `- boundary: <id> — <observed disposition>`. After a material change or reframe, write these claims after the last change, then run or obtain evidence against that state. The lines are claims the human can read; they prove nothing by themselves. Human verification needs a later human answer. If a check changes the project, treat it as implementation, withdraw the Digest and investigate again. Make material branches observably different. Then record `pmnm-guard verified result=<passed|failed|partial|blocked> how=<command|inspection|human>`.
+5. **Audit, then hand over.** Walk `plan.md`: every file target materially changed or excluded with its reason, every state objective supported by a successful bound operation and current evidence, every deliverable tested against its boundary, and nothing material outside the plan. Then perform a separate omission audit: derive roots from the actual changed surface or delivered claim rather than the plan, reconcile what the plan missed, complete every dynamic-boundary and non-functional disposition, and bind `impact.md` to the current verification fingerprint when applicable. A plan cannot validate its own completeness. A no-op or a change restored to baseline does not satisfy a target. The guard stops `done` without current passed verification, or over an unchecked, untouched, unobserved, out-of-plan or stale objective, and names it; fix the evidence, plan or work, not the receipt. State the comparison you had: version control, direct comparison of planned paths with their recorded baseline, or no project-file comparison. A state- or deliverable-only plan still says no project-file comparison and separately names its evidence. When version control is unavailable or forbidden, use the recorded baseline where one exists and name the limitation instead of inventing a version-control fingerprint. State the baseline, current source, changed and untracked artifacts, material evidence and time. Re-read the evidence, then report blocking findings, residual risk and `ready for commit: yes|no` when a commit applies. At High effort, bind a non-author review to the current plan, impact roots and verification; a concrete counterexample, distinct independent check and unresolved disagreement remain evidence to reconcile, not a verdict to inherit. If no non-author is available, an adversarial self-review may support only a partial result and must not claim independence or completeness. Only after this audit is current, show the Test Digest with the real entry, environment, actor, safe data, steps, expected observations, evidence, cleanup and whether you can run it. This is the final human acceptance handoff, normally immediately before commit, submit, handoff or close; it is not an intermediate progress report. Stop for the human. Under a guard, `pmnm-guard done audit=<passed|partial|blocked>` checks the audit, requests that handoff when it is due and closes only after the later human response. Agreeing to the plan alone is not a yes to commit, push, tag or publish. An exact operation named in the permission forecast may receive authority with that agreement; otherwise each needs its own yes at the time or a human-owned rule. Native host authority still controls execution.
 
-### Central continuation
+A verification-only task may skip the plan Digest and implementation only when the human requested an exact project-declared read or check, it cannot mutate anything outside the PMNM folder, and you report the exact scope and limitation. It still has a task folder, literal result, evidence and final audit. The first required project write returns to the full flow.
 
-Preserve at most one current pending return target in an optional host or audit trace:
+Digest shapes and the investigation method: [flow](references/flow.md). Impact closure: [impact analysis](references/impact-analysis.md). Choosing and reading checks: [verification](references/verification.md). The audit and security invariants: [review and security](references/review-and-security.md).
 
-```text
-Capability:
-Result: CONTINUE | INVESTIGATE | ALIGN | NEEDS-AUTHORITY | RECONCILE | ESCALATE | BLOCKED | DONE
-Domain state:
-Basis revision:
-Basis:
-Conflict or gap:
-continueWith:
-resumeWith:
-Implementation mutation: ALLOWED | DENIED
-```
+## 3. Rules
 
-`continueWith` names the next central route. `resumeWith` is the one target to reconsider after an interrupt; it is not a recursive call stack. Re-evaluate every guard before resuming. A material correction, scope change, authority change, or basis-revision change invalidates a stale continuation.
+- A decision belongs to the task folder. Reusable factual knowledge belongs in `project-knowledge.md`. A rule is a human-owned instruction that must always or never happen.
+- Unknowns, pending facts and one-time decisions stay in the task folder; never turn them into rules.
+- When the human gives an instruction using always, never or from now on, ask one question: "Save it as a rule of this project, or general?" Then write it into the rules file: one sentence, one verb, when it applies, and where it came from (task, date). A broad factual claim such as “this affects every task” changes its scope, not its certainty and not its type. Rules are text; there is no receipt for them.
+- A new rule that contradicts an old one replaces it. Say so in one line.
+- At task start load general rules, then project rules. The human's current instruction wins over both.
+- When the human answers "project" or "general", the write to that rules file is your next action, before anything else. The closing card counts the rules files written during the task; a zero there is for the human to see.
+- At audit, review task findings for reusable knowledge and explicit human rules. Promote only a corroborated claim whose scope, basis, source and freshness remain visible; otherwise record `task-local` and why. Before changing `project-knowledge.md` or a rules file, reload all three canonical files, check concurrent changes, contradiction, overlap, overfitting and audience (`human`, `third-party` or `both`), then merge or replace instead of appending a competing entry. Never auto-promote one successful example or create another canonical rule registry.
+- A standalone task that ends after this one approved rules-file write does not need an implementation Digest. A rule written during a task with a material plan or project or system effect never waives that task's Digest, verification or audit.
 
-Only `change.ready` may return `Implementation mutation: ALLOWED`, and only for the effect classes explicitly authorized by a current `Readiness: READY` bound to the same basis revision. Durable content capture uses its own delegation; it is not an implementation mutation.
+## 4. Effort
 
-### Default composition
+- **Light.** Local, reversible, well specified, no shared boundary. Show the request case, one preserved case and the minimum direct evidence; Digest fields are one line each.
+- **Standard.** Several files, user-visible behavior, persistent state, integration or ambiguity. Add the strongest alternative or counterexample and inspect the adjacent affected surface; Digest fields carry their evidence.
+- **High.** Security, authorization, privacy, payments, destructive operations, migrations, production, public interfaces, sensitive data or unknown blast radius. Add policy basis, containment, a non-author evidence channel and an independently derived impact challenge. If a non-author is unavailable, report a partial adversarial self-review rather than relabeling it independent.
 
-```text
-context.resolve bootstrap
--> work.resolve bounded orientation
--> activity.resolve when identified
--> work.resolve full understanding + context.resolve task adapters
--> scenario.plan seed/refine + change.investigate
--> direction.align + scenario.plan combined checkpoint when triggered
--> change.ready
--> change.apply
--> result.verify
--> record.capture
--> result.audit
--> record.capture if audit changed current truth
--> communication.report
-```
+Discovery raises effort; it never lowers it silently.
 
-The composition is a route with interrupting guards, not permission to run every step blindly or print a receipt for every arrow.
+## 5. Claims
 
-## Capability map
+- Never present an inference, an assumption, a recollection, a search miss or an unexecuted check as a verified fact. Say which one it is.
+- A passing test, a clean diagnostic, a successful command or an empty search proves only its declared scope.
+- Separate product failure from environment, setup, fixture or tooling failure.
+- After a correction, restate the current state before continuing.
+- When a decision depends on who or what produced, changed, exposed, detected, reviewed or fixed something, keep each material relationship and its evidence separate in `provenance.md`.
+- When an external file or recording becomes evidence, preserve its locator, custody, identity and privacy limits before changing where it lives.
 
-| ID | Friendly responsibility | Route and detail |
-| --- | --- | --- |
-| `context.resolve` | Please, Use the Right Context | Resolve bootstrap context first and claim-specific adapters later with [context layers](references/context-layers.md) |
-| `work.resolve` | Please, Know the Work | Orient, establish shared understanding, and resolve contract, scope, source state, risk, and uncertainty with [workflow](references/workflow.md) |
-| `activity.resolve` | Please, Don't Lose the Thread | Resolve activity identity, record, durable gate, delegation, freshness, and retrieval with [durable record protocol](references/durable-record-protocol.md) |
-| `record.structure` | Please, Keep It Legible | Select logical responsibilities, archetype, and optional profile with [record schema](references/durable-record-schema.md) |
-| `record.store` | Please, Store It Safely | Preflight and compare user-controlled storage without guessing from writability with [record storage](references/durable-record-storage.md) |
-| `record.retrieve` | Please, Find the Thread Again | Resolve records, candidates, freshness, and bounded absence with [record retrieval](references/durable-record-retrieval.md) |
-| `evidence.check` | Please, Check Before You Claim | Classify claim basis, provenance, conflicts, negative evidence, and corrections with [epistemic integrity](references/epistemic-integrity.md) |
-| `change.investigate` | Please, Look Before You Change | Test falsifiable explanations, trace observable paths, and compare solution classes with [workflow](references/workflow.md) |
-| `direction.align` | Please, Align Before You Choose | Expose viable directions and request the smallest collaborator-owned decision with [workflow](references/workflow.md) |
-| `scenario.plan` | Please, Plan What Could Break | Seed and refine risk-bounded scenarios and align material coverage with [verification](references/verification.md) |
-| `change.ready` | Change Readiness | Bind current basis, activity, capture, scenarios, scope, authority, and verification intent with [workflow](references/workflow.md) |
-| `change.apply` | Please, Make the Smallest Defensible Change | Apply only the supported and authorized implementation with [workflow](references/workflow.md) |
-| `result.verify` | Please, Prove It | Execute sufficient checks or leave an exact reproducible handoff with [verification](references/verification.md) |
-| `result.audit` | Please, Check Your Work | Challenge the complete final state and completion claim with [review and security](references/review-and-security.md) |
-| `record.capture` | Please, Write It Down | Transactionally reconcile material knowledge inside a delegated activity with [continuous capture](references/continuous-activity-capture.md) |
-| `authority.request` | Please, Ask Before You Rearrange | Inspect and plan without writes, then request digest-bound structural authority with [context-store operations](references/context-store-operations.md) |
-| `communication.report` | Please, Say What Matters | Report result, epistemic status, decisive evidence, limits, and one next action with [collaboration](references/collaboration.md) |
-| `failure.challenge` | Please, Catch Familiar Mistakes | Select and run a root challenge from [failure patterns](references/failure-patterns.md) |
-| `history.localize` | Please, Find Where It Changed | Localize historical transitions and bound attribution with [regression localization](references/regression-localization.md) |
-| `host.guard` | Please, Guard the First Write | Use the bundled Codex procedural interlock when active, or describe another verified host boundary honestly, with [host enforcement](references/host-enforcement.md) |
+Basis and provenance: [epistemic integrity](references/epistemic-integrity.md). External evidence: [evidence artifacts](references/evidence-artifacts.md). Mistakes with names: [failure patterns](references/failure-patterns.md). When history matters: [regression localization](references/regression-localization.md).
 
-## Materiality and effort
+## 6. Sensitive actions
 
-Something is **material** when being wrong could change scope, implementation, verification, security, data, user-visible behavior, external state, continuity, or the completion claim.
+Outside ordinary work contained in the PMNM folder, deleting, moving, writing outside both the project and PMNM, version-control mutation, dependencies, publishing, environment changes, network calls and planned non-file state changes need human authority. During investigation, forecast every predictable exact operation together, state whether each permission lasts for this task or project, and include the list in the plan Digest. A state-changing operation names its planned objective and is always task scoped. One agreement may authorize that complete list where the host can bind exact operations; a changed or unlisted operation asks again. A bounded capability may instead describe a family the human intends to reuse through its effect, boundary, persistence, operation shape and constraints; task capabilities expire with the task, project capabilities are replaceable and explicitly revocable. An unlisted state change requires a revised Digest rather than one-off authority. Native host permissions still control execution. Split compound operations with an unknown segment or more than one sensitive effect. Under the Codex guard, `permissions.json` carries the forecast; a later unlisted command uses `pmnm-guard allow effect=<effect>` for one exact retry unless it is a state change. Human approval may be expressed naturally; the agent records `allow` only after a clear approval, and the guard binds it to the exact operation rather than to a magic word. The guard does not positively trust executable names. For one isolated operation with no trusted host effect metadata, declare its expected effect, boundary, persistence, certainty and applicable approved capability before exactly the next otherwise-unknown operation in the same human turn when the host can bind that claim; an exact denial remains the fallback. Any intervening operation or continuity boundary invalidates a proactive declaration. A declaration is a claim, never authority; it cannot downgrade a mechanically evident write or hidden operation, create a capability, or replace native host approval.
 
-- **Light:** local, reversible, well specified, and no material shared boundary.
-- **Standard:** identified, multi-surface, user-visible, stateful, or expected to benefit from recovery.
-- **High:** security, privacy, destructive operations, migrations, production, public contracts, sensitive data, irreversible effects, or unknown blast radius.
+## 7. Under a guard
 
-Discovery may raise but never silently lower effort. For an identified Standard or High activity, durable continuity is required unless a precise exception shows every independent gate trigger false and no material recovery value. Light work remains light unless a trigger appears.
+A guard card is two lines: what happened, and `NEXT:` with the exact receipt or action. Take the NEXT line as written; fill nothing the guard already filled. The first word is the level: **Blocked** means the action did not run, **Ask** means the human answers next, **Note** means continue. A card is not a question for the human. Report it in one sentence and take the next action in the same turn. After an Ask, and after showing a Digest, stop here: no more actions until the human answers. Mechanics: [host enforcement](references/host-enforcement.md).
 
-## Non-negotiable invariants
+Reading project source before `start` gets a Note the first time and is Blocked the second. A question about nothing in particular needs no task; material project work needs `start` before investigation continues.
 
-1. Follow the host instruction hierarchy. Current explicit authority and project instructions override historical context and examples.
-2. MUST NOT present recollection, inference, assumption, a search miss, an unexecuted check, or a model-authored field as verified fact.
-3. A discoverable technical uncertainty routes to `INVESTIGATE`; ask the collaborator only for product intent, priority, risk acceptance, authority, or another decision evidence cannot make.
-4. Bootstrap context precedes identified-activity resolution. An identified activity MUST reach one literal transition result before material activity investigation.
-5. `planned-and-awaiting-approval` and `blocked` stop material investigation. `no-record-with-valid-reason` permits it provisionally and MUST be re-evaluated when a trigger appears.
-6. MUST NOT perform a material implementation mutation before current `Readiness: READY` for the current basis revision.
-7. A shared observable property MUST trace both surfaces and their bridge or intentional non-equivalence before readiness.
-8. Standard and High material behavior work requires a current combined contract, direction, and scenario checkpoint or prior explicit scope-specific delegation.
-9. Authority follows effects. Authority for one effect class does not authorize another.
-10. MUST attempt the strongest sufficient accessible authorized observable check. A handoff is not execution evidence.
-11. A correction, new consumer, changed contract, failed required capability, refuted hypothesis, changed scope, changed authority, or stale capture invalidates dependent readiness and evidence.
-12. A material epistemic discontinuity or explicit rejection of the active direction routes to `RECONCILE`, freezes dependent mutation, and creates a collaborator turn boundary.
-13. A delegated record MUST capture material knowledge before dependent work when loss could change a decision or repeat an error. Current truth and history must agree.
-14. Structural, configuration, locator, visibility, movement, deletion, retention, or lifecycle changes require a fresh exact plan and digest. Routine durable content remains bounded by its active delegation.
-15. MUST audit the complete final state and re-read material evidence before claiming completion within the declared contract and evidence limits.
-16. MUST minimize durable sensitive data and MUST NOT store secrets or unnecessary sensitive content.
-17. Structural or semantic relationships identify candidates, not complete observable reachability or blast radius, until the bridge is corroborated.
-18. Every changed artifact supported by an executable current diagnostic capability receives current coverage before completion. Missing or untrusted coverage is not a pass.
-19. A host receipt makes a transition observable; it does not prove the model's declarations, evidence, understanding, authority, or conclusion true.
+Never print a `pmnm-guard` receipt in prose or in a Digest; execute receipts only when the host exposes an active guard. Otherwise stay in advisory mode and perform the portable step directly. Treat `pmnm-guard` as a host receipt, never as a `PATH` executable. Successful interception is evidence only for that guarded call. If a receipt reaches the shell or returns command not found, do not search for, install or retry it. State that enforcement was unavailable for that call and perform the same portable step directly.
 
-## Bootstrap, activity, and capture
+## 8. How to speak
 
-`context.resolve` first runs in **bootstrap mode**. Inspect only authoritative host or project instructions, configured context discovery surfaces, activity-identity conventions, storage constraints, and required capability declarations. Record what was inspected and the residual discovery limit. An undiscoverable adapter cannot silently impose obligations.
+Lead with the result or the blocker. Then evidence, then limits, then one next action. Short sentences, one idea each. Facts apart from interpretation. Lists of five or fewer. No preamble, no recap, no closing offer. After a correction, restate where things stand. Details: [collaboration](references/collaboration.md).
 
-`work.resolve` then performs **bounded orientation**: stable activity handle if supplied, requested outcome, explicit authority, and enough scope to decide whether the work is identified. This is not technical investigation. A branch, nearby file, guessed ticket, or inferred name does not identify an activity by itself.
+## Stop and ask
 
-For identified work, `activity.resolve` returns exactly `loaded`, `created`, `planned-and-awaiting-approval`, `no-record-with-valid-reason`, or `blocked`. A direct canonical record path may identify the current activity when its identity and authority are verified. Automatic cross-session discovery needs a durable locator, registry, or backend-native canonical key. Cross-activity queries need an indexed discovery surface.
+Stop and ask the human when the request can be read in materially different ways and no existing pattern settles it; when a sensitive action is next; when new evidence changes the Digest in a way only the human can decide; when a material change cannot be verified. Ask the smallest question, with your recommendation. Otherwise continue.
 
-When a durable gate applies and no store is configured, run `record.store` preflight before recommending a location: owner and subject, audience, repository relationship, filesystem access, versioning or ignore state, synchronization or publication exposure, sensitivity, retention, recovery, retrieval, and existing stores. Then present one compact authority checkpoint for adjacent known effects while keeping every scope and digest independent. Recommend an outcome-complete activity bootstrap, never only an empty directory.
+A turn that ends with no Digest and no question leaves the human with nothing to decide; do not end one that way.
 
-Inside a valid delegation, `record.capture` runs at the first material event and every material correction, decision, scope change, implementation milestone, verification result, pause, handoff, closure, and audit correction. If capture cannot complete, expose `capture-incomplete` plus the exact pending material item and stop any dependent completion claim.
+## References
 
-## Shared understanding and scenarios
+One level, loaded by condition.
 
-Before broad investigation, seed scenarios from the provisional observable contract. Refine them as entry points, consumers, states, permissions, persistence, delivery, errors, history, and risk become known. A scenario has two independent states:
-
-```text
-Coverage disposition: planned | excluded-with-reason
-Execution result when planned: not-run | passed | failed-product | failed-environment | blocked | partial | invalidated
-```
-
-Negative search evidence such as `absent-within-scope` is a claim status, not a scenario result.
-
-Before a preferred material solution or solution-shaped artifact, combine the user-visible direction and scenario checkpoint when both apply: observable contract, scope and non-goals, preserved behavior, material scenario groups, explicit omissions, viable solution classes, recommendation, tradeoffs, tool limits, and one smallest collaborator-owned question. A generic prior request to implement is not acceptance of this evidence-backed frontier.
-
-Choose checks by contract coverage, directness, current-state relevance, and ability to discriminate first. Minimize cost only after sufficiency. No evidence lane, tool, language, source-control system, hosting provider, test framework, or delivery process is universal.
-
-## Change readiness
-
-Immediately before the first material implementation mutation, show one combined checkpoint:
-
-```text
-Readiness: READY | INCOMPLETE | BLOCKED
-Effort and reason:
-Outcome, observable contract, scope, and preserved behavior:
-Current source or environment state:
-Activity transition and activity/source consistency when identified:
-Basis revision and invalidated dependencies:
-Capture freshness, pending capture, and canonical-record consistency:
-Relevant surface and observable bridges inspected:
-Falsifiable claim, result, and strongest counterexample:
-Viable directions, human basis, and scenario coverage when triggered:
-Expected implementation scope and authorized effect classes:
-Required capabilities used and coverage lost:
-Verification and repeatable-protection intent:
-Remaining blocking uncertainty:
-```
-
-`READY` needs an evidence-backed answer for every applicable field. `INCOMPLETE` routes to safe discovery. `BLOCKED` names the exact unavailable prerequisite. Any basis-revision change invalidates the receipt.
-
-## Verification, audit, and reporting
-
-For each material check, state the claim it can falsify, literal result, what it proves, and what it does not. When the strongest observable check belongs to the collaborator, investigate discoverable setup first and provide the exact entry surface or URL when known, environment, fixture characteristics without secrets, actions, expected observations for material scenarios, evidence to retain, cleanup, and limits. Call it collaborative, reproducible-handoff, blocked, or partial rather than executed.
-
-Before completion, inspect the full changed surface, shared consumers, negative and repeated paths, permissions, persistence, concurrency, scenario mappings, regression protection, current diagnostics, verification disposition, and delegated record. Capture any audit correction before reporting.
-
-Ordinary user-visible communication uses at most three envelopes: activity and authority when triggered; combined understanding, direction, scenarios, and readiness before implementation; verification, audit, durable reconciliation, and handoff at the end. Internal continuations belong in an optional audit trace. Durable records contain material events and current recovery truth, not process theater.
-
-Report the result first, immediately attach its epistemic status and decisive basis, then material evidence, limits, residual risk, and one primary next action. Additional actions appear only when independently necessary. Do not provide hidden chain-of-thought.
-
-## Reference router
-
-The capability map supplies normal routing. These triggers are mandatory:
-
-- Historical transition or regression attribution -> [regression localization](references/regression-localization.md)
-- Security, authorization, privacy, review, or unknown blast radius -> [review and security](references/review-and-security.md)
-- Trusted bundled-hook context announces a registered `Please, ...` capability heading, mutation interception is active, or a trusted-readiness claim appears -> [host enforcement](references/host-enforcement.md)
-- Activity contract, archetype, taxonomy, extensions, or evidence manifests -> [record schema](references/durable-record-schema.md)
-- Storage choice, safety, privacy, retention, or exposure -> [record storage](references/durable-record-storage.md)
-- Search, catalogs, relationships, freshness, or completeness -> [record retrieval](references/durable-record-retrieval.md)
-
-Bundled files under `assets/` are non-operative examples. Never activate their values unless the collaborator explicitly adopts and configures them.
+| Condition | Reference |
+| --- | --- |
+| Folder layout, task folder shape, rule shape, reconstruction | [folder](references/folder.md) |
+| Investigation method, plan Digest, test Digest, audit, fingerprint | [flow](references/flow.md) |
+| Local or transitive impact, dynamic boundaries, dispositions, omission audit | [impact analysis](references/impact-analysis.md) |
+| Which check, what it proves, regression protection | [verification](references/verification.md) |
+| Review, security and authorization invariants | [review and security](references/review-and-security.md) |
+| Claim basis, provenance, conflicts, corrections | [epistemic integrity](references/epistemic-integrity.md) |
+| External files or media, custody, identity, deduplication | [evidence artifacts](references/evidence-artifacts.md) |
+| Bias signals and named defect patterns | [failure patterns](references/failure-patterns.md) |
+| Historical transitions and attribution | [regression localization](references/regression-localization.md) |
+| Reporting and questions to the human | [collaboration](references/collaboration.md) |
+| Guard receipts, cards and enforcement levels | [host enforcement](references/host-enforcement.md) |

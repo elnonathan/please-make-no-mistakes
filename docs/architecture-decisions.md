@@ -1,137 +1,158 @@
 # Architecture Decisions
 
-## One portable skill with a bundled Codex guard, no required MCP service
+## One portable skill, optional host enforcement
 
-The distributable product is one Codex plugin containing one Agent Skill and one optional host-specific lifecycle guard. The skill remains the semantic source of truth. Its workflow needs instructions, references, examples, and optional local read-only scripts, but it does not require an MCP server or the Codex guard to route decisions, preserve its portable contract, or remain useful in another compatible host.
+PMNM is an Agent Skill first. Its folder and working contract remain useful when no lifecycle hook or MCP service exists. The package includes a Codex guard because Codex exposes events that can make some skipped transitions observable. The guard is optional, partial and specific to that host.
 
-An MCP service would add process lifecycle, transport, permissions, compatibility, and state boundaries without making semantic readiness trustworthy by itself. PMNM therefore keeps an advisory portable core. Optional external tools may strengthen an evidence lane. The bundled Codex guard can enforce declared procedural order for covered events after explicit host trust, but it does not become a dependency of the core or prove the claims it receives.
+An MCP service is not required. It would add transport, process, permission and compatibility boundaries without proving semantic correctness. External tools may strengthen an evidence channel without becoming dependencies of PMNM.
 
 ## Progressive disclosure
 
-`SKILL.md` owns the invariant loop and routes directly to focused references. Detailed procedures remain outside the core until their trigger applies. This keeps the initial context bounded without making critical transitions implicit.
+`SKILL.md` contains the smallest useful kernel and a one level reference table. A reference loads only when its condition applies. This keeps the normal path visible to smaller models without loading every advanced procedure into every request.
 
-Bootstrap context, decision alignment, observable equivalence, asynchronous delivery, and epistemic reconciliation are triggered procedures inside that loop, not additional skills or universal ceremony. The kernel resolves only instructions, discovery surfaces, identity conventions, storage constraints, and capability declarations during bootstrap. Claim-specific project adapters load later when their route actually needs them.
+The kernel owns precedence, the PMNM folder, the plan and test Digests, effort, claims, sensitive effects, guard interpretation, communication and stop conditions. References can clarify those responsibilities but cannot weaken them.
 
-## Central router, not a peer capability graph
+## One PMNM folder per machine
 
-One public skill owns one central capability router. Capabilities return `result`, `basis`, `conflict_or_gap`, `continueWith`, `resumeWith`, and implementation-mutation status. They do not invoke peers directly.
+Continuity belongs to the user, not the installed package. A host stores one pointer in its own configuration area. The selected PMNM folder stays outside repositories and installed skills, and may be shared by several hosts on the same machine.
 
-This borrows the useful part of a tool continuation graph without pretending that capabilities are separate tools or nested skills. It gives a weak model a small map, preserves one bounded pending return target across model or tool escalation, and makes an orphaned authorization or evidence gap detectable. Guards for evidence correction, familiar failures, effect authority, and durable capture run before routing and after every material result. Only `change.ready` may permit implementation mutation after a current `READY` receipt.
+The default shape is one general rules file, one project folder per repository and one task folder per unit of work. Each project separates human-owned instructions in `project-rules.md` from reusable claims in `project-knowledge.md`. The guard maintains the machine index. Every task folder starts with four seeded files: `index.md` for retrieval, `plan.md` for agreed file and non-file state objectives, `verification.md` for the actionable plan and current claims, and `permissions.json` for predictable exact sensitive operations. The agent fills them and adds whatever else the task needs.
 
-## Procedural trust across unequal models
+This keeps setup lightweight: the human chooses the folder once, then PMNM writes what it learns while working. There is no per task storage plan, hash ceremony or file authorization.
 
-PMNM does not attempt to give every model the reasoning capacity of the strongest available model. It requires a lower-capability model to distinguish discoverable uncertainty, human-owned decisions, epistemic discontinuity, exact external blockage, and its own model, tool, context, or evidence-channel limit.
+## Four bookkeeping questions only
 
-`ESCALATE` is successful behavior when it preserves the unresolved claim, evidence, lost coverage, safe boundary, recommended contribution, and `resumeWith`. Fabricated certainty is not a substitute for continuity.
+The product asks about storage only when it needs the folder location, the project name, confirmation that a candidate folder is the same task, or the level of a new rule. Layout, filenames and routine task folder writes are agent decisions.
 
-## Stable activity responsibilities with adaptable detail
+The task question needs evidence of identity: an existing folder with the same id resumes silently; a name that contains the id, or equals it after normalizing case and hyphens, is a candidate and is asked about; an unrelated folder is neither listed nor asked about. Similarity of meaning is never evidence.
 
-Neutrality removes project values, identifier prefixes, named tools, and storage assumptions. It does not remove the activity workflow. A new delegated file-backed Standard record uses stable recovery, understanding, timeline, and verification surfaces unless a verified project constraint requires another mapping. Compact and Extended remain evidence-selected archetypes.
+Other questions must concern product intent, priority, risk or authority. A technical fact that code, tests, fixtures or available tools can establish remains investigation.
 
-An identified Standard or High activity defaults to durable continuity unless a precise exception establishes that every independent gate trigger is false and no material recovery value remains. This is intentionally stronger than waiting for a user to ask for documentation after work has already begun. Light untracked work remains a supported negative control.
+## Decisions, knowledge and rules are different
 
-Project taxonomies supply concrete classifications and relationship vocabulary. Canonical activity indexes supply current truth. Derived catalogs and search indexes make cross-activity queries possible without imposing one domain.
+A task decision stays with that task. Reusable project knowledge keeps each claim's scope, basis, source and freshness boundary. A rule expresses a human-owned intention that something should always happen or never happen again. PMNM does not silently promote a correction, broad factual claim or observed convention into a rule. It asks whether a triggered rule belongs to the project or applies generally, then writes one sentence with provenance.
 
-## Authority presentation may compose, authority itself does not
+Current human instruction outranks project rules. Project rules outrank general rules when they are more specific and do not conflict with current authority.
 
-Adjacent known approval needs may be presented in one checkpoint to reduce conversational friction. Every authority item retains its own target, effect, scope, lifetime, issuer, revocation, and digest where structural. A combined presentation never merges permissions, and native hosts may still require separate prompts.
+## Provenance is relational and artifact custody is reference first
 
-Storage recommendation precedes its authority request. The agent first resolves ownership, audience, repository relationship, access, versioning or ignore state, synchronization or publication exposure, sensitivity, retention, recovery, retrieval needs, and existing stores. Writability or proximity alone cannot select a durable location.
+Material attribution is recorded as independently supportable relationships. Authorship, operation, observation, discovery, review, approval and causality may point to different sources and carry different evidence states. A likely source of context is not evidence of responsibility, and a plausible relationship remains inferred rather than becoming a special truth state.
 
-## Human alignment and epistemic continuity
+External evidence stays in its existing authorized location when a durable reference is sufficient. `artifacts.md` records custody and evidentiary limits only when they matter. Copying or moving requires an exact source and destination, purpose, privacy result, identity method, recovery and retention; a move always needs current human authority. Full-content comparison may establish byte identity. Names, metadata and visual or semantic similarity produce candidates only.
 
-Initial ambiguity remains discoverable: the agent may investigate safely without forcing an early human decision. A visible decision-frontier checkpoint is required only before materially disputable hypotheses or solution classes become the preferred direction, solution-shaped verification, or implementation.
+The Codex guard continues to enforce physical containment, detectable secret boundaries and covered external effects. It does not decide semantic provenance, inspect opaque media completely or certify evidentiary meaning.
 
-A hard stop has a narrower trigger. It occurs when new evidence materially changes the basis supporting an active direction, or when the collaborator explicitly rejects that direction. `REALIGNMENT` applies before dependent material artifacts require recovery; `RECOVERY` applies after they exist. Both expose the before-and-after epistemic state, ask one focused evidence-based question, and create a turn boundary. Stronger evidence that preserves the direction and minor presentation disagreement are negative controls.
+## The plan Digest is material-work authority
 
-## Scenario coverage remains inside verification
+Investigation ends with one plan Digest. It makes the requested result, current source state, proposed change or deliverable, verification, ambiguity and trade offs visible. A later human turn must agree before material work depends on that direction.
 
-**Please, Plan What Could Break** is a responsibility inside **Please, Prove It**, not another skill, required file, or testing framework. A provisional scenario seed follows initial understanding and precedes broad investigation. Investigation then refines the seed into a Scenario Coverage Contract from actual reachability and risk before material behavior implementation.
+The Digest has three written counterparts. `plan.md` records repository files, non-file state, or a paired advisory deliverable and its strongest competing boundary. `verification.md` makes the execution surface, actor, data, steps, observable contract, evidence and cleanup actionable before work. `permissions.json` forecasts predictable exact sensitive operations by task or project scope. Agreement binds those contracts; a checked box is progress, not a new agreement. An out-of-plan effect or stale deliverable closure is refused before it can be accepted. A Note afterward would arrive too late.
 
-Coverage is derived from intent and authority, the inspected system surface, and applicable risk or history. Every material contract dimension and affected consumer maps to a scenario or an authorized omission with residual risk. Standard and High work requires one current collaborator response unless prior explicit scope-specific delegation already covers those decisions; a generic implementation request does not. Light work may compress the artifact under its stricter proportionality boundary.
+Agreement is bounded by the shown Digest. New evidence, a material correction, wider scope or a changed direction withdraws the dependent part. The agent records what changed and may continue independent read-only investigation, but presents a revised Digest before another material effect or final delivery relies on the new frame.
 
-Scenario design, current verification, repeatable regression protection, and independent challenge remain four separate claims. This avoids both happy-path closure and the opposite overcorrection of mandatory exhaustive matrices, test layers, tools, or organizational roles.
+## Two human moments
 
-## External user context
+The normal task has two human moments at every effort level:
 
-Installed plugin files are replaceable. Personal context, project adapters, durable activity records, and evidence therefore remain in user-controlled storage. The plugin may describe and inspect such stores, but structural, locator, visibility, and lifecycle changes require an exact plan and fresh authority.
+1. agreement with the plan Digest after investigation
+2. the final acceptance audit and its fingerprint
 
-Inside a valid routine-update delegation, material capture is a logical transaction. A non-transactional file profile records the event anchor first, updates responsibility surfaces, updates the canonical index last, and verifies agreement. Stable event identity makes retry detectable. Partial application becomes `capture-incomplete` with exact completed and pending effects; it never masquerades as continuity.
+Between them, the agent performs the agreed work, verifies it and prepares the Test Digest. Those two are the floor, not the ceiling. The agent comes back sooner for a product decision only the human can make, for a sensitive action that needs its own yes, or for an uncertainty the evidence cannot settle. Protocol formatting must not create extra human work.
 
-## Advisory core, bundled procedural adapter
+## Effort changes evidence, not ceremony
 
-The public skill makes investigation and readiness observable but cannot block every mutation through Markdown. The Codex package bundles a dependency-free hook as a procedural interlock for explicitly covered lifecycle and local write events. It is distributed with the plugin yet remains inactive until the host exposes it for review and the user trusts its current hash.
+Every effort level keeps the same two human moments. Light makes the request case, one preserved case and the minimum direct evidence visible. Standard adds the strongest alternative or counterexample and the adjacent affected surface. High adds a non-author evidence channel and an independently derived impact challenge. When a non-author is unavailable, an adversarial self-review remains partial and cannot be renamed independent or complete.
 
-The adapter stores only bounded procedural state in the host-provided plugin-data location. It can enforce declared order, explicit collaborator-response reconciliation, prompt-bound readiness, one-use command permits, one-covered-write result accounting, prompt invalidation, effect-specific grants, current verification after the latest mutation, recovery, and bounded closure for events it receives. It cannot authenticate a model's factual claims, infer product intent, prove sufficient investigation, replace native authority, or cover events the host does not send. Installation, skill discovery, hook discovery, trust, execution, and semantic correctness therefore remain distinct evidence states.
+## Verification follows the contract
 
-Ordinary hook output uses the full `Please, ...` capability name and one concise next action rather than diagnostic codes. English and Spanish selection is a bounded convenience, not universal language detection. Internal control commands and host-native lifecycle names remain technical implementation surfaces so friendly output does not obscure the actual enforcement boundary.
+PMNM does not require a unit test by name. It requires repeatable protection at the layer that can detect recurrence of the changed behavior. A unit, integration, interface, property, static or other check may be correct depending on the contract.
 
-The portable skill continues in advisory mode when the hook is absent, disabled, untrusted, unsupported, failed, or bypassed. Trusted semantic readiness would still require an independent issuer and authenticated observable evidence rather than a model-authored control command.
+Current behavior verification and future regression protection are separate claims. Manual evidence can establish current behavior without automatically protecting future revisions. Every check reports its literal result, what it proves and what it does not.
 
-## One admissible next action per hook output
+Before a passed verification after a project change, the agent writes two claims in `verification.md`, after its last change: the request's own case and what was observed, and what must stay the same and what was observed. The guard checks that the lines exist and postdate the change. It never checks that they are true; that reading belongs to the human and, at High effort or on request, to a reviewer who did not write the change and adds one check the author did not run. The reviewer is evidence outside the guard, not a verdict the guard inherits.
 
-A real low-reasoning trial showed that a guard can enforce every prohibition correctly and still fail: when a denial concatenated the phase card with an alternative suggestion that the current state would reject, the model retried the denied write, claimed no tool could emit a receipt, changed the collaborator's chosen location, and handed the blocked command back to the human. Prohibitions were sufficient; the next legal step was not salient.
+The Test Digest translates technical verification into an exact surface, environment, actor, safe data, ordered steps, expected observations, evidence and cleanup. The agent first inspects executable interface capabilities instead of assuming the test belongs to the human. When it can run the check with an available tool, it offers to do so. Otherwise it states the exact limitation and that the handoff has not been executed. The Codex guard can require that shaped message and a later human response, but it cannot judge either one's meaning.
 
-The adapter therefore compiles each state and observed event into exactly one currently admissible next action. Every card and denial carries at most one control line, never advertises a command the emitting state would reject, and says that the line travels through the shell tool where that channel could be misunderstood. The test suite substitutes concrete fields into every emitted line and asserts that the same state accepts it.
+## Audit binds to a fingerprint
 
-A denied covered write is retained as one bounded cursor rather than only an event. The cursor is bound to the exact tool and command hash and holds effect class, phase, basis, prompt epoch, and denial count. An admitted exact retry marks it in flight, and only a successful matching result clears it; a different operation of the same class, a failed retry, a missing result, or a second distinct denial preserves the original obligation. Conversational age never clears it, so an externally created empty directory or a repeated confirmation cannot make the obligation vanish. It clears with a recorded cause on observed success, on invalidation, on a collaborator redirect through reconciliation, on completion, or on an authorized activity change. No cancel command exists: cancellation is the collaborator's turn, which keeps every denial single-valued. Stop decides from the cursor's own compiled action, not from the general phase.
+The final audit reconstructs the complete changed surface and challenges the completion claim. Its fingerprint identifies the exact source state reviewed. When version control is available it records the relevant base, current revision and changed sets. Without version control it reports a bounded file summary without pretending Git exists.
 
-Authority is never execution. A structural grant is accepted only under the approved plan digest and declares the exact number of covered operations the plan requires, and the `created` transition becomes available only after that many successful results are observed with nothing pending; late results stay bound to the activity and plan they belonged to; the action after a grant is the pending operation, not the result declaration. Structures created through uncovered channels can be declared `loaded` under the plan digest, which the adapter records as a model-declared retrieval receipt under partial coverage. Results come before responses: a collaborator turn during a pending nonimplementation result keeps the result, checkpoint, and digest, settles the result first, then classifies the response, and restores alignment without another human round only when the result resolved cleanly. Any late successful result that contradicts a `failed-no-effect` reconciliation records the effect and reopens recovery.
+A later material change invalidates the affected audit findings. Fingerprints make that staleness visible but do not prove the review was complete.
 
-The same decision gives closure a progressive shape and gives activities without an implementation mutation an honest terminal path, because a version-control-only or structural-only activity previously had no way to record completion without fabricating an implementation call. Output speaks in the agent's own first-person guard voice: the capability heading, one calm sentence about what is protected, and one `NEXT` action owned by the agent. An action oracle of normalized sequences fixes the expected action for every output class, including rejected receipts, unknown commands, repeated denials, second Stop, recovery, missing stores, and multi-use grants. This remains a procedural interlock: it makes the next step easy to select and hard to abandon, and it still cannot prove that the step's declared content is true.
+Closure walks `plan.md`: every objective checked, every file target changed, every state transition supported by an observed exact operation and current evidence, every exclusion preserved and nothing material outside the plan. File comparison and state evidence remain distinct. A state-only task reports no project-file comparison. The closing card also counts the rules files the task wrote.
 
-## Isolate host adapters before sharing implementation
+## Guards are procedural, not semantic
 
-The bundled procedural adapter is a Codex contract, not a generic hook that happens to run under Codex first. Its manifest, default hook path, event mapping, state semantics, output decisions, tests, trust review, and coverage statement move together.
+The Codex guard uses three hardness levels:
 
-Another host may implement PMNM's portable host-adapter contract, but it owns separate manifest, hook configuration, event normalization, runtime entry, fixtures, native validation, installation, and clean-session evidence. Similar lifecycle names or JSON shapes do not authorize reuse of the Codex configuration. A host-specific implementation must not replace `hooks/hooks.json` or change Codex behavior as a side effect.
+- `Blocked` means the covered action did not run
+- `Ask` means a human answer is required
+- `Note` means work may continue
 
-A shared executable kernel is a possible later refactor, not a current generic adapter. It may be extracted only when at least two concrete host contracts make the common boundary observable and both adapters retain independent conformance and behavioral tests. Until then, unsupported hosts use the portable skill in advisory mode and report missing enforcement literally.
+Each card has one explanation line and one `NEXT:` line. The guard does not teach the complete workflow. It makes a small set of invariants harder to skip and directs the agent to the next valid step.
 
-## Effect-bound authority
+A NEXT line is an order: one verb in the imperative, its limit, and who acts next; no explanation on that line, no alternatives for the model to weigh, and never the word wait. Waiting for the human is written as "stop here; no more actions until the human answers". Cards name paths absolutely, because the model may never have read the folder in this session. Hardness follows the evidence that prose was not enough, never the effort label.
 
-Authority follows the material effect, not proximity to requested work. Source changes, instrumentation, verification artifacts, environment state, external systems, durable content, and durable structure remain separate semantic classes refined by current project vocabulary and instructions. This prevents verification or debugging convenience from silently expanding scope without imposing a provider, tool, or project stage model.
+The guard cannot prove that investigation was sufficient, a model statement was true, a human understood a plan, or every system effect was intercepted. Host trust, installation, event delivery and semantic correctness remain separate claims.
 
-## One setup authority
+## Covered PMNM folder writes are free
 
-The README is a short setup entry point and contains no detailed installation commands. `SETUP.md` owns installation, source testing, updates, rollback, removal, and verification so procedures do not drift across documents.
+Once the human chooses the PMNM folder, ordinary contained writes, moves and deletions do not need another approval or plan receipt. The root itself remains outside that standing authority. The guard blocks path or symlink escape and secret shaped content. It alone writes the index that maps repositories to project names. An empty folder is seeded before its pointer is written; invalid pointer or index state is preserved and rebuilt only after a human recovery decision.
 
-Setup is agent-directed and host-neutral at its decision boundary. It resolves operation, actual host, registration route, artifact source, and command runner before using tools. Codex has a tested direct adapter; another host must derive its route from current host evidence and stop rather than inherit guessed Codex or npm semantics.
+Containment is not confidentiality. The folder inherits filesystem permissions, backup behavior and synchronization exposure from its chosen location. PMNM stores references to secrets, never secret values.
 
-## Documentation is an executable contract
+## Sensitive effects retain human authority
 
-Safety-critical documentation structure and boundaries have a dependency-free semantic validator plus adversarial mutations. Exact literals are reserved for commands and boundaries where drift changes behavior; broader prose remains free to improve while preserving its required meaning.
+Outside ordinary contained PMNM maintenance, deletion, movement, direct external writes, version control mutation, dependency changes, publication, environment changes, network effects and planned non-file state changes retain explicit human authority. Predictable exact operations are grouped in the Digest and scoped to the task or project. State operations are task scoped and bound to a stable plan objective; an unlisted one requires a revised Digest instead of one-off authority. Other new or changed operations ask once and receive one matching use after the human says yes. Task authority ends with the task or withdrawn Digest. Project authority survives only for identical operations in the same project and can be replaced or revoked by an explicitly agreed set. Native host approval still controls execution. The guard first splits unknown compound segments and multiple sensitive effects.
 
-The README, setup, security, getting-started, contribution, and distribution documents have distinct owners. A public checkout must validate without private maintainer coordination.
+## Effects are declared without an executable catalog
 
-## Source checks and behavioral evaluations remain separate
+An executable name does not establish what an operation does. Unknown operations use one structured model declaration of effect, boundary, persistence and certainty; the declaration is a falsifiable claim, never permission. A capability already agreed by the human may classify the next matching unknown operation once, before a denial, so reusable authority does not require a ritual failure. It cannot create its own authority, downgrade a mechanical write or hidden composition, survive an intervening operation, or replace native host review. Non-persistent verification follows the read path until an observed result demonstrates a project mutation.
 
-Static validators, ordered traces, package-byte comparison, host installation state, fresh-session discovery, activation, and behavioral compliance are distinct claims. Model-facing decision cases exclude their expected answers; deterministic grading remains local, while actual model execution stays external and records the host, model, revision, and raw outcome.
+## Rule and knowledge curation is an audit decision
 
-## Separate distribution layers
+One useful result does not become durable policy automatically. At audit, each candidate is either promoted with its scope, basis, source and freshness or kept task-local with a reason. Human-owned rules remain distinct from reusable factual knowledge. Before curation, the agent reloads the canonical general rules, project rules and project knowledge, detects concurrent changes and checks contradiction, overlap, overfitting and audience. It merges or replaces deliberately rather than appending a competing entry or inventing another registry.
 
-The GitHub repository is both source and the Codex marketplace users add. Its marketplace entry pins one immutable npm plugin version. npm is the canonical artifact channel, while a verified host adapter performs registration and enablement; `npm install` alone is not a host installation. An OpenAI Plugins Directory listing is optional future work rather than a dependency of the public route. Success in one layer is not evidence of publication, installation, activation, or loaded-revision identity in another.
+## Delegated operations preserve evidence roles
 
-## Tag-bound Trusted Publishing
+When another actor executes consequential work, the durable package distinguishes executor from observer and records effect, boundary, exact scope, prerequisites, expected cost, stop signal, cleanup and the evidence available before, during and after execution. Read-only means no intended mutation; it does not mean unlimited cost. Freshness comes from an observable clock, source timestamp or revision and remains unknown when none exists. These roles and fields are portable patterns, not a database, shell or provider adapter.
 
-The release workflow runs only for `v*` tags in the canonical repository, verifies that the tag equals the package version, executes the complete release gate, and uses npm Trusted Publishing with OIDC. Package, plugin, and marketplace versions move together. Long-lived npm tokens are outside the workflow contract.
+## Authority follows target geometry
 
-## Narrow optional context runtime
+A project mutation belongs to the plan Digest. A contained PMNM write belongs to the folder's standing authority. An external-only effect belongs to its own exact human answer. The guard resolves that geometry before choosing a gate, so an external operation does not invent a repository plan and a project mutation cannot escape through an external-effect label.
 
-The bundled context-store command remains inspect-and-plan only. Request and plan schema v2 bind operation purpose, source and target preconditions, modes, content identity, bounded content review, and a one-shot digest. Store mutation belongs to an authorized host that reconstructs the plan against unchanged state and obtains fresh approval. This avoids presenting an incomplete transaction engine as safe infrastructure.
+## Closure needs current evidence and material change
 
-The separate record-conformance command is also read only. It checks `pmnm.standard-file/v1` only when that exact profile was adopted. It does not turn the optional profile into a universal layout or claim semantic truth from valid fields.
+Every passed verification has current `example:` and `unchanged:` claims. A state plan also has exact current claims for its transitions and preserved invariants. Claims after a material change postdate that change; command evidence is observed against the same state; human evidence arrives in a later human turn. A successful state operation and evidence of its resulting state remain separate claims. A command that changes the project is not accepted as verification and invalidates prior plan authority. A passed audit requires a current passed verification, and a planned objective counts only when its file or state completion conditions are met.
 
-## Tool continuations are evidence options
+## Procedural state is canonical and bounded
 
-PMNM routes tools from a named material claim. A tool-provided continuation, page token, related operation, or suggested query exposes an available evidence operation but does not choose the workflow, grant authority, or establish that more evidence is necessary.
+The Codex guard separates transient session state, reusable project authority and task-scoped implementation state under one canonical project identity. Different sessions may select different tasks without sharing transient flow or task authority. Sessions that select the same task observe its monotonic revision and must reload before stale state can authorize another material write. Each layer persists only bounded hashes, counters and event metadata, never raw prompts, command previews, tool output or evidence.
 
-The agent preserves what the literal result can and cannot establish, the remaining gap, and why another operation can change a material decision. Compact results are preferred when they decide the claim. Exact locations or expanded detail are requested only when they can change scope, readiness, verification, or next action. This preserves the useful continuation graph without allowing it to become an automatic token-consuming pipeline.
+Unknown commands are classified conservatively. Opaque wrappers are not trusted to hide their effect. Native host approval and sandbox controls remain authoritative even after a PMNM receipt.
 
-Static and semantic evidence establishes structure and candidate relationships within scope. Observable reachability, product behavior, and complete blast radius require corroboration through the applicable evidence lane. This boundary is portable even when no semantic tool exists.
+## Compatibility aliases are temporary
 
-## Changed-artifact diagnostics are a completion gate
+The guard accepts a bounded set of compatibility receipt spellings for one release. Cards and documentation use only the current vocabulary. Retired storage and readiness controls have no alias because accepting them would preserve a different workflow. Compatibility aliases are not a second public API and may be removed after the transition release.
 
-After implementation mutation, PMNM inventories changed artifacts using the current delivery-state mechanism rather than assuming Git. Every artifact supported by an executable current diagnostic capability receives current coverage before completion.
+## Host adapters stay isolated
 
-The result distinguishes clean coverage, unsupported artifacts, untrusted output, verified pre-existing residuals, and blocking introduced, modified, or unattributed errors. Project-native fallbacks may bound lost coverage but cannot silently become equivalent evidence. Diagnostics remain a conformance lane and do not replace behavior, runtime, interface, or policy verification.
+Another host should implement the same observable contract through its own supported lifecycle surfaces. It must not copy the Codex hook and assume similar event names carry identical guarantees.
+
+Portable behavior, folder layout and receipt meaning are shared. Hook code, state location, event parsing, trust review, installation and tests belong to each host adapter.
+
+A guard receipt is an adapter protocol marker, not a command-line dependency. Interception is observable evidence only for the call that was intercepted. A receipt that reaches a shell cannot be repaired by PATH probing or repeated execution; the portable workflow continues in advisory mode while the missing enforcement is disclosed.
+
+## Evaluation layers stay separate
+
+Static source validation, package identity, guard state tests, live hook delivery, model behavior, code correctness and user acceptance are distinct evidence layers.
+
+Blind model fixtures omit expected answers. Deterministic expectations remain in the grader. Guard action sequences are public and executable, but they simulate lifecycle events. Live trials record the exact revision, host, model, tools, source fixture, human turns and cleanup.
+
+Realistic trials can reveal where prose is skipped or a guard creates unnecessary friction. They do not justify copying private project language into the public skill. The reusable failure pattern becomes the product change.
+
+## Distribution states are distinct
+
+Repository source, npm artifact, marketplace entry, installed plugin, enabled skill, reviewed hook, trusted hook and loaded conversation revision are separate states. A successful check at one boundary does not imply the next.
+
+The npm package has an explicit allowlist, no runtime registry dependency and no npm lifecycle script. `SETUP.md` alone owns installation, update, rollback, removal and verification commands. Public release requires deterministic gates plus live checks against the exact installed candidate.

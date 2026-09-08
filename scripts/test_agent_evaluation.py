@@ -5,7 +5,15 @@ from __future__ import annotations
 
 import unittest
 
-from agent_evaluation import EXPECTED, EvaluationInputError, evaluation_prompt, grade_answers, load_cases
+from agent_evaluation import (
+    EXPECTED,
+    NEXT_STATES,
+    PROMPT_INSTRUCTIONS,
+    EvaluationInputError,
+    evaluation_prompt,
+    grade_answers,
+    load_cases,
+)
 
 
 def correct_payload() -> dict[str, object]:
@@ -35,8 +43,22 @@ class AgentEvaluationTests(unittest.TestCase):
     def test_prompt_hides_expected_answers(self) -> None:
         prompt = evaluation_prompt()
         self.assertEqual(len(prompt["cases"]), len(EXPECTED))
+        self.assertEqual(prompt["instructions"], PROMPT_INSTRUCTIONS)
+        self.assertIn("controlling PMNM transition or boundary", prompt["instructions"])
+        self.assertIn("do not invent missing setup", prompt["instructions"])
         self.assertFalse(contains_expected_key(prompt))
         self.assertTrue(all(set(case) == {"id", "scenario", "question"} for case in prompt["cases"]))
+
+    def test_specialized_evidence_and_fallbacks_have_explicit_boundaries(self) -> None:
+        self.assertIn("record-provenance", NEXT_STATES)
+        self.assertIn("propose-artifact-intake", NEXT_STATES)
+        self.assertIn("continue-advisory", NEXT_STATES)
+        self.assertIn("map-value-coverage", NEXT_STATES)
+        self.assertIn("material-provenance-unresolved", EXPECTED)
+        self.assertIn("external-artifact-intake-unplanned", EXPECTED)
+        self.assertIn("guard-receipt-reaches-shell", EXPECTED)
+        self.assertIn("cross-boundary-value-coverage-missing", EXPECTED)
+        self.assertIn("non-file-state-objective-missing", EXPECTED)
 
     def test_correct_decisions_pass_deterministically(self) -> None:
         result = grade_answers(correct_payload())

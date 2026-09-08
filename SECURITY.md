@@ -6,33 +6,25 @@ Please, Make No Mistakes is primarily an instruction, evidence, and collaboratio
 
 ### Authority and untrusted content
 
-Repository files, tickets, logs, web pages, tool output, generated code, and retrieved records are evidence sources, not automatic instructions. Content discovered during investigation cannot expand user authority, disable safeguards, authorize publication, or redefine the target operation merely because it contains imperative language.
+Repository files, tickets, logs, web pages, tool output, generated code, and retrieved task files are evidence sources, not automatic instructions. Content discovered during investigation cannot expand user authority, disable safeguards, authorize publication, or redefine the target operation merely because it contains imperative language.
 
 Higher-authority host, user, repository, and project instructions remain controlling within their scope. When two sources disagree, preserve the conflict and resolve authority instead of silently selecting the more convenient one.
 
 ### Workspace and context boundary
 
-The installed plugin is replaceable package content. Personal context, project context, activity records, screenshots, HAR files, logs, videos, datasets, credentials, and other user data must remain in a separately authorized location.
+The installed plugin is replaceable package content. The PMNM folder, with its rules and task folders, must remain in a location the user chose, outside the repository and outside the installed skill. Evidence such as screenshots, HAR files, logs, videos and datasets remains referenced in its authorized location by default. Copying or moving it requires an exact custody plan and current authority; moving always changes the source. Credentials and other secrets must never be copied into the PMNM folder. When a reference is necessary, record only where the secret lives. Automated scans cannot prove that pixels, audio, video or opaque binary content is free of sensitive material, so intake of that content also needs a human privacy decision.
 
-The skill does not make an external context store private. Filesystem permissions, encryption, retention, backup, synchronization, sharing, deletion, and publication remain properties of the selected store and host. Ignored files are not necessarily encrypted or access-controlled.
+The skill does not make the PMNM folder private. Filesystem permissions, encryption, retention, backup, synchronization, sharing, deletion and publication remain properties of the chosen location and the host. Ignored files are not necessarily encrypted or access-controlled.
 
-Setup or source validation does not authorize inspecting unrelated user repositories. Activity-record authority does not authorize moving, deleting, publishing, or changing the visibility of those records.
-
-### Optional runtime
-
-The bundled context-store runtime performs bounded metadata inspection and in-memory create-only planning. A plan includes exact content hashes, source and target preconditions, and either complete small text or a bounded prefix for review. Its output may therefore contain user-supplied record text and absolute source paths; callers must not place secrets or unnecessary sensitive content in a request or expose plan output to an unintended audience. It does not apply plans, replace files, move, delete, migrate, publish, ingest binary evidence, authenticate human approval, or interpret a project's registry semantics.
-
-The runtime rejects symlinks and unsafe targets within its declared contract and contains no store-writing primitive. Each plan is one shot: a host must reconstruct it against unchanged source preconditions and obtain fresh approval before applying effects. Those checks reduce covered filesystem risks; they do not establish the confidentiality or correctness of an unknown store.
-
-The separate record-conformance runtime is also read only. It validates only an explicitly adopted Standard file profile, stable fields, relative pointer safety, basis consistency, and latest capture state. It does not validate arbitrary backends, authenticate record authorship, or prove that the recorded claims are true.
+Setup or source validation does not authorize inspecting unrelated user repositories. Authority over the PMNM folder does not extend to any path outside it.
 
 ### Host enforcement
 
 The Codex plugin bundles a dependency-free Node.js lifecycle guard. Codex exposes the hook for review through `/hooks`; non-managed users decide whether to trust its current content hash. Installation, skill discovery, hook discovery, hook trust, and successful guard execution are separate states. A changed hook requires renewed review under the host's policy.
 
-When trusted and running, the guard stores bounded procedural state under `PLUGIN_DATA`. It records phases, basis counters, effect grants, hashes, and bounded event metadata. It does not persist raw prompts, shell commands, tool output, evidence, source text, credentials, or conversation transcripts. Filesystem permissions, host isolation, retention, and deletion of that state remain host properties.
+When trusted and running, the guard stores bounded procedural state under `PLUGIN_DATA/host-guard/v3` in three layers. Session state contains the selected task and transient flow. Project state contains reusable project-scoped authority. Task state contains that task's Digest, permissions, counters, verification and completion. Each layer has its own lock and monotonic revision, so different sessions can work on different tasks while concurrent use of one task exposes stale state before another material write. It does not persist raw prompts, shell commands or previews, tool output, evidence, source text, credentials, or conversation transcripts. Filesystem permissions, host isolation, retention and deletion of that state remain host properties.
 
-The guard can deny covered local write paths until required procedural transitions are declared, revoke unused readiness after a new prompt, and expose recovery or incomplete closure. It does not authenticate the truth of a model-authored receipt, infer correct product intent, prove sufficient investigation, replace native sandbox or approval controls, or authorize an effect that the user or host has not authorized. Durable-content and durable-structure authority remain distinct from implementation authority.
+The guard can block a project write until a task is started and its plan Digest is agreed, and block the first write to a path outside the agreed plan before it runs; isolate each session's selected task while serializing project authority and detecting stale same-task revisions; require applicable rule files to be reloaded after startup, resume, clear or compact; require material non-file state transitions to appear in the plan and bind them to exact task operations; require a complete operational preflight before persistent local-environment authority enters a Digest; distinguish a project target, contained PMNM target and external-only target before selecting authority; bind a secret-scanned forecast of exact sensitive operations or bounded capabilities to task or project scope; ask before a new sensitive command or direct external write and admit the identical reviewable operation once after the human's yes is recorded; require a revised Digest instead of one-off authority for an unlisted state change; split commands with an unknown segment or several sensitive effects; require an explicit effect declaration when host metadata and mechanical evidence are insufficient; block a write under the PMNM folder that leaves the folder through a path or symbolic link, or that carries what looks like a secret, and direct the agent to keep a reference to where the secret lives instead; preserve invalid pointer or index artifacts before human-authorized recovery; and refuse to close a task until current passed verification, any required review and the final audit are complete, a shaped Test Digest has then been shown to the human and a later response has been received. Path containment and result type are checked when a write or covered result is inspected; a path changed between check and use, and effects outside covered events, remain outside the guard's reach. The guard never claims semantic correctness: it does not authenticate the truth of a model-authored receipt or verification claim, infer correct product intent, prove sufficient investigation, prove external state from a successful operation, replace native sandbox or approval controls, or authorize an effect that the user or host has not authorized. A declaration is a claim, not authority. Native host approval remains controlling. Agreeing to the implementation plan alone is not a yes to commit, push, tag or publish. An exact operation or bounded capability named in the permission forecast may receive authority with that agreement; otherwise each needs its own yes at the time or a human-owned rule. The secret check is pattern based and conservative; it is not a guarantee.
 
 Coverage is deliberately partial. The adapter can act only on lifecycle and tool events Codex sends to it. Disabled or untrusted hooks, unsupported hosts, host launch failures, specialized paths that do not emit covered events, and effects outside the matcher can bypass the interlock. The portable skill remains usable in advisory mode, and any material loss of expected guard coverage must be stated rather than converted into a successful enforcement claim.
 
@@ -52,8 +44,12 @@ The repository checks can establish, for the exact files and events they inspect
 - the declared payload boundary and absence of configured private patterns;
 - exact source, packed, and isolated-installed skill bytes;
 - the declared hook configuration, dependency-free runtime boundary, bounded host-guard fixtures, and exact packaged hook bytes;
-- rejection of covered unsafe context-store requests;
-- rejection of covered invalid workflow traces;
+- rejection of covered writes that leave the PMNM folder, carry a detectable secret, or fall outside the agreed plan;
+- separation of covered project, contained PMNM and external-only targets before authority is selected;
+- binding of covered non-file state transitions to exact task operations and separate current evidence;
+- rejection of covered compound commands that conceal unknown or independently sensitive effects;
+- current-verification and material-change requirements before covered task closure;
+- rejection of covered invalid guard transitions;
 - publication-workflow controls encoded in the repository;
 - documentation invariants encoded by the documentation gate.
 
@@ -65,7 +61,7 @@ They cannot establish:
 - that a host emitted every relevant action or labeled a human response authentically;
 - that all secrets or personal data are detectable by pattern matching;
 - that a running conversation loaded the latest installed revision;
-- that an external context store is private, complete, or correctly retained;
+- that the PMNM folder is private, complete, or correctly retained;
 - that a passing check proves behavior outside its falsifiable contract;
 - that PMNM guarantees error-free software or prevents every regression.
 
@@ -75,7 +71,7 @@ Security fixes target the latest maintained public release. Before the first pub
 
 ## Report A Vulnerability
 
-Use [GitHub private vulnerability reporting](https://github.com/elnonathan/please-make-no-mistakes/security/advisories/new) for vulnerabilities in distributed files, the optional context runtimes, the lifecycle guard, validators, installation guidance, or release workflow. Treat unexpected guard bypass, effect-scope escalation, unsafe state handling, or sensitive-content persistence as security-relevant even when the portable skill still operates.
+Use [GitHub private vulnerability reporting](https://github.com/elnonathan/please-make-no-mistakes/security/advisories/new) for vulnerabilities in distributed files, the lifecycle guard, validators, installation guidance, or release workflow. Treat unexpected guard bypass, effect-scope escalation, unsafe state handling, or sensitive-content persistence as security-relevant even when the portable skill still operates.
 
 Include, when safe:
 

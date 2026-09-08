@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -202,13 +203,44 @@ def validate_hook_tree(root: Path) -> dict[str, str]:
             or handler.get("commandWindows") != expected_windows
         ):
             raise SmokeFailure(f"hook event {event_name} does not resolve the bundled runtime")
-    runtime = root / "hooks" / "pmnm-guard.mjs"
-    if runtime.is_symlink() or not runtime.is_file():
-        raise SmokeFailure("bundled host guard is missing or linked")
-    # Keep in step with validate_skill.py: 128,000 bytes since P0-21 (quote-aware lexer plus
-    # compiled bilingual first-person guidance, all inspectable text).
-    if runtime.stat().st_size > 128_000:
-        raise SmokeFailure("bundled host guard exceeds its inspectable size budget")
+    runtime_names = ("pmnm-guard.mjs", "pmnm-shell.mjs")
+    hook_root = root / "hooks"
+    actual_runtime_names = tuple(sorted(path.name for path in hook_root.iterdir() if path.suffix == ".mjs"))
+    if actual_runtime_names != tuple(sorted(runtime_names)):
+        raise SmokeFailure("bundled host guard module set is missing or unexpected")
+    runtimes = {name: hook_root / name for name in runtime_names}
+    for name, runtime in runtimes.items():
+        if runtime.is_symlink() or not runtime.is_file():
+            raise SmokeFailure(f"bundled host guard module {name} is missing or linked")
+        # Keep in step with validate_skill.py. The reviewed 0.1.0 ceiling is a
+        # packaging bound, not security evidence or an automatic future ratchet.
+        if runtime.stat().st_size > 230_000:
+            raise SmokeFailure(f"bundled host guard module {name} exceeds its inspectable size budget")
+    if sum(runtime.stat().st_size for runtime in runtimes.values()) > 260_000:
+        raise SmokeFailure("bundled host guard modules exceed their aggregate inspectable size budget")
+    runtime_text = runtimes["pmnm-guard.mjs"].read_text(encoding="utf-8")
+    shell_text = runtimes["pmnm-shell.mjs"].read_text(encoding="utf-8")
+    import_pattern = r'(?:from\s+|import\s*\()\s*["\']([^"\']+)["\']'
+    runtime_imports = re.findall(import_pattern, runtime_text)
+    shell_imports = re.findall(import_pattern, shell_text)
+    local_imports = [item for item in runtime_imports if not item.startswith("node:")]
+    if local_imports != ["./pmnm-shell.mjs"] or any(not item.startswith("node:") for item in shell_imports):
+        raise SmokeFailure("bundled host guard imports must match the fixed local module graph")
+    combined_runtime = runtime_text + "\n" + shell_text
+    for forbidden in ("fetch(", "http://", "https://", "execSync(", "execFile(", "spawn("):
+        if forbidden in combined_runtime:
+            raise SmokeFailure(f"bundled host guard contains forbidden data or execution dependency: {forbidden}")
+    transcript_bounds = ("R_MAX_TRANSCRIPT_TAIL_BYTES", "R_MAX_TRANSCRIPT_LINE_BYTES", "R_MAX_TRANSCRIPT_MESSAGE_BYTES")
+    if combined_runtime.count("transcript_path") != 1 or "transcript_path" in shell_text or any(item not in runtime_text for item in transcript_bounds):
+        raise SmokeFailure("bundled Codex transcript recovery must use its single bounded guard-only path")
+    child_process_import = 'import { spawnSync } from "node:child_process";'
+    fixed_git_call = 'spawnSync("git", ["--no-optional-locks", ...args], {'
+    if (
+        runtime_text.count(child_process_import) != 1
+        or combined_runtime.count("spawnSync(") != 1
+        or runtime_text.count(fixed_git_call) != 1
+    ):
+        raise SmokeFailure("bundled host guard may spawn only the fixed Git fingerprint provider")
     return tree_manifest(root / "hooks")
 
 

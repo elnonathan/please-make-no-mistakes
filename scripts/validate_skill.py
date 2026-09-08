@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import ast
 import json
 import os
 import re
@@ -35,23 +34,25 @@ OPENAI_FILE = SKILL_ROOT / "agents" / "openai.yaml"
 ACTIVATION_FILE = PACKAGE_ROOT / "evals" / "activation-cases.json"
 AGENT_EVALUATION_FILE = PACKAGE_ROOT / "evals" / "agent-evaluation-cases.json"
 BEHAVIOR_FILE = PACKAGE_ROOT / "evals" / "behavior-cases.md"
-TRACE_SCHEMA_FILE = PACKAGE_ROOT / "evals" / "trace.schema.json"
 HOST_GUARD_CASES_FILE = PACKAGE_ROOT / "evals" / "host-guard-cases.json"
 HOST_GUARD_ORACLE_FILE = PACKAGE_ROOT / "evals" / "host-guard-action-oracle.json"
 HOST_GUARD_ORACLE_CLASSES = {
-    "normal-state",
-    "rejected-receipt",
-    "unknown-command",
-    "repeated-denial",
-    "second-stop",
+    "orientation",
+    "folder-bootstrap",
+    "project-bootstrap",
+    "digest-gate",
+    "sensitive-effect",
+    "unknown-effect",
+    "missing-result",
+    "verification-close",
     "recovery",
-    "missing-store",
-    "multi-use-grant",
+    "compatibility-alias",
 }
 HOOK_CONFIG_FILE = PACKAGE_ROOT / "hooks" / "hooks.json"
 HOOK_RUNTIME_FILE = PACKAGE_ROOT / "hooks" / "pmnm-guard.mjs"
+HOOK_SHELL_FILE = PACKAGE_ROOT / "hooks" / "pmnm-shell.mjs"
+HOOK_RUNTIME_FILES = (HOOK_RUNTIME_FILE, HOOK_SHELL_FILE)
 HOOK_TEST_FILE = PACKAGE_ROOT / "scripts" / "test_host_guard.mjs"
-CONTEXT_STORE_RUNTIME = SKILL_ROOT / "scripts" / "context_store.py"
 
 PUBLIC_AUTHOR_NAME = "Jonathan Muñoz Lucas"
 PUBLIC_AUTHOR_EMAIL = "git" + chr(64) + "jonathanmunoz.dev"
@@ -492,24 +493,55 @@ def validate_host_hooks(errors: list[str]) -> None:
         if event_name == "Stop" and limit is not None:
             fail(errors, "hooks/hooks.json Stop must not declare unsupported additional context.")
 
+    hook_root = HOOK_RUNTIME_FILE.parent
     try:
-        runtime = HOOK_RUNTIME_FILE.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as exc:
-        fail(errors, f"Cannot read bundled host guard: {exc}")
+        actual_runtime_names = tuple(sorted(path.name for path in hook_root.iterdir() if path.suffix == ".mjs"))
+    except OSError as exc:
+        fail(errors, f"Cannot inspect bundled host guard module directory: {exc}")
         return
-    if HOOK_RUNTIME_FILE.is_symlink() or not HOOK_RUNTIME_FILE.is_file():
-        fail(errors, "Bundled host guard must be a regular in-package file.")
-    # The budget rose from 100,000 to 128,000 bytes with P0-21: the quote-aware shell lexer and the
-    # compiled first-person guidance in two languages are inspectable text, not opaque bulk.
-    if HOOK_RUNTIME_FILE.stat().st_size > 128_000:
-        fail(errors, "Bundled host guard exceeds its inspectable size budget.")
-    imports = re.findall(r'(?:from\s+|import\s*\()\s*["\']([^"\']+)["\']', runtime)
-    external = sorted({item for item in imports if not item.startswith("node:")})
-    if external:
-        fail(errors, f"Bundled host guard must remain dependency-free; found imports: {external}")
-    for forbidden in ("transcript_path", "child_process", "fetch(", "http://", "https://"):
-        if forbidden in runtime:
+    expected_runtime_names = tuple(sorted(path.name for path in HOOK_RUNTIME_FILES))
+    if actual_runtime_names != expected_runtime_names:
+        fail(errors, "Bundled host guard module set must contain exactly pmnm-guard.mjs and pmnm-shell.mjs.")
+    runtime_texts: dict[str, str] = {}
+    runtime_sizes: list[int] = []
+    for runtime_file in HOOK_RUNTIME_FILES:
+        if runtime_file.is_symlink() or not runtime_file.is_file():
+            fail(errors, f"Bundled host guard module {runtime_file.name} must be a regular in-package file.")
+            continue
+        try:
+            runtime_texts[runtime_file.name] = runtime_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            fail(errors, f"Cannot read bundled host guard module {runtime_file.name}: {exc}")
+            continue
+        runtime_sizes.append(runtime_file.stat().st_size)
+        # Keep in step with distribution_smoke.py. The reviewed 0.1.0 ceiling is
+        # a packaging bound, not security evidence or an automatic future ratchet.
+        if runtime_file.stat().st_size > 230_000:
+            fail(errors, f"Bundled host guard module {runtime_file.name} exceeds its inspectable size budget.")
+    if set(runtime_texts) != {path.name for path in HOOK_RUNTIME_FILES}:
+        return
+    # The two-module adapter remains bounded as a whole while keeping the state machine and shell classifier independently reviewable.
+    if sum(runtime_sizes) > 260_000:
+        fail(errors, "Bundled host guard modules exceed their aggregate inspectable size budget.")
+    runtime = runtime_texts[HOOK_RUNTIME_FILE.name]
+    shell_runtime = runtime_texts[HOOK_SHELL_FILE.name]
+    import_pattern = r'(?:from\s+|import\s*\()\s*["\']([^"\']+)["\']'
+    imports = re.findall(import_pattern, runtime)
+    shell_imports = re.findall(import_pattern, shell_runtime)
+    local_imports = [item for item in imports if not item.startswith("node:")]
+    if local_imports != ["./pmnm-shell.mjs"] or any(not item.startswith("node:") for item in shell_imports):
+        fail(errors, "Bundled host guard imports must match the fixed local module graph.")
+    combined_runtime = runtime + "\n" + shell_runtime
+    for forbidden in ("fetch(", "http://", "https://", "execSync(", "execFile(", "spawn("):
+        if forbidden in combined_runtime:
             fail(errors, f"Bundled host guard contains forbidden data or execution dependency: {forbidden}")
+    transcript_bounds = ("R_MAX_TRANSCRIPT_TAIL_BYTES", "R_MAX_TRANSCRIPT_LINE_BYTES", "R_MAX_TRANSCRIPT_MESSAGE_BYTES")
+    if combined_runtime.count("transcript_path") != 1 or "transcript_path" in shell_runtime or any(item not in runtime for item in transcript_bounds):
+        fail(errors, "Bundled Codex transcript recovery must use its single bounded guard-only path.")
+    child_process_import = 'import { spawnSync } from "node:child_process";'
+    fixed_git_call = 'spawnSync("git", ["--no-optional-locks", ...args], {'
+    if runtime.count(child_process_import) != 1 or combined_runtime.count("spawnSync(") != 1 or runtime.count(fixed_git_call) != 1:
+        fail(errors, "Bundled host guard may spawn only the fixed, argument-array Git fingerprint provider.")
 
     cases = load_json(HOST_GUARD_CASES_FILE, errors)
     if not isinstance(cases, dict) or cases.get("schema_version") != 1:
@@ -710,7 +742,7 @@ def validate_documentation_and_repository_contract(payload: set[Path], errors: l
         "## Verify The Installation",
         "codex plugin marketplace add elnonathan/please-make-no-mistakes",
         "codex plugin add please-make-no-mistakes@please-make-no-mistakes --json",
-        "codex plugin marketplace add /absolute/path/to/please-make-no-mistakes",
+        "codex plugin marketplace add /absolute/path/to/tmp-marketplace",
         "npm run verify:published -- <version>",
         "`npm install` alone is not host registration",
     ):
@@ -1141,6 +1173,14 @@ def validate_public_boundary(payload: set[Path], errors: list[str]) -> None:
         report_public_email_addresses(path, text, errors)
 
 
+def validate_public_boundaries(
+    payload: set[Path],
+    repository_public_files: set[Path],
+    errors: list[str],
+) -> None:
+    validate_public_boundary(payload | repository_public_files, errors)
+
+
 def validate_private_pattern_contract(errors: list[str]) -> None:
     synthetic_email = "privacy-sentinel" + chr(64) + "example.invalid"
     if not EMAIL_ADDRESS_RE.search(synthetic_email):
@@ -1391,169 +1431,11 @@ def validate_behavior_cases(errors: list[str]) -> None:
             fail(errors, f"Behavior case {number} needs a prompt or fixture.")
 
 
-def validate_trace_schema(errors: list[str]) -> None:
-    schema = load_json(TRACE_SCHEMA_FILE, errors)
-    if not isinstance(schema, dict):
-        return
-    try:
-        event_properties = schema["$defs"]["event"]["properties"]
-        event_types = event_properties["type"]["enum"]
-        event_statuses = event_properties["status"]["enum"]
-        requirement_properties = schema["properties"]["requirements"]["properties"]
-    except (KeyError, TypeError):
-        fail(errors, "evals/trace.schema.json is missing the event type/status contract.")
-        return
-    if not isinstance(requirement_properties, dict):
-        fail(errors, "Trace schema requirement properties must be an object.")
-        return
-    for field in {
-        "identified_activity",
-        "observable_equivalence",
-        "asynchronous_delivery",
-        "effect_scope",
-        "correction_recovery",
-        "decision_alignment",
-        "scenario_coverage",
-        "epistemic_reconciliation",
-        "canonical_reconciliation",
-        "capability_routing",
-    }:
-        definition = requirement_properties.get(field)
-        if not isinstance(definition, dict) or definition.get("type") != "boolean":
-            fail(errors, f"Trace schema must expose requirements.{field} as boolean.")
-    required_types = {
-        "skill-activation",
-        "skill-load",
-        "capability-route",
-        "activity-transition",
-        "durable-gate-trigger",
-        "reference-load",
-        "material-investigation",
-        "decision-alignment",
-        "scenario-coverage",
-        "readiness",
-        "readiness-invalidation",
-        "recovery",
-        "implementation-mutation-attempt",
-        "implementation-mutation",
-        "verification",
-        "regression-protection",
-        "final-audit",
-        "report",
-    }
-    usable_event_types = (
-        {item for item in event_types if isinstance(item, str)}
-        if isinstance(event_types, list)
-        else set()
-    )
-    if not isinstance(event_types, list) or len(usable_event_types) != len(event_types):
-        fail(errors, "Trace schema event types must be unique strings.")
-    if not required_types.issubset(usable_event_types):
-        missing = sorted(required_types - usable_event_types)
-        fail(errors, f"Trace schema is missing required event types: {missing}")
-    usable_event_statuses = (
-        {item for item in event_statuses if isinstance(item, str)}
-        if isinstance(event_statuses, list)
-        else set()
-    )
-    if not isinstance(event_statuses, list) or len(usable_event_statuses) != len(event_statuses):
-        fail(errors, "Trace schema event statuses must be unique strings.")
-    if not {"denied", "applied", "invalidated"}.issubset(usable_event_statuses):
-        fail(errors, "Trace schema is missing required mutation or invalidation statuses.")
-
-
 def validate_all_json(payload: set[Path], errors: list[str]) -> None:
     for path in sorted(item for item in payload if item.suffix.lower() == ".json"):
         if path in {PACKAGE_FILE, ACTIVATION_FILE}:
             continue
         load_json(path, errors)
-
-
-def validate_context_store_runtime(errors: list[str]) -> None:
-    try:
-        source = CONTEXT_STORE_RUNTIME.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=relative(CONTEXT_STORE_RUNTIME))
-    except FileNotFoundError:
-        fail(errors, f"Missing context-store runtime: {relative(CONTEXT_STORE_RUNTIME)}")
-        return
-    except (OSError, UnicodeError, SyntaxError) as exc:
-        fail(errors, f"Invalid context-store runtime {relative(CONTEXT_STORE_RUNTIME)}: {exc}")
-        return
-
-    subcommands: list[str] = []
-    forbidden_os_calls = {
-        "chmod",
-        "chown",
-        "fchmod",
-        "fchown",
-        "fsync",
-        "link",
-        "mkdir",
-        "makedirs",
-        "remove",
-        "rename",
-        "renames",
-        "replace",
-        "rmdir",
-        "symlink",
-        "truncate",
-        "unlink",
-        "write",
-    }
-    forbidden_path_calls = {
-        "chmod",
-        "hardlink_to",
-        "link_to",
-        "mkdir",
-        "rename",
-        "replace",
-        "rmdir",
-        "symlink_to",
-        "touch",
-        "unlink",
-        "write_bytes",
-        "write_text",
-    }
-    forbidden_open_flags = {"O_WRONLY", "O_RDWR", "O_CREAT", "O_TRUNC", "O_APPEND"}
-    write_surface: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and node.id in forbidden_open_flags:
-            write_surface.add(node.id)
-        if not isinstance(node, ast.Call):
-            continue
-        if isinstance(node.func, ast.Name) and node.func.id == "open":
-            write_surface.add("builtin open")
-        if not isinstance(node.func, ast.Attribute):
-            continue
-        if (
-            isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "os"
-            and node.func.attr in forbidden_os_calls
-        ):
-            write_surface.add(f"os.{node.func.attr}")
-        if node.func.attr in forbidden_path_calls:
-            write_surface.add(f".{node.func.attr}")
-        if node.func.attr != "add_parser" or not node.args:
-            continue
-        name = node.args[0]
-        if not isinstance(name, ast.Constant) or not isinstance(name.value, str):
-            fail(errors, "Context-store subcommand names must be literal strings.")
-            continue
-        subcommands.append(name.value)
-
-    expected = ["inspect", "plan"]
-    if sorted(subcommands) != expected:
-        fail(
-            errors,
-            "Context-store runtime must expose exactly inspect and plan; "
-            f"found: {', '.join(sorted(subcommands)) or '(none)'}."
-        )
-    if write_surface:
-        fail(
-            errors,
-            "Context-store runtime must remain free of filesystem write primitives; found: "
-            f"{', '.join(sorted(write_surface))}."
-        )
 
 
 def validate_repository_metadata(payload: set[Path], errors: list[str]) -> None:
@@ -1604,16 +1486,13 @@ def main() -> int:
     validate_links(payload, errors)
     validate_reference_routing(payload, errors)
     validate_private_pattern_contract(errors)
-    validate_public_boundary(payload, errors)
-    validate_public_boundary(repository_public_files, errors)
+    validate_public_boundaries(payload, repository_public_files, errors)
     validate_documentation_and_repository_contract(payload, errors)
     validate_openai_yaml(frontmatter.get("name", ""), errors)
     validate_activation_cases(errors)
     validate_agent_evaluation_cases(errors)
     validate_behavior_cases(errors)
-    validate_trace_schema(errors)
     validate_all_json(payload, errors)
-    validate_context_store_runtime(errors)
     validate_release_readiness(manifest, warnings)
 
     if errors:

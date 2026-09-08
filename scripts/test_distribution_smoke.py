@@ -245,6 +245,7 @@ class DistributionSmokeTests(unittest.TestCase):
         self.assertIn(".codex-plugin/plugin.json", payload)
         self.assertIn("hooks/hooks.json", payload)
         self.assertIn("hooks/pmnm-guard.mjs", payload)
+        self.assertIn("hooks/pmnm-shell.mjs", payload)
         self.assertIn("skills/please-make-no-mistakes/SKILL.md", payload)
         self.assertNotIn(".agents/plugins/marketplace.json", payload)
         self.assertNotIn(".github/workflows/ci.yml", payload)
@@ -252,6 +253,16 @@ class DistributionSmokeTests(unittest.TestCase):
         self.assertNotIn("AGENTS.md", payload)
         self.assertFalse(any(path.startswith(".ai/") for path in payload))
         SMOKE.validate_payload_boundary(payload)
+
+    def test_public_boundary_deduplicates_overlapping_file_sets(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-public-overlap-") as raw:
+            public_file = Path(raw) / "README.md"
+            public_file.write_text("private-overlap-sentinel\n", encoding="utf-8")
+            errors: list[str] = []
+            with mock.patch.dict(os.environ, {"PMNM_PRIVATE_TERMS": "private-overlap-sentinel"}):
+                VALIDATOR.validate_public_boundaries({public_file}, {public_file}, errors)
+            self.assertEqual(len(errors), 1)
+            self.assertIn("configured private term #1", errors[0])
 
     def test_public_checkout_validates_without_private_coordination(self) -> None:
         with tempfile.TemporaryDirectory(prefix="pmnm-public-checkout-") as raw:
@@ -378,6 +389,107 @@ class DistributionSmokeTests(unittest.TestCase):
             (hooks / "hooks.json").write_text(json.dumps(config), encoding="utf-8")
             with self.assertRaises(SMOKE.SmokeFailure):
                 SMOKE.validate_hook_tree(root)
+
+    def test_hook_tree_accepts_only_the_fixed_local_module_graph(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-hook-modules-") as raw:
+            root = Path(raw)
+            shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+            manifest = SMOKE.validate_hook_tree(root)
+            self.assertIn("pmnm-guard.mjs", manifest)
+            self.assertIn("pmnm-shell.mjs", manifest)
+
+            (root / "hooks" / "unexpected.mjs").write_text("export {};\n", encoding="utf-8")
+            with self.assertRaisesRegex(SMOKE.SmokeFailure, "module set"):
+                SMOKE.validate_hook_tree(root)
+
+    def test_hook_tree_rejects_an_import_outside_the_fixed_graph(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-hook-import-") as raw:
+            root = Path(raw)
+            shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+            runtime = root / "hooks" / "pmnm-guard.mjs"
+            runtime.write_text(
+                runtime.read_text(encoding="utf-8").replace(
+                    'from "./pmnm-shell.mjs";',
+                    'from "../pmnm-shell.mjs";',
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(SMOKE.SmokeFailure, "fixed local module graph"):
+                SMOKE.validate_hook_tree(root)
+
+    def test_hook_tree_rejects_a_linked_or_oversized_module_graph(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-hook-linked-") as raw:
+            root = Path(raw)
+            shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+            shell = root / "hooks" / "pmnm-shell.mjs"
+            shell.unlink()
+            shell.symlink_to(PACKAGE_ROOT / "hooks" / "pmnm-shell.mjs")
+            with self.assertRaisesRegex(SMOKE.SmokeFailure, "missing or linked"):
+                SMOKE.validate_hook_tree(root)
+
+        with tempfile.TemporaryDirectory(prefix="pmnm-hook-budget-") as raw:
+            root = Path(raw)
+            shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+            shell = root / "hooks" / "pmnm-shell.mjs"
+            current_total = sum(path.stat().st_size for path in (root / "hooks").glob("*.mjs"))
+            padding = max(1, 260_001 - current_total)
+            shell.write_text(shell.read_text(encoding="utf-8") + (" " * padding), encoding="utf-8")
+            with self.assertRaisesRegex(SMOKE.SmokeFailure, "aggregate inspectable size budget"):
+                SMOKE.validate_hook_tree(root)
+
+    def test_source_validator_rejects_runtime_module_graph_drift(self) -> None:
+        def validate(root: Path) -> list[str]:
+            hooks = root / "hooks"
+            guard = hooks / "pmnm-guard.mjs"
+            shell = hooks / "pmnm-shell.mjs"
+            with (
+                mock.patch.object(VALIDATOR, "HOOK_CONFIG_FILE", hooks / "hooks.json"),
+                mock.patch.object(VALIDATOR, "HOOK_RUNTIME_FILE", guard),
+                mock.patch.object(VALIDATOR, "HOOK_SHELL_FILE", shell),
+                mock.patch.object(VALIDATOR, "HOOK_RUNTIME_FILES", (guard, shell)),
+            ):
+                errors: list[str] = []
+                VALIDATOR.validate_host_hooks(errors)
+            return errors
+
+        mutations = {
+            "missing": lambda hooks: (hooks / "pmnm-shell.mjs").unlink(),
+            "unlisted": lambda hooks: (hooks / "unexpected.mjs").write_text("export {};\n", encoding="utf-8"),
+            "escaping import": lambda hooks: (hooks / "pmnm-guard.mjs").write_text(
+                (hooks / "pmnm-guard.mjs").read_text(encoding="utf-8").replace(
+                    'from "./pmnm-shell.mjs";',
+                    'from "../pmnm-shell.mjs";',
+                    1,
+                ),
+                encoding="utf-8",
+            ),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory(prefix="pmnm-validator-drift-") as raw:
+                root = Path(raw)
+                shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+                mutate(root / "hooks")
+                self.assertTrue(validate(root))
+
+        with tempfile.TemporaryDirectory(prefix="pmnm-validator-link-") as raw:
+            root = Path(raw)
+            shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+            shell = root / "hooks" / "pmnm-shell.mjs"
+            shell.unlink()
+            shell.symlink_to(PACKAGE_ROOT / "hooks" / "pmnm-shell.mjs")
+            self.assertTrue(any("regular in-package file" in item for item in validate(root)))
+
+        with tempfile.TemporaryDirectory(prefix="pmnm-validator-budget-") as raw:
+            root = Path(raw)
+            shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+            shell = root / "hooks" / "pmnm-shell.mjs"
+            current_total = sum(path.stat().st_size for path in (root / "hooks").glob("*.mjs"))
+            shell.write_text(
+                shell.read_text(encoding="utf-8") + (" " * max(1, 260_001 - current_total)),
+                encoding="utf-8",
+            )
+            self.assertTrue(any("aggregate inspectable size budget" in item for item in validate(root)))
 
     def test_real_package_packs_and_installs_in_isolation(self) -> None:
         environment = dict(os.environ)

@@ -22,14 +22,14 @@
   "interface": {
     "displayName": "Please, Make No Mistakes",
     "shortDescription": "Evidence-first discipline for software work",
-    "longDescription": "Keeps shared understanding, human-aligned scenario coverage, observable bridges, evidence, readiness, epistemic reconciliation, verification, durable continuity, and human judgment explicit during non-trivial software work.",
+    "longDescription": "Investigates before changing a project, makes the evidence and uncertainty visible, keeps task knowledge in a user-controlled PMNM folder, asks for agreement on one plan Digest, verifies the result, and audits the complete change before the human commits.",
     "developerName": "Jonathan Muñoz Lucas",
     "category": "Developer Tools",
     "capabilities": ["Read", "Write"],
     "defaultPrompt": [
-      "Investigate this regression, plan what could break, then make the smallest defensible change.",
-      "Review this change and challenge every material claim.",
-      "Resume this work without losing decisions, evidence, or open risks."
+      "Investigate this regression and show me the plan Digest before changing anything.",
+      "Review this change, verify its contract, and audit the full diff before I commit.",
+      "Resume this task from its PMNM folder and tell me what remains uncertain."
     ]
   }
 }

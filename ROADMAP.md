@@ -1,19 +1,15 @@
 # Roadmap
 
-This roadmap describes direction, not a release promise.
+This roadmap lists what is decided. It is not a release promise.
 
-## Reliable distribution
+## Publication
 
-Keep the plugin artifact, Agent Skill, bundled Codex guard, repository marketplace, package metadata, documentation, and clean-session verification aligned.
+The first public release is 0.1.0. It is published after the installation test passes in a real host session against the exact installed candidate, not before. Until then the package exists as a repository source and a local artifact.
 
-## Observable compliance
+## Claude adapter
 
-Evaluate and tighten the bundled Codex procedural interlock against skipped context bootstrap, activity transitions, unilateral direction promotion, premature implementation, invalidated readiness, incomplete verification, and missed durable capture. The current hook remains Codex-owned. A future Claude Code adapter must use separate host surfaces and native tests rather than altering or inheriting the Codex implementation by resemblance. Extend any other host only through the same verified adapter boundary. Keep the portable skill usable without an MCP service or hook, and never turn procedural ordering into a claim of semantic truth or complete enforcement.
+A Claude Code adapter is a separate, later phase. It uses Claude's own lifecycle surfaces, state location and native tests. It does not copy or inherit the Codex hook; similar event names do not carry identical guarantees. Claude Code may discover the portable skill through its own supported mechanism, but this repository will not claim the complete PMNM folder workflow until it documents and verifies one literal pointer for that host. No Claude guard is claimed today.
 
-## Cross-model evaluation
+## Rules and guards
 
-Evaluate activation, reference loading, collaboration, tool preflight, investigation depth, correction handling, and final-state auditing across different host and model capability levels.
-
-## Context interoperability
-
-Improve neutral adapters and retrieval contracts while keeping user-owned context outside the replaceable plugin and avoiding a mandatory storage layout.
+A rule or a guard is added only behind a concrete defect observed in use, with the evidence that prose alone was not enough. Guard hardness follows that evidence: block, ask or note. Nothing else is promised.

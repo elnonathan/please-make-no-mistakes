@@ -1,247 +1,193 @@
 {
   "schema_version": 1,
   "adapter": "codex-lifecycle-hooks",
-  "contract": "Procedural ordering for covered host paths, never semantic truth or complete mutation coverage.",
+  "contract": "Synthetic contracts for the optional Codex interlock. They test procedural behavior, not semantic correctness or cross-host conformance.",
   "cases": [
-    {
-      "id": "HG-001",
-      "claim": "A covered first write is denied before an activity route."
-    },
-    {
-      "id": "HG-002",
-      "claim": "Standard readiness cannot use current alignment in the same user turn."
-    },
-    {
-      "id": "HG-003",
-      "claim": "A later collaborator turn opens a prompt-bound write window only after its meaning is explicitly reconciled as accepted."
-    },
-    {
-      "id": "HG-004",
-      "claim": "A new user prompt invalidates unused readiness."
-    },
-    {
-      "id": "HG-005",
-      "claim": "Feedback after an observed implementation write requires explicit response reconciliation, and a changed basis enters recovery."
-    },
-    {
-      "id": "HG-006",
-      "claim": "An unknown shell command receives a one-use token bound to its exact bytes."
-    },
-    {
-      "id": "HG-007",
-      "claim": "A command with a definite mutation classification cannot be relabeled as investigation."
-    },
-    {
-      "id": "HG-008",
-      "claim": "Delegated durable content can use apply_patch without becoming implementation authority."
-    },
-    {
-      "id": "HG-009",
-      "claim": "An approved durable-record transition does not force a duplicate collaborator checkpoint."
-    },
-    {
-      "id": "HG-010",
-      "claim": "A stop after implementation receives one bounded continuation until closure is recorded."
-    },
-    {
-      "id": "HG-011",
-      "claim": "State is bounded and stores hashes or enums instead of raw prompts, commands, evidence, and context."
-    },
-    {
-      "id": "HG-012",
-      "claim": "Unsafe or corrupt persisted state fails closed for covered writes."
-    },
-    {
-      "id": "HG-013",
-      "claim": "A non-applicable exemption cannot authorize publication, external effects, or structural changes."
-    },
-    {
-      "id": "HG-014",
-      "claim": "Common verification commands are classified as verification effects rather than implementation."
-    },
-    {
-      "id": "HG-015",
-      "claim": "A collaborator prompt arriving while a covered implementation call is in flight preserves the pending event and enters recovery."
-    },
-    {
-      "id": "HG-016",
-      "claim": "Implementation readiness cannot absorb structure, dependency, environment, version-control, external, publication, durable-structure, movement, or deletion authority."
-    },
-    {
-      "id": "HG-017",
-      "claim": "A delegated activity requires an observed current capture before readiness and another observed capture after its latest implementation mutation before completion."
-    },
-    {
-      "id": "HG-018",
-      "claim": "A later collaborator prompt invalidates prior delegated-capture freshness, including a capture call that began before that prompt."
-    },
-    {
-      "id": "HG-019",
-      "claim": "A covered write in flight or an implemented activity without a closing disposition cannot be relabeled as another activity."
-    },
-    {
-      "id": "HG-020",
-      "claim": "Route and exemption controls cannot escape an active readiness, implementation, or recovery transition."
-    },
-    {
-      "id": "HG-021",
-      "claim": "Completion cannot race a covered write that has not produced its post-use result."
-    },
-    {
-      "id": "HG-022",
-      "claim": "Effort cannot be lowered and basis cannot move backward inside one active activity lifecycle."
-    },
-    {
-      "id": "HG-023",
-      "claim": "An authority-only checkpoint cannot be promoted into current direction or scenario alignment."
-    },
-    {
-      "id": "HG-024",
-      "claim": "A stop during unresolved recovery receives one bounded continuation and cannot loop indefinitely."
-    },
-    {
-      "id": "HG-025",
-      "claim": "Interrupting an implementation write in flight preserves its identity and enters recovery."
-    },
-    {
-      "id": "HG-026",
-      "claim": "A new collaborator prompt during a sensitive covered write preserves the pending result and enters recovery."
-    },
-    {
-      "id": "HG-027",
-      "claim": "A later prompt cannot erase an exempt write in flight, and clean orientation resumes after its result is observed."
-    },
-    {
-      "id": "HG-028",
-      "claim": "A later collaborator turn is not treated as agreement until its meaning is explicitly reconciled."
-    },
-    {
-      "id": "HG-029",
-      "claim": "Only one covered write may be in flight, and a missing post-use result has an executable conservative recovery path."
-    },
-    {
-      "id": "HG-030",
-      "claim": "A late post-use result cannot silently contradict an earlier failed-no-effect reconciliation."
-    },
-    {
-      "id": "HG-031",
-      "claim": "Verification passed requires current successful evidence after the latest implementation mutation."
-    },
-    {
-      "id": "HG-032",
-      "claim": "Loaded and created activity transitions require concrete record and locator receipts, and an approved creation digest remains bound."
-    },
-    {
-      "id": "HG-033",
-      "claim": "A missing durable store or same-session rationale cannot become a Standard or High no-record exception without a collaborator decision."
-    },
-    {
-      "id": "HG-034",
-      "claim": "Workspace, working-directory, exec, and direct forms of common verification commands are classified without repeated permits."
-    },
-    {
-      "id": "HG-035",
-      "claim": "Stop-hook configuration does not declare unsupported additional context and friendly status messages retain host-native event names."
-    },
-    {
-      "id": "HG-036",
-      "claim": "Spanish and English prompts select a bounded friendly message language without persisting raw prompt text or exposing diagnostic codes in ordinary output."
-    },
-    {
-      "id": "HG-037",
-      "claim": "The portable router recognizes trusted friendly capability headings instead of depending on the removed user-visible PMNM guard prefix."
-    },
-    {
-      "id": "HG-038",
-      "claim": "Every phase card and denial names exactly one next action with at most one control command and no appended alternative branch."
-    },
-    {
-      "id": "HG-039",
-      "claim": "Every control command emitted by a phase card or denial is admissible from the state that emitted it after concrete field substitution."
-    },
-    {
-      "id": "HG-040",
-      "claim": "A denied covered write is retained as the unresolved cursor across a same-activity route and a later prompt; Stop blocks once for an agent-executable action, never loops, and never blocks a waiting-on-collaborator state."
-    },
-    {
-      "id": "HG-041",
-      "claim": "A repeated denied operation is counted as the same obligation, a later collaborator turn or externally created directory does not establish a created activity, and the blocked operation is not handed to the collaborator."
-    },
-    {
-      "id": "HG-042",
-      "claim": "Accepted authority-only alignment compiles to the combined checkpoint rather than readiness, and a planned activity reaches its durable-structure grant and then its created transition without an impossible command."
-    },
-    {
-      "id": "HG-043",
-      "claim": "An unexpected sensitive effect during READY, IMPLEMENT, or VERIFY compiles to basis invalidation and authority recovery instead of an inadmissible grant, and a blocked transition carrying its plan digest can later reach created."
-    },
-    {
-      "id": "HG-044",
-      "claim": "Closure is progressive with one requirement per output, and an activity whose authorized effects contained no implementation mutation has an honest completion path."
-    },
-    {
-      "id": "HG-045",
-      "claim": "Quoted shell operators do not split a read-only command, escaped or unterminated quotes fail conservatively, bounded host diagnostics need no permit, dynamic shell stays unknown, and dot-prefixed receipt values are accepted while parent traversal is rejected."
-    },
-    {
-      "id": "HG-046",
-      "claim": "Concurrent persisted events serialize without a busy failure, a recently orphaned lock recovers within the hook timeout, and only the lock owner removes its lock."
-    },
-    {
-      "id": "HG-047",
-      "claim": "Persisted state written before the cursor and effect counters loads with safe defaults, every ordinary output stays within the hook context budget without diagnostic labels in English or Spanish, a later prompt during aligned work requires explicit reconciliation, and fixtures contain only synthetic identifiers."
-    },
-    {
-      "id": "HG-048",
-      "claim": "A created transition requires every approved covered structural operation to be observed successful under the pending plan; a grant is authority, not execution, and the action after a grant is the pending operation rather than the created declaration."
-    },
-    {
-      "id": "HG-049",
-      "claim": "The denied cursor is bound to the exact tool and command: an admitted exact retry marks it in flight, only a successful matching result clears it, and a different operation of the same class, a failed retry, a missing result, or a second distinct denial preserves the original obligation."
-    },
-    {
-      "id": "HG-050",
-      "claim": "Conversational age never clears a denied cursor; only observed success, explicit reconciliation, collaborator redirection, or lifecycle closure does, each with a recorded cause."
-    },
-    {
-      "id": "HG-051",
-      "claim": "Stop decides from the cursor's own compiled action: an executable unresolved denial blocks once even when the general phase waits, and a genuine collaborator wait still stops silently."
-    },
-    {
-      "id": "HG-052",
-      "claim": "Shell classification lexes segments and quote boundaries first, applies mutation rules only to executable positions by verified command family, keeps interpreters and evaluation modes conservative, and still covers redirection, mutating subcommands, find execution, sed in-place editing, ripgrep preprocessors, and pipelines into mutations."
-    },
-    {
-      "id": "HG-053",
-      "claim": "Legacy persisted evidence without the effect counter is bound to zero effects: it remains current until the first newly observed effect and becomes stale afterwards."
-    },
-    {
-      "id": "HG-054",
-      "claim": "Every guard output names the one action justified by the observable state and its declared unknowns, proven by an action oracle of normalized sequences across normal states, rejected receipts, unknown commands, repeated denials, second Stop, recovery, missing stores, and multi-use grants."
-    },
-    {
-      "id": "HG-055",
-      "claim": "A collaborator turn during a pending nonimplementation covered result preserves the result, checkpoint, digest, and unclassified turn while removing the active grant; the result is settled first, then the response is classified, and only an accepted response after a resolved result restores alignment without another human round, while unknown or contradictory results keep recovery open and any late contradictory success records the effect and reopens recovery."
-    },
-    {
-      "id": "HG-056",
-      "claim": "Ordinary output speaks in the agent's own first-person guard voice under the full capability heading, stays calm, blames no one, claims no safety, correctness, or verification without evidence, and ends in exactly one NEXT action owned by the agent."
-    },
-    {
-      "id": "HG-057",
-      "claim": "A durable-structure grant is accepted only with the approved plan digest as its authority, and its uses value is the exact number of approved covered operations."
-    },
-    {
-      "id": "HG-058",
-      "claim": "Unequivocal sed write commands classify as writes, ambiguous sed scripts and script files stay unknown, and ripgrep compressed-search modes stay unknown."
-    },
-    {
-      "id": "HG-059",
-      "claim": "An activity with observed authorized effects cannot be relabeled as another activity without a closing disposition, exactly as an implemented activity cannot."
-    },
-    {
-      "id": "HG-060",
-      "claim": "A late covered result keeps the identity of its original activity and plan; it can reopen recovery but never advances another activity's plan or effect accounting."
-    }
+    {"id": "HG-109", "claim": "Only the twelve 0.1.0 receipts are canonical and retired store controls cannot execute."},
+    {"id": "HG-110", "claim": "Starting identified work opens the task and asks once for the host PMNM folder when no pointer exists."},
+    {"id": "HG-111", "claim": "The folder receipt creates the PMNM folder and host pointer atomically and preserves existing contents."},
+    {"id": "HG-112", "claim": "The project receipt creates a stable project skeleton and updates the guard-owned index."},
+    {"id": "HG-113", "claim": "Task-folder notes need no per-file permission while project implementation still waits for an agreed Digest."},
+    {"id": "HG-114", "claim": "A human response in a later turn can agree to the current Digest and authorize bounded implementation."},
+    {"id": "HG-115", "claim": "Redo advances the epoch and withdraws prior implementation authority."},
+    {"id": "HG-116", "claim": "Secret-like content is blocked at the PMNM boundary without echoing the detected value."},
+    {"id": "HG-117", "claim": "Sensitive permission is later-turn, effect-bound, exact-operation, and single-use."},
+    {"id": "HG-118", "claim": "Missing and contradictory host results preserve uncertainty and cannot silently become success."},
+    {"id": "HG-119", "claim": "Verification emits an honest fingerprint with an optional version-control provider and a neutral fallback without one."},
+    {"id": "HG-120", "claim": "Cards are localized, limited to two lines, and expose exactly one NEXT action."},
+    {"id": "HG-121", "claim": "PMNM-folder bootstrap and contained task writes need only the one folder choice and physical safety checks."},
+    {"id": "HG-122", "claim": "Unsafe PMNM roots and writes that cross its physical boundary fail closed."},
+    {"id": "HG-123", "claim": "Pending operation identity includes tool, target path, and edit contract rather than content alone."},
+    {"id": "HG-124", "claim": "External evidence may be copied inward while its source and content remain subject to secret checks."},
+    {"id": "HG-125", "claim": "Mixed writes, links, and symbolic-link escapes cannot exploit the PMNM free-write boundary."},
+    {"id": "HG-126", "claim": "Project display names may be Unicode while generated filesystem slugs remain portable."},
+    {"id": "HG-127", "claim": "A moved or deleted PMNM folder is recovered through the same one-question folder flow."},
+    {"id": "HG-128", "claim": "The PMNM folder cannot be the repository, host configuration, filesystem root, or a traversal path."},
+    {"id": "HG-129", "claim": "One-release aliases preserve the current operational card and invalid aliases fail closed."},
+    {"id": "HG-130", "claim": "A dynamic effect declaration is exact and single-use; the earlier classify receipt remains only as a one-release compatibility alias."},
+    {"id": "HG-131", "claim": "Digest agreement requires a later human turn and becomes stale after redo."},
+    {"id": "HG-132", "claim": "Status does not repeat an unanswered bookkeeping question as a new question."},
+    {"id": "HG-133", "claim": "Provider-neutral effect classes keep narrow, mechanically evident high-consequence operations distinct without positively trusting executable names."},
+    {"id": "HG-134", "claim": "Ordinary reads, checks, formatters, and arbitrary new executables share the same dynamic declaration route rather than an ecosystem catalog."},
+    {"id": "HG-135", "claim": "Ambiguous programs, interpreters, search modes, and wrappers remain unknown instead of being guessed safe."},
+    {"id": "HG-136", "claim": "Failed tool results never become observed mutations or successful checks."},
+    {"id": "HG-137", "claim": "Command-based verification must follow an observed check against the latest change state."},
+    {"id": "HG-138", "claim": "Completion reports the actual missing prerequisite before generic process guidance."},
+    {"id": "HG-139", "claim": "A later observed change invalidates prior verification."},
+    {"id": "HG-140", "claim": "A late success after a no-effect reconciliation is recorded once and reopens the real state."},
+    {"id": "HG-141", "claim": "Stop blocks at most once per turn and preserves the same next action."},
+    {"id": "HG-142", "claim": "Interrupt preserves an in-flight operation and enters recovery."},
+    {"id": "HG-143", "claim": "A new host session in the same working directory can resume the current open task."},
+    {"id": "HG-144", "claim": "Corrupt current persisted state fails closed."},
+    {"id": "HG-145", "claim": "Pre-release state resets visibly into the 0.1.0 contract."},
+    {"id": "HG-146", "claim": "Persisted event history is bounded, omits raw prompts, and uses owned locks."},
+    {"id": "HG-147", "claim": "Unreadable pointers and indexes produce recovery rather than guessed state."},
+    {"id": "HG-148", "claim": "Task switching clears old authority but cannot erase in-flight or unverified work."},
+    {"id": "HG-149", "claim": "A missing task folder produces the task-folder action rather than a false missing-task error."},
+    {"id": "HG-150", "claim": "Output-producing variants of otherwise read-oriented tools are not silently classified as reads."},
+    {"id": "HG-151", "claim": "Starting the same task is idempotent and may raise but never lower effort."},
+    {"id": "HG-152", "claim": "The PMNM root cannot be deleted through free writes and dynamic paths are never guessed."},
+    {"id": "HG-153", "claim": "A sensitive network operation remains permission-bound when its output lands in the PMNM folder."},
+    {"id": "HG-154", "claim": "Every supported compatibility alias maps to the new receipt without hiding the real continuation."},
+    {"id": "HG-155", "claim": "Receipt syntax rejects injection, duplicate fields, dynamic values, and malformed quoting."},
+    {"id": "HG-156", "claim": "Reads may continue while a result is pending but another write cannot overtake it."},
+    {"id": "HG-157", "claim": "Corrupt canonical project state fails closed across sessions."},
+    {"id": "HG-158", "claim": "A passed audit cannot conceal partial, failed, or blocked verification."},
+    {"id": "HG-159", "claim": "Reopening a completed task creates a fresh epoch without stale authority."},
+    {"id": "HG-160", "claim": "A symbolic-link evidence source is rejected by the secret and identity boundary."},
+    {"id": "HG-161", "claim": "Representative operational cards remain exactly two lines with one NEXT action."},
+    {"id": "HG-162", "claim": "Percent-encoded folder and project fields preserve spaces and Unicode safely."},
+    {"id": "HG-163", "claim": "Repositories with the same display name receive distinct collision-safe project folders."},
+    {"id": "HG-164", "claim": "A dynamically declared project read may route before a task while a covered write without one names the start receipt."},
+    {"id": "HG-165", "claim": "Persisted-state collections remain bounded and oversized structures fail closed."},
+    {"id": "HG-166", "claim": "The public action oracle replays against the current Codex adapter."},
+    {"id": "HG-167", "claim": "Status describes one current continuation without exposing internal state-machine jargon."},
+    {"id": "HG-168", "claim": "A missing folder or project configuration accepts the human's answer even when it arrived before the guard question."},
+    {"id": "HG-169", "claim": "An unrequested replacement of an existing folder names the actual recovery action instead of rejecting a valid path."},
+    {"id": "HG-170", "claim": "A literal directory-change prefix preserves the nested command's dynamic route and target base without weakening conditional paths."},
+    {"id": "HG-171", "claim": "Inspection alone cannot silently claim passed verification when the project exposes an executable check."},
+    {"id": "HG-172", "claim": "Version-control status parsing preserves both leading state columns."},
+    {"id": "HG-173", "claim": "Stop yields while a bookkeeping or sensitive human answer is already pending."},
+    {"id": "HG-174", "claim": "Same-turn agreement identifies the missing human turn, while shell redirection requires a declaration that cannot deny its write effect."},
+    {"id": "HG-175", "claim": "Digest agreement binds an order-insensitive set of canonical file-path and reason pairs while checkbox state remains progress only."},
+    {"id": "HG-176", "claim": "A workspace change to an excluded file blocks completion even when the change occurred outside an intercepted tool."},
+    {"id": "HG-177", "claim": "Plan targets are individual files and existing directories are rejected before agreement."},
+    {"id": "HG-178", "claim": "An agreed implementation plan cannot close when no planned target changed."},
+    {"id": "HG-179", "claim": "Completion states whether it compared version-control state, planned paths directly, or no project files."},
+    {"id": "HG-180", "claim": "Required verification claims must be written after the latest project change."},
+    {"id": "HG-181", "claim": "An unknown shell segment cannot borrow a read or verification classification, while a known sensitive effect remains protected."},
+    {"id": "HG-182", "claim": "The first dynamically declared project-source read without an open task emits a routing note and the second blocks, without guessing task identifiers from prose."},
+    {"id": "HG-183", "claim": "An exact non-mutating project check can be verified and closed without an implementation Digest while reporting its limited comparison."},
+    {"id": "HG-184", "claim": "A plan written after the prior Digest or redo remains eligible across clarification turns until the next gate."},
+    {"id": "HG-185", "claim": "The closing card reports the number of distinct general or project rules files written during the task."},
+    {"id": "HG-186", "claim": "An unrelated task folder does not trigger an identity question."},
+    {"id": "HG-187", "claim": "An exact task-folder identity resumes without asking the human."},
+    {"id": "HG-188", "claim": "Only bounded identifier evidence or equal normalized identifiers produce task-folder candidates."},
+    {"id": "HG-189", "claim": "Several unrelated task folders still produce the exact task creation action without a question."},
+    {"id": "HG-190", "claim": "Investigation Stop cards state only the missing Digest they can observe and defer conditionally to the model's own question."},
+    {"id": "HG-191", "claim": "Missing or stale command evidence receives a rerun card while an invalid verification method remains an enum rejection."},
+    {"id": "HG-192", "claim": "An external-only deletion asks for exact current human authority without inventing a repository plan."},
+    {"id": "HG-193", "claim": "A direct write outside both the repository and PMNM folder requires external-write authority."},
+    {"id": "HG-194", "claim": "A compound command containing an unknown segment or multiple sensitive effects must be split before it can proceed."},
+    {"id": "HG-195", "claim": "A network command obeys target geometry before requesting network authority."},
+    {"id": "HG-196", "claim": "Option-aware target resolution identifies literal destinations and fails closed on unsupported option shapes."},
+    {"id": "HG-197", "claim": "Formatter names receive no special trust; a declared project write remains subject to the agreed plan and post-operation observation."},
+    {"id": "HG-198", "claim": "Verification-looking names or flags receive no positive classification and a check that changes the project invalidates prior verification authority."},
+    {"id": "HG-199", "claim": "A passed audit cannot close without a current passed verification result."},
+    {"id": "HG-200", "claim": "Human verification requires a later human turn before it can be recorded as passed."},
+    {"id": "HG-201", "claim": "Verification-only closure still requires fresh example and unchanged evidence."},
+    {"id": "HG-202", "claim": "A command presented as verification that changes the project invalidates prior plan authority and returns to investigation."},
+    {"id": "HG-203", "claim": "No-op and restored writes cannot satisfy a planned material change."},
+    {"id": "HG-204", "claim": "An existing empty PMNM folder is seeded before its host pointer is written."},
+    {"id": "HG-205", "claim": "Invalid PMNM folder state is preserved and repaired only after a later human answer."},
+    {"id": "HG-206", "claim": "An unreadable host pointer has one exact human-directed recovery path."},
+    {"id": "HG-207", "claim": "A candidate task folder presents executable adoption and independent-creation paths."},
+    {"id": "HG-208", "claim": "Safe extensionless files at the project root are valid plan targets without an ecosystem whitelist."},
+    {"id": "HG-209", "claim": "Persisted pending operations retain bounded identity metadata without raw command previews."},
+    {"id": "HG-210", "claim": "Sensitive authority is never bound to command bytes the human could not review in full."},
+    {"id": "HG-211", "claim": "Session-local task selection coexists with canonical project and task state, so concurrent conversations do not share transient authority."},
+    {"id": "HG-212", "claim": "Ordinary contained PMNM maintenance remains free while changing the PMNM root requires current authority."},
+    {"id": "HG-213", "claim": "Documented Codex and Claude plugin changes have an exact environment-effect path."},
+    {"id": "HG-214", "claim": "A successful external or system effect cannot end without current verification."},
+    {"id": "HG-215", "claim": "An unverified external or system effect blocks transition to another task."},
+    {"id": "HG-216", "claim": "Every literal task-folder shell action safely quotes paths accepted by PMNM."},
+    {"id": "HG-217", "claim": "A new project name cannot be invented in the same turn that the guard asks the human for it."},
+    {"id": "HG-218", "claim": "A revised direct-comparison plan retains earlier path identities and adds new planned paths."},
+    {"id": "HG-219", "claim": "An unindexed project directory is preserved and never adopted silently for a new repository."},
+    {"id": "HG-220", "claim": "An ordinary external write cannot hide beside another sensitive effect in one compound command."},
+    {"id": "HG-221", "claim": "Byte-identical rewrites of files above two megabytes remain no-ops because full content identity, not timestamps, determines change."},
+    {"id": "HG-222", "claim": "When evidence invalidates a Digest, redo precedes further investigation or plan writing so the new baseline is not stale."},
+    {"id": "HG-223", "claim": "A provider snapshot retains direct initial identities for clean planned paths instead of treating their first later observation as baseline."},
+    {"id": "HG-224", "claim": "Project setup separates reusable evidence-backed knowledge from human-owned always-or-never rules."},
+    {"id": "HG-225", "claim": "A diagnostic suffix under the same bounded work identifier remains a candidate for the existing task instead of silently creating a sibling record."},
+    {"id": "HG-226", "claim": "Standard and High Digests require an actionable verification plan with contract, cases, entry, environment, actor, data, steps, expectations, capability, evidence and cleanup."},
+    {"id": "HG-227", "claim": "Closure requires a current shaped Test Digest in the latest assistant message and a later human response."},
+    {"id": "HG-228", "claim": "One agreed permission forecast activates several reusable exact task operations without repeated PMNM questions."},
+    {"id": "HG-229", "claim": "A changed or unlisted operation cannot borrow authority from a permission forecast."},
+    {"id": "HG-230", "claim": "Task permissions expire on task transition while project permissions remain bound to the same canonical project."},
+    {"id": "HG-231", "claim": "An explicit empty project permission list revokes the previous reusable project set."},
+    {"id": "HG-232", "claim": "Secret-bearing, malformed or post-Digest permission forecasts fail closed."},
+    {"id": "HG-233", "claim": "Verification plans and permission forecasts remain bound after agreement; drift requires redo before implementation or forecast use."},
+    {"id": "HG-234", "claim": "Test Digest fields are non-empty, contiguous and ordered in English or Spanish."},
+    {"id": "HG-235", "claim": "A rejected Test Digest card exposes the exact title and ordered one-line fields."},
+    {"id": "HG-236", "claim": "A state-only plan binds one exact task operation and can close without inventing a project file."},
+    {"id": "HG-237", "claim": "A mixed plan must satisfy both its planned file changes and its planned state transitions."},
+    {"id": "HG-238", "claim": "A state no-op, mismatched current evidence or unknown operation result cannot satisfy the plan."},
+    {"id": "HG-239", "claim": "An unlisted or differently bound state-changing operation cannot widen an agreed plan through one-off authority."},
+    {"id": "HG-240", "claim": "State-only closure reports state evidence and the absence of a project-file comparison without inventing version-control evidence."},
+    {"id": "HG-241", "claim": "State grammar and operation identity are bounded, canonical, contract-bound and epoch-bound."},
+    {"id": "HG-242", "claim": "Switching away from unfinished work requires one bounded human reconciliation and leaves the successor free of the prior task's authority and counters."},
+    {"id": "HG-243", "claim": "One Digest preflight reports every plan, verification-plan and permission-manifest defect with its source, line, rule and correction."},
+    {"id": "HG-244", "claim": "Adding a clean excluded path does not invent a workspace change, while excluding an already changed path still fails closed."},
+    {"id": "HG-245", "claim": "Repeating an unchanged Digest after the human replies preserves that reply and names agreement as the next action."},
+    {"id": "HG-246", "claim": "A state objective already complete when the Digest is shown needs current evidence but not a fictitious future operation."},
+    {"id": "HG-247", "claim": "A literal container exec exposes narrow definite inner hazards while every otherwise ordinary inner command still uses dynamic declaration."},
+    {"id": "HG-248", "claim": "A failed read-only check cannot become either a project mutation or successful verification."},
+    {"id": "HG-249", "claim": "A safe absolute repository path canonicalizes to the same plan identity without withdrawing unchanged authority."},
+    {"id": "HG-250", "claim": "Clear natural-language approval enables the exact sensitive operation without requiring a magic word or authorizing changed command bytes."},
+    {"id": "HG-251", "claim": "An investigation or administrative check cannot become final task verification while planned file objectives remain open."},
+    {"id": "HG-252", "claim": "Ordinary commands, including previously recognized reads and arbitrary new executables, receive no positive trust from a central command catalog."},
+    {"id": "HG-253", "claim": "A dynamic declaration names effect, boundary, persistence, certainty and capability for one exact operation before authority is evaluated."},
+    {"id": "HG-254", "claim": "A model declaration cannot downgrade a mechanically evident write, hidden command or other hard-stop condition."},
+    {"id": "HG-255", "claim": "A human-approved project capability is reusable only within its declared contract and can be explicitly revoked."},
+    {"id": "HG-256", "claim": "Naming a capability in a model declaration never creates that capability or its authority."},
+    {"id": "HG-257", "claim": "High-effort closure requires a current semantic review packet and blocks stale, non-independent or disputed evidence without treating the reviewer as truth."},
+    {"id": "HG-258", "claim": "Task capabilities expire on task transition, and uncertainty or a mismatched declaration cannot borrow capability authority."},
+    {"id": "HG-259", "claim": "Persisted dynamic retry authority is structurally validated, epoch-bound and single-use."},
+    {"id": "HG-260", "claim": "A certain non-persistent investigation remains an investigation across a mixed boundary rather than inventing a state change."},
+    {"id": "HG-261", "claim": "Final verification does not request the Test Digest before the final audit is current."},
+    {"id": "HG-262", "claim": "Compact and resume lifecycle events reload the exact durable rule basis before material work."},
+    {"id": "HG-263", "claim": "Persistent local-environment authority requires one complete generic operational preflight."},
+    {"id": "HG-264", "claim": "Concurrent sessions on the same task must reload a newer durable revision before material work."},
+    {"id": "HG-265", "claim": "Restarting the same task cannot erase an in-flight operation before its host result is reconciled."},
+    {"id": "HG-266", "claim": "Mentioning durable paths is not evidence that their current bytes were read successfully."},
+    {"id": "HG-267", "claim": "Standard and High implementation Digests require one canonical local or transitive impact contract."},
+    {"id": "HG-268", "claim": "Local impact stays concise while unresolved transitive nodes, boundaries and unexplained dispositions fail preflight together."},
+    {"id": "HG-269", "claim": "The impact contract is bound to Digest agreement and material drift requires a revised Digest."},
+    {"id": "HG-270", "claim": "Passed closure requires a fresh omission audit bound to the current verification fingerprint."},
+    {"id": "HG-271", "claim": "Lifecycle rehydration includes impact.md when present and records only successful returned content without claiming comprehension."},
+    {"id": "HG-272", "claim": "Impact preflight rejects untouched templates, placeholder evidence, unexplained dynamic boundaries and malformed ledger rows."},
+    {"id": "HG-273", "claim": "A successful standalone rule curation can stop without an implementation Digest, while any material plan retains the normal gate."},
+    {"id": "HG-274", "claim": "Lifecycle reload cards list only canonical durable files that currently exist for the active task."},
+    {"id": "HG-275", "claim": "Successful durable reads correlate through host operation identity even when the post-use payload is normalized."},
+    {"id": "HG-276", "claim": "An already agreed capability may be declared before one matching unknown operation, but cannot downgrade mechanical write evidence."},
+    {"id": "HG-277", "claim": "A declared non-persistent verification follows the read route and records its result without presuming a project mutation."},
+    {"id": "HG-278", "claim": "A material advisory deliverable can be planned, evidenced and closed without inventing a repository or external-state mutation."},
+    {"id": "HG-279", "claim": "A reframed deliverable leaves read-only investigation available but cannot close through stale plan authority."},
+    {"id": "HG-280", "claim": "Project knowledge is part of the canonical rule basis and its curation is counted separately from product mutation."},
+    {"id": "HG-281", "claim": "A concurrent change to canonical rules or project knowledge requires a fresh reload before a curation write."},
+    {"id": "HG-282", "claim": "An explicit host success or failure result outranks incidental output text, while text remains a fallback when no explicit outcome exists."},
+    {"id": "HG-283", "claim": "Regular-file identity compares raw bytes for both material changes and byte-identical no-ops, independent of file size or workspace provider."},
+    {"id": "HG-284", "claim": "A plain proactive declaration applies only to the next otherwise-unknown non-control operation in the same human turn and expires at continuity boundaries."},
+    {"id": "HG-285", "claim": "Proactive intent cannot pre-authorize a sensitive operation or downgrade mechanical and host-derived evidence; sensitive authority binds only after the concrete operation is known."},
+    {"id": "HG-286", "claim": "A pending host result outranks a new effect declaration and names result reconciliation as the only next action."},
+    {"id": "HG-287", "claim": "Certain non-persistent verification across a mixed read boundary remains non-sensitive while persistence or uncertainty fails closed."},
+    {"id": "HG-288", "claim": "Unverified cards distinguish unscoped planned paths, project work counters and external effects without inventing a Git file count or project boundary."},
+    {"id": "HG-289", "claim": "A task-transition card preserves current verification truth while still requiring human reconciliation for unfinished work."},
+    {"id": "HG-290", "claim": "A blocked audit keeps the task open and never arms the final Test Digest or completion."},
+    {"id": "HG-291", "claim": "When Codex omits Stop, the next prompt may recover only the latest current shaped Test Digest from a bounded fail-closed transcript tail."},
+    {"id": "HG-292", "claim": "Classification and human authority are independent admission stages: exact classification survives the separate authority decision and is consumed only when that operation is admitted."},
+    {"id": "HG-293", "claim": "Exact classification and sensitive authority cannot be spent by a changed operation identity."},
+    {"id": "HG-294", "claim": "A pre-upgrade allowance may recover through one exact declaration without asking the human to authorize the same operation twice."}
   ]
 }

@@ -16,10 +16,25 @@ FIXTURE_FILES = (
     "README.md",
     "SETUP.md",
     "ARCHITECTURE.md",
+    "CHANGELOG.md",
     "SECURITY.md",
+    "ROADMAP.md",
     "CONTRIBUTING.md",
+    "docs/architecture-decisions.md",
     "docs/getting-started.md",
     "docs/distribution.md",
+    "evals/README.md",
+    "skills/please-make-no-mistakes/SKILL.md",
+    "skills/please-make-no-mistakes/references/folder.md",
+    "skills/please-make-no-mistakes/references/flow.md",
+    "skills/please-make-no-mistakes/references/impact-analysis.md",
+    "skills/please-make-no-mistakes/references/verification.md",
+    "skills/please-make-no-mistakes/references/epistemic-integrity.md",
+    "skills/please-make-no-mistakes/references/evidence-artifacts.md",
+    "skills/please-make-no-mistakes/references/failure-patterns.md",
+    "skills/please-make-no-mistakes/references/review-and-security.md",
+    "skills/please-make-no-mistakes/references/collaboration.md",
+    "skills/please-make-no-mistakes/references/host-enforcement.md",
 )
 
 
@@ -48,6 +63,191 @@ class DocumentationGateTests(unittest.TestCase):
 
     def test_current_documentation_passes(self) -> None:
         self.assertEqual(validate_repository(self.root), [])
+
+    def test_preflight_transition_verification_and_module_contracts_are_pinned(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/references/flow.md",
+                "Collect every defect first and report each source, line, violated rule and concrete correction together",
+                "Report the first defect and retry",
+                "aggregate-task-preflight",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/verification.md",
+                "Show the Digest only after the final audit is current",
+                "Either Digest may be shown whenever convenient",
+                "plan-and-test-digest-order",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/flow.md",
+                "Corroborate its present result, but do not invent or repeat the old operation",
+                "Repeat the historical operation before proceeding",
+                "historical-state-does-not-replay",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/flow.md",
+                "never satisfy it with residue from the prior task",
+                "reuse the prior task state when convenient",
+                "task-transition-isolation",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/verification.md",
+                "Do not issue a passed verification receipt or move to the Test Digest while planned file objectives are open",
+                "record it as final verification whenever it passes",
+                "administrative-check-is-not-final-verification",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "Dynamic or opaque inner commands remain unknown",
+                "Dynamic inner commands inherit read-only status",
+                "container-exec-inner-effect",
+            ),
+            (
+                "ARCHITECTURE.md",
+                "accepts exactly this two-file local graph",
+                "accepts any local runtime dependency",
+                "bounded-host-adapter-module-graph",
+            ),
+            (
+                "ARCHITECTURE.md",
+                "If Codex omits that Stop event, the next human prompt may recover only the latest assistant message from a fixed-size tail of the literal host-provided transcript path.",
+                "If Codex omits Stop, read the transcript.",
+                "bounded-test-digest-transcript-fallback",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "`done audit=blocked` records that disposition, clears any final-handoff arming and keeps the task open",
+                "`done audit=blocked` requests final acceptance",
+                "blocked-audit-stays-open",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_impact_closure_is_conditional_independent_and_bounded(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/references/impact-analysis.md",
+                "Tool availability never decides the mode.",
+                "Without a semantic provider, use local mode.",
+                "conditional-value-lifecycle-map",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/impact-analysis.md",
+                "A search miss is not `verified-unchanged`.",
+                "A search miss may close an unchanged node.",
+                "transitive-impact-dispositions",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/impact-analysis.md",
+                "Each root name and material node appears once, with one unambiguous disposition.",
+                "Duplicate nodes may carry different dispositions.",
+                "transitive-impact-dispositions",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/impact-analysis.md",
+                "Use boundary lines or that one `none` reason, never both.",
+                "Boundary evidence and none may be combined.",
+                "transitive-impact-dispositions",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/impact-analysis.md",
+                "Do not derive the root list from `plan.md`.",
+                "Derive the root list from `plan.md`.",
+                "plan-independent-impact-audit",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/impact-analysis.md",
+                "A bare `N/A`, `none`, `unknown` or `unavailable` is not a disposition.",
+                "N/A closes any non-functional dimension.",
+                "bounded-impact-claims",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/impact-analysis.md",
+                "Replace every `<...>` template marker with current evidence before the Digest.",
+                "Template markers may remain after the Digest.",
+                "bounded-impact-claims",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/folder.md",
+                "An explicit reload never discards an operation whose host result is still pending.",
+                "An explicit reload replaces pending state.",
+                "reload-preserves-pending-result",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "A command or result that merely names a path is not read evidence.",
+                "Naming the path is sufficient read evidence.",
+                "rehydration-evidence-is-not-comprehension",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_provenance_keeps_relationships_and_responsibility_separate(self) -> None:
+        cases = (
+            (
+                "Treat each material provenance relationship as its own claim.",
+                "Combine related provenance into one summary.",
+                "provenance-one-claim-per-relation",
+            ),
+            (
+                "Authorship, operation, observation, discovery, review, approval and causality are independent relationships.",
+                "Authorship is the primary attribution relationship.",
+                "provenance-independent-roles",
+            ),
+            (
+                "A person or role who may provide context is a lead, not evidence and not responsibility.",
+                "A person who may provide context is probably responsible.",
+                "context-source-is-not-responsibility",
+            ),
+        )
+        relative = "skills/please-make-no-mistakes/references/epistemic-integrity.md"
+        for old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_evidence_artifact_custody_is_reference_first_and_recoverable(self) -> None:
+        cases = (
+            (
+                "Reference is the default custody choice.",
+                "Copy is the default custody choice.",
+                "artifact-reference-first",
+            ),
+            (
+                "Byte identity requires a complete content digest over the same bytes.",
+                "Matching names establish byte identity.",
+                "artifact-content-identity",
+            ),
+            (
+                "A move changes the source and always needs explicit current authority",
+                "A move into PMNM uses standing authority",
+                "artifact-authority-and-recovery",
+            ),
+            (
+                "Pixels, audio, video and opaque binary content require a human privacy decision",
+                "Opaque content is assumed safe after an automated scan",
+                "artifact-secret-boundary",
+            ),
+        )
+        relative = "skills/please-make-no-mistakes/references/evidence-artifacts.md"
+        for old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
 
     def test_readme_setup_entry_and_ownership_are_enforced(self) -> None:
         cases = (
@@ -149,8 +349,13 @@ class DocumentationGateTests(unittest.TestCase):
             ("Classify the first unproven boundary", "Retry immediately", "setup-failure-classification"),
             ("requires an explicit target revision", "may use any available revision", "setup-exact-rollback"),
             (
-                "Neither operation authorizes deleting an external context store",
-                "Removal includes the external context store",
+                "Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it",
+                "Search anywhere that may contain an old pointer",
+                "setup-pointer-discovery-boundary",
+            ),
+            (
+                "Neither operation authorizes deleting the external PMNM folder",
+                "Removal includes the external PMNM folder",
                 "setup-user-data-removal-boundary",
             ),
             ("`npm install` alone is not host registration", "`npm install` performs host registration", "setup-npm-boundary"),
@@ -161,6 +366,129 @@ class DocumentationGateTests(unittest.TestCase):
                 self.mutate("SETUP.md", old, new)
                 self.assert_rejected(code)
                 (self.root / "SETUP.md").write_text(original, encoding="utf-8")
+
+    def test_portable_kernel_forbids_broad_pointer_discovery(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/SKILL.md",
+            "Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it",
+            "Search likely directories for a previous PMNM folder",
+        )
+        self.assert_rejected("skill-pointer-discovery-boundary")
+
+        shutil.copy2(
+            SOURCE_ROOT / "skills/please-make-no-mistakes/SKILL.md",
+            self.root / "skills/please-make-no-mistakes/SKILL.md",
+        )
+        self.mutate(
+            "skills/please-make-no-mistakes/SKILL.md",
+            "Without a guard, a missing pointer has one next action",
+            "If the pointer is missing, continue looking for supporting evidence",
+        )
+        self.assert_rejected("skill-pointer-missing-terminal-action")
+
+    def test_portable_kernel_puts_the_dual_mode_gate_first(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/SKILL.md",
+            "First action for every material task: resolve PMNM before reading the project.",
+            "Resolve PMNM whenever it becomes convenient.",
+        )
+        self.assert_rejected("portable-first-action-order")
+
+    def test_project_index_has_one_owner_in_every_host_mode(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/folder.md",
+            "Without a guard, the portable agent maintains the same `pmnm.projects/v1` schema",
+            "Without a guard, no component maintains the project index",
+        )
+        self.assert_rejected("portable-project-index-owner")
+
+    def test_project_rules_never_turn_unknowns_into_conventions(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/folder.md",
+            "Never write an unknown, pending fact, task decision or unsupported inference as a project rule",
+            "Unknown project facts may be useful provisional rules",
+        )
+        self.assert_rejected("project-rule-requires-stable-evidence")
+
+    def test_task_record_responsibilities_keep_canonical_names(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/folder.md",
+            "Keep these canonical names when their responsibilities exist",
+            "Choose a new name for each responsibility",
+        )
+        self.assert_rejected("task-record-canonical-responsibility-names")
+
+    def test_checks_must_distinguish_the_branch_they_claim_to_prove(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/verification.md",
+            "Make every material branch observably distinct in the check",
+            "Use any passing fixture for every material branch",
+        )
+        self.assert_rejected("verification-requires-discriminating-observation")
+
+    def test_plan_digest_makes_the_test_discriminator_visible(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/flow.md",
+            "the wrong path and the observation that would expose it",
+            "a convenient passing command",
+        )
+        self.assert_rejected("plan-digest-exposes-test-discriminator")
+
+    def test_portable_folder_answer_has_one_literal_transition(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/SKILL.md",
+            "Never create a pointer file inside the PMNM folder",
+            "A pointer may be stored wherever convenient",
+        )
+        self.assert_rejected("portable-folder-answer-transition")
+
+    def test_advisory_mode_never_performs_receipt_theater(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/SKILL.md",
+            "Never print a `pmnm-guard` receipt in prose or in a Digest",
+            "Print guard receipts for the human to copy",
+        )
+        self.assert_rejected("portable-no-receipt-theater")
+
+    def test_missing_project_mapping_is_a_terminal_gate(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/SKILL.md",
+            "An empty PMNM folder is not a configured project",
+            "An empty PMNM folder may be treated as a configured project",
+        )
+        self.assert_rejected("portable-project-missing-terminal-action")
+
+    def test_task_folder_is_seeded_before_source_investigation(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/SKILL.md",
+            "If the task folder does not exist, create it and seed its canonical `index.md` before investigating",
+            "The task can be documented after implementation",
+        )
+        self.assert_rejected("portable-task-folder-before-source")
+
+    def test_every_task_has_one_stable_retrieval_index(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/folder.md",
+            "Every task folder has `index.md`",
+            "A task index is optional",
+        )
+        self.assert_rejected("task-index-is-stable-minimum")
+
+    def test_portable_audit_has_a_no_vcs_fingerprint(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/SKILL.md",
+            "name the limitation instead of inventing a version-control fingerprint",
+            "invent a plausible fingerprint when version control is unavailable",
+        )
+        self.assert_rejected("portable-audit-fingerprint-fallback")
+
+    def test_digest_cannot_outrun_the_task_folder(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/SKILL.md",
+            "A Digest is not ready while the task folder lags behind it",
+            "The task folder may be updated after the Digest",
+        )
+        self.assert_rejected("digest-requires-current-task-folder")
 
     def test_setup_commands_have_one_owner(self) -> None:
         self.mutate(
@@ -182,8 +510,8 @@ class DocumentationGateTests(unittest.TestCase):
         cases = (
             (
                 "SECURITY.md",
-                "retrieved records are evidence sources, not automatic instructions",
-                "retrieved records are automatic instructions",
+                "retrieved task files are evidence sources, not automatic instructions",
+                "retrieved task files are automatic instructions",
                 "security-boundary",
             ),
             (
@@ -222,7 +550,7 @@ class DocumentationGateTests(unittest.TestCase):
             ),
             (
                 "SECURITY.md",
-                "does not persist raw prompts, shell commands, tool output, evidence, source text, credentials, or conversation transcripts",
+                "does not persist raw prompts, shell commands or previews, tool output, evidence, source text, credentials, or conversation transcripts",
                 "may persist raw prompts and commands",
                 "security-boundary",
             ),
@@ -249,6 +577,633 @@ class DocumentationGateTests(unittest.TestCase):
                 "The guard is intentionally partial",
                 "The guard is complete",
                 "getting-started-hook-boundary",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_generated_shell_actions_keep_literal_path_identity(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/host-enforcement.md",
+            "Shell actions generated by the adapter quote every literal path accepted by PMNM",
+            "Shell actions may interpolate accepted paths directly",
+        )
+        self.assert_rejected("generated-shell-actions-quote-paths")
+
+    def test_project_name_cannot_be_invented_in_the_guard_question_turn(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/host-enforcement.md",
+            "otherwise a new project name requires a later human turn",
+            "otherwise the agent may choose a new project name immediately",
+        )
+        self.assert_rejected("project-name-requires-human-turn")
+
+    def test_revised_plan_keeps_the_direct_comparison_baseline(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/host-enforcement.md",
+            "a revised Digest retains the recorded identities of earlier paths and adds the new plan paths",
+            "a revised Digest replaces the recorded identities with only the new plan paths",
+        )
+        self.assert_rejected("revised-plan-preserves-bounded-baseline")
+
+    def test_unindexed_project_folder_is_preserved(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/host-enforcement.md",
+            "An existing path under `projects/` that is absent from `index.json` is occupied",
+            "An existing path under `projects/` may be adopted when it resembles the project name",
+        )
+        self.assert_rejected("unindexed-project-folder-not-adopted")
+        self.mutate(
+            "skills/please-make-no-mistakes/references/folder.md",
+            "or its path exists without a mapping, preserve the occupied path and choose another collision-safe name",
+            "or its path exists without a mapping, adopt that path for the new repository",
+        )
+        self.assert_rejected("portable-unindexed-project-folder-not-adopted")
+
+    def test_compound_external_write_is_a_sensitive_effect(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/host-enforcement.md",
+            "A literal ordinary write outside both the repository and PMNM folder counts as sensitive",
+            "A literal ordinary write outside both boundaries remains an ordinary implementation effect",
+        )
+        self.assert_rejected("compound-external-write-is-sensitive")
+
+    def test_public_reader_scope_and_evidence_boundaries_are_enforced(self) -> None:
+        cases = (
+            (
+                "README.md",
+                "The sections below describe portable PMNM. Codex-specific enforcement is named explicitly.",
+                "The sections below describe Codex unless noted otherwise.",
+                "readme-portable-default",
+            ),
+            (
+                "README.md",
+                "when a covered event shows the flow is out of order",
+                "whenever any step of the flow was skipped",
+                "readme-guard-observation-boundary",
+            ),
+            (
+                "README.md",
+                "instead of copying it by default",
+                "and never copies it",
+                "readme-evidence-copy-boundary",
+            ),
+            (
+                "ARCHITECTURE.md",
+                "refusing detected secret-shaped content on covered write channels",
+                "refusing every secret in every channel",
+                "architecture-secret-detection-boundary",
+            ),
+            (
+                "SECURITY.md",
+                "Credentials and other secrets must never be copied into the PMNM folder.",
+                "Credentials may be copied into the PMNM folder.",
+                "security-no-credentials-in-folder",
+            ),
+            (
+                "evals/README.md",
+                "Material read-only work still needs a task folder. Only the bounded verification-only path may skip the plan Digest.",
+                "Read-only work does not need a task or Digest.",
+                "evals-read-only-task-boundary",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_public_human_memory_and_completion_boundaries_are_enforced(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "You work with a human who shares responsibility for the result.",
+                "The model alone is responsible for the result.",
+                "human-accountability",
+            ),
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "Write as you learn, not at the end: what you read and what it showed, what you decided and why, what you rejected, what you verified, where you stopped.",
+                "Write every word and every intermediate attempt.",
+                "material-memory",
+            ),
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "every state objective supported by a successful bound operation and current evidence",
+                "every state objective supported by an attempted command",
+                "bounded-completion",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_host_guard_authority_verification_and_state_boundaries_are_enforced(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "An external-only effect asks for its own exact authority and does not invent a repository plan.",
+                "An external-only effect uses the repository plan.",
+                "authority-follows-target-geometry",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "more than one independently sensitive effect must also be split",
+                "several sensitive effects may share one permission",
+                "compound-effects-must-split",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "The first `done audit=passed` after verification audits the current work",
+                "The first `done audit=passed` may infer the current work",
+                "current-verification-before-closure",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "A successful external or system effect enters the same verification and audit path",
+                "An external or system effect may close without verification",
+                "current-verification-before-closure",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "a state-only plan reports no project-file comparison instead of inventing one",
+                "or a comparison inferred from unavailable evidence",
+                "current-verification-before-closure",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "Different sessions may advance different tasks under one project",
+                "Different sessions share one repository-global active task",
+                "canonical-private-guard-state",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/folder.md",
+                "preserve it under a unique recovery name and rebuild only after the human chooses that recovery",
+                "overwrite it automatically during recovery",
+                "folder-recovery-preserves-invalid-state",
+            ),
+            (
+                "SETUP.md",
+                "documented Codex and Claude plugin add, remove, install, uninstall, update and marketplace changes are recognized as environment effects",
+                "host plugin commands are always unknown",
+                "setup-host-plugin-effect-authority",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_fixed_checkpoints_do_not_hide_material_human_decisions(self) -> None:
+        cases = (
+            (
+                "README.md",
+                "two moments of your attention per task, one to agree the plan and one to read the audit, plus the questions only you can answer",
+                "exactly two moments of your attention per task and no other questions",
+            ),
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "the human enters at two points at every effort level: the plan Digest and the final audit",
+                "the human may enter at no other point",
+            ),
+            (
+                "docs/architecture-decisions.md",
+                "## Two human moments",
+                "## The human can only enter twice",
+            ),
+            (
+                "evals/README.md",
+                "same two human moments, the plan Digest and the audit, plus only the questions the human alone can answer",
+                "exactly two human turns and no others",
+            ),
+        )
+        for relative, old, new in cases:
+            with self.subTest(relative=relative):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected("human-fixed-checkpoints")
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_version_control_and_publication_need_separate_current_authority(self) -> None:
+        cases = (
+            (
+                "README.md",
+                "agreeing to the plan is not a yes to commit, push, tag or publish.",
+                "The plan Digest authorizes every version-control and publication effect.",
+            ),
+            (
+                "CHANGELOG.md",
+                "Agreeing to the implementation plan alone is not a yes to commit, push, tag or publish.",
+                "Plan agreement authorizes commits, pushes, tags and publication.",
+            ),
+            (
+                "SECURITY.md",
+                "Agreeing to the implementation plan alone is not a yes to commit, push, tag or publish.",
+                "Plan agreement authorizes every commit, push, tag and publication.",
+            ),
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "Agreeing to the plan alone is not a yes to commit, push, tag or publish.",
+                "Commit, push and tag whenever the implementation is complete.",
+            ),
+        )
+        for relative, old, new in cases:
+            with self.subTest(relative=relative):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected("separate-version-control-authority")
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_setup_names_one_index_owner_and_an_honest_non_codex_boundary(self) -> None:
+        original = (self.root / "SETUP.md").read_text(encoding="utf-8")
+        self.mutate(
+            "SETUP.md",
+            "One writer at a time: the guard when it is active, otherwise the agent.",
+            "Every runtime writes it concurrently.",
+        )
+        self.assert_rejected("setup-index-runtime-owner")
+        (self.root / "SETUP.md").write_text(original, encoding="utf-8")
+
+        self.mutate(
+            "SETUP.md",
+            "No complete Claude Code integration is claimed in this release.",
+            "Claude has a fully verified PMNM folder integration without a pointer.",
+        )
+        self.assert_rejected("setup-non-codex-pointer-boundary")
+
+    def test_codex_minimum_fixture_is_not_reported_as_live_compatibility_proof(self) -> None:
+        self.mutate(
+            "SETUP.md",
+            "The postpublication verifier rejects Codex CLI versions below `0.144.4`",
+            "The repository proves every Codex CLI `0.144.4` installation behaves correctly",
+        )
+        self.assert_rejected("setup-codex-minimum-evidence")
+
+    def test_public_entry_points_do_not_overclaim_questions_or_other_hosts(self) -> None:
+        cases = (
+            (
+                "README.md",
+                "Other questions are reserved for product intent, priority, risk, or authority that evidence cannot settle.",
+                "Every other question is about your product.",
+                "readme-human-question-boundary",
+            ),
+            (
+                "README.md",
+                "does not yet claim their complete PMNM folder workflow",
+                "claims a complete PMNM folder workflow for every host",
+                "cross-host-durable-folder-boundary",
+            ),
+            (
+                "ROADMAP.md",
+                "will not claim the complete PMNM folder workflow until it documents and verifies one literal pointer",
+                "already claims the complete PMNM folder workflow without a pointer",
+                "cross-host-durable-folder-boundary",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(relative=relative, code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_task_folder_evaluation_preserves_the_runtime_index_owner(self) -> None:
+        self.mutate(
+            "evals/README.md",
+            "`index.json` has one writer at a time: the guard when it is active, otherwise the agent.",
+            "`index.json` always remains guard-owned.",
+        )
+        self.assert_rejected("evals-index-runtime-owner")
+
+    def test_project_knowledge_does_not_become_a_rule_or_borrow_certainty(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "Reusable factual knowledge belongs in `project-knowledge.md`",
+                "Reusable factual knowledge belongs in `project-rules.md`",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/folder.md",
+                "Keep each claim separate so one strong observation cannot raise the certainty of a neighboring inference",
+                "Combine adjacent claims under the strongest available evidence",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/folder.md",
+                "“Applies to every task” widens `applies`; it does not turn a diagnosis into a rule or make an inference observed",
+                "Applies to every task makes the claim a verified rule",
+            ),
+        )
+        for relative, old, new in cases:
+            with self.subTest(relative=relative, old=old):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected("knowledge-is-not-a-rule")
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_standalone_rule_curation_does_not_waive_broader_task_gates(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "one approved rules-file write does not need an implementation Digest",
+                "one approved rules-file write still needs an implementation Digest",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/folder.md",
+                "Once `plan.md` has been materially written",
+                "Even after `plan.md` has been materially written",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "never waives its Digest, verification or audit",
+                "may waive its Digest, verification or audit",
+            ),
+        )
+        for relative, old, new in cases:
+            with self.subTest(relative=relative):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected("standalone-rule-skips-implementation-digest")
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_verification_plan_and_real_interface_bridge_are_enforced(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/references/verification.md",
+                "Write those decisions in `verification.md` before a Standard or High plan Digest",
+                "Write those decisions whenever convenient",
+                "actionable-verification-plan",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/verification.md",
+                "inspect the capabilities actually exposed by the host and project before assigning the run to the human",
+                "default every interface run to the human",
+                "interface-data-bridge",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/verification.md",
+                "connect the safe record to the persisted field, transformation and observable result",
+                "choose any plausible record name",
+                "interface-data-bridge",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code, old=old):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_redo_order_and_canonical_task_files_are_enforced(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "run `pmnm-guard redo` first, then revise the plan and permission forecast",
+                "revise the plan and permission forecast, then run `pmnm-guard redo`",
+                "redo-precedes-contract-revision",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/flow.md",
+                "use `pmnm-guard redo` first; then add or revise the file or state contract",
+                "add or revise the file or state contract; then use `pmnm-guard redo`",
+                "redo-precedes-contract-revision",
+            ),
+            (
+                "ARCHITECTURE.md",
+                "four base task files and adds canonical `impact.md`",
+                "three task files",
+                "canonical-task-file-count",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code, relative=relative):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_test_digest_and_attribution_boundaries_are_enforced(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "the latest assistant message",
+                "an unspecified conversation transcript",
+                "test-digest-visible-and-bounded",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/epistemic-integrity.md",
+                "Do not attribute ownership, introduction or causality while a decisive bridge is still pending",
+                "Attribute the likely cause before the decisive bridge runs",
+                "attribution-waits-for-bridge",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_follow_up_continuity_and_permission_scope_are_enforced(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/references/folder.md",
+                "A suffix in a folder name is not a new task by itself",
+                "Every suffix creates a separate task",
+                "bounded-follow-up-continuity",
+            ),
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "forecast every predictable exact operation together",
+                "ask separately immediately before every predictable operation",
+                "bounded-permission-forecast",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "`project: []` revokes",
+                "project permissions cannot be revoked",
+                "bounded-permission-forecast",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_receipt_fallback_and_test_digest_grammar_are_enforced(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "Treat `pmnm-guard` as a host receipt, never as a `PATH` executable.",
+                "Look for a pmnm-guard executable on PATH.",
+                "receipt-interception-fallback",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "the canonical block starts with `Test — <task id>` or `Prueba — <task id>`",
+                "A Test Digest may use any convenient heading",
+                "test-digest-card-exposes-shape",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_cross_boundary_value_coverage_is_conditional_and_end_to_end(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/references/flow.md",
+                "do not impose a graph on Light, state-only or unrelated work",
+                "impose a graph on every task",
+                "conditional-value-lifecycle-map",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/verification.md",
+                "A helper-level check cannot prove that a value survived its producer, boundaries and observable consumers.",
+                "A helper-level check proves the complete value lifecycle.",
+                "cross-boundary-verification",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_non_file_state_requires_plan_binding_and_independent_evidence(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "A state- or deliverable-only plan still says no project-file comparison",
+                "A state-only plan may claim a project-file comparison",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "An unlisted or differently bound state operation requires `redo`",
+                "An unlisted state operation may use one-off authority",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/verification.md",
+                "separate evidence that the exact operation succeeded from evidence that the resulting state matches the agreed contract",
+                "treat operation success as resulting-state evidence",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "keeps a more specific classified effect when one exists",
+                "always replaces a specific effect with state-change",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "does not count as a successful state operation",
+                "counts as a successful state operation",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "bound to the task epoch, plan identity and permission-forecast identity",
+                "reusable across task epochs and revised plans",
+            ),
+        )
+        for relative, old, new in cases:
+            with self.subTest(relative=relative):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected("non-file-state-objective-contract")
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_advisory_reload_curation_and_delegation_contracts_are_pinned(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "A material advisory result is `- [ ] deliverable:",
+                "An advisory result needs no plan entry",
+                "advisory-deliverable-has-boundary",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/flow.md",
+                "no material effect or final delivery may rely on the changed framing",
+                "final delivery may rely on the old agreement",
+                "advisory-deliverable-has-boundary",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "before exactly the next otherwise-unknown non-control operation in the same human turn",
+                "before any later unknown operation in any human turn",
+                "proactive-capability-remains-bounded",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "An unbound proactive declaration is spent by the next non-control operation even when stronger evidence makes it inapplicable",
+                "preserved when stronger evidence makes it inapplicable",
+                "proactive-capability-remains-bounded",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "becomes exact-operation classification evidence before any separate authority decision",
+                "is discarded before the separate authority decision",
+                "proactive-capability-remains-bounded",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "cannot authorize or classify changed input",
+                "may authorize or classify changed input",
+                "proactive-capability-remains-bounded",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "Proactive intent has no operation hash before it is applied, so it can classify but never pre-authorize a sensitive effect",
+                "Proactive intent may pre-authorize a sensitive effect before the operation is known",
+                "proactive-capability-remains-bounded",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "Covered reads correlate by host operation identity",
+                "Covered reads correlate only by reconstructed command text",
+                "durable-reload-is-exact-and-correlated",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/verification.md",
+                "A declared non-persistent verification follows the read path",
+                "Every declared verification is a project mutation",
+                "non-mutating-verification-does-not-invent-write",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "Its user-visible card follows that observed workspace delta, never the task phase",
+                "Its user-visible card follows the task phase, never the observed workspace delta",
+                "non-mutating-verification-does-not-invent-write",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/folder.md",
+                "For every candidate, choose `promote` or `task-local` with a reason",
+                "Promote every finding that was useful once",
+                "audit-time-rule-and-knowledge-curation",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/verification.md",
+                "keep executor and observer separate",
+                "treat the executor as the final observer",
+                "delegated-operation-evidence-boundary",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/collaboration.md",
+                "override the human's explicit communication rules",
+                "override the portable concise style",
+                "effort-and-voice-are-observable",
             ),
         )
         for relative, old, new, code in cases:

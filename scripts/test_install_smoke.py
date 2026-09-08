@@ -64,7 +64,7 @@ class InstallSmokeTests(unittest.TestCase):
         payload = json.loads(completed.stdout)
         return completed.returncode, payload
 
-    def content_snapshot(self, root: Path) -> dict[str, str]:
+    def content_manifest(self, root: Path) -> dict[str, str]:
         return {
             path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in sorted(root.rglob("*"), key=lambda item: item.as_posix())
@@ -104,26 +104,16 @@ class InstallSmokeTests(unittest.TestCase):
             self.assertNotIn(flag, source)
 
     def test_matching_tree_passes_without_writes_and_marks_session_unverified(self) -> None:
-        before = self.content_snapshot(self.installed)
+        before = self.content_manifest(self.installed)
         returncode, payload = self.run_tool()
-        after = self.content_snapshot(self.installed)
+        after = self.content_manifest(self.installed)
         self.assertEqual(returncode, 0)
         self.assertEqual(payload["status"], "passed")
         self.assertFalse(payload["writes_performed"])
         self.assertIn("access-time metadata", " ".join(payload["limitations"]))
         self.assertIn("ACLs", " ".join(payload["limitations"]))
         self.assertEqual(payload["client_session"]["status"], "unverified")
-        self.assertEqual(payload["runtime_contract"]["operations"], ["inspect", "plan"])
-        self.assertEqual(payload["runtime_contract"]["inspection"], "static-ast")
-        self.assertEqual(
-            payload["record_conformance_contract"]["logical_contract"],
-            "pmnm.activity-record/v1",
-        )
-        self.assertEqual(
-            payload["record_conformance_contract"]["profile"],
-            "pmnm.standard-file/v1",
-        )
-        self.assertGreater(payload["shape"]["capability_count"], 0)
+        self.assertGreater(payload["shape"]["section_count"], 0)
         self.assertGreater(payload["shape"]["reference_count"], 0)
         self.assertEqual(before, after)
 
@@ -182,43 +172,6 @@ class InstallSmokeTests(unittest.TestCase):
             {"path": "unexpected-empty", "effect": "unexpected-installed-entry"},
             payload["mismatches"],
         )
-
-    def test_modified_installed_runtime_is_never_executed(self) -> None:
-        marker = self.base / "must-not-exist"
-        runtime = self.installed / "scripts" / "context_store.py"
-        runtime.write_text(
-            "from pathlib import Path\n"
-            f"Path({os.fspath(marker)!r}).write_text('executed', encoding='utf-8')\n",
-            encoding="utf-8",
-        )
-        returncode, payload = self.run_tool()
-        self.assertEqual(returncode, 1)
-        self.assertFalse(marker.exists())
-        self.assertIn(
-            {
-                "path": "scripts/context_store.py",
-                "effect": "entry-metadata-or-content-mismatch",
-            },
-            payload["mismatches"],
-        )
-
-    def test_reference_runtime_is_inspected_without_execution(self) -> None:
-        marker = self.base / "reference-executed"
-        expected = self.base / "expected"
-        shutil.copytree(SKILL_ROOT, expected)
-        runtime = expected / "scripts" / "context_store.py"
-        runtime.write_text(
-            "from pathlib import Path\n"
-            f"Path({os.fspath(marker)!r}).write_text('executed', encoding='utf-8')\n"
-            "def declare(subparsers):\n"
-            "    subparsers.add_parser('inspect')\n"
-            "    subparsers.add_parser('plan')\n",
-            encoding="utf-8",
-        )
-        shutil.copy2(runtime, self.installed / "scripts" / "context_store.py")
-        returncode, payload = self.run_tool(expected=expected)
-        self.assertEqual(returncode, 0, payload)
-        self.assertFalse(marker.exists())
 
     def test_reference_routing_mismatch_fails_even_when_trees_match(self) -> None:
         expected = self.base / "expected"

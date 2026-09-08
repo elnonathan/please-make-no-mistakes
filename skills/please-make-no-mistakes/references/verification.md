@@ -1,418 +1,212 @@
-# Please, Prove It — Verification
+# Verification
 
-Use the smallest evidence set that can falsify the material contract. More checks are not automatically better; each check needs a claim, scope, and interpretation.
+Load this reference when planning checks, defining scenarios, interpreting results, handing tests to a human or deciding whether repeatable regression protection is sufficient.
 
-Sections: [lanes](#evidence-lanes) · [coverage](#please-plan-what-could-break) · [scenario](#scenario-record) · [statuses](#status-vocabulary) · [selection](#selecting-checks) · [readiness](#verification-intent-before-readiness) · [verifiable handoff](#please-keep-it-verifiable) · [diagnostics](#changed-artifact-diagnostic-gate) · [protection](#repeatable-regression-protection) · [admissibility](#regression-artifact-admissibility) · [equivalence](#observable-equivalence-verification) · [parity](#evidence-parity) · [historical oracle](#historical-oracle-stability) · [negative evidence](#absence-and-negative-behavior) · [manual evidence](#manual-and-automated-evidence) · [invalidation](#invalidation)
+## Start from the contract
 
-## Router contract
+Write the property the check could falsify:
 
-This reference implements `scenario.plan` and `result.verify`. Scenario gaps return `INVESTIGATE` or `ALIGN`. An executable current check returns its literal result to the router. A collaborator-controlled boundary returns a reproducible handoff, never a pass. A missing required environment, fixture, or evidence channel returns `BLOCKED` or `ESCALATE` with `resumeWith`.
+```text
+Under <preconditions>, when <action occurs>, <observable result> holds while <preserved behavior> remains unchanged.
+```
+
+The name of a test layer does not make it sufficient. Select evidence by proximity to this property, ability to distinguish the known defect, current-state relevance and repeatability.
+
+Make every material branch observably distinct in the check. An identity transform, permissive stub or shared fixture that produces the same result along competing paths can hide the wrong branch. Change the fixture or assertion so the incorrect path yields a different observation; otherwise report that branch as unproven.
+
+## Scenario set
+
+Seed scenarios from the human's request before broad investigation. Refine them from inspected entry points, consumers, state, permissions, persistence, delivery, errors, history and risk.
+
+Consider when relevant:
+
+- intended success path
+- negative and denied paths
+- boundary and empty values
+- legacy or missing data
+- repeated execution and retries
+- concurrency and stale responses
+- shared consumers and alternate entry points
+- failure and recovery behavior
+- preserved behavior outside the change
+
+Do not generate a Cartesian product without evidence. Every material scenario is either planned or excluded with a reason and residual risk.
+
+The scenario set belongs in the plan Digest when it can change scope or solution choice. Agreement with the Digest aligns the relevant coverage. A newly discovered material consumer or state may withdraw that agreement.
+
+## Cross-boundary values
+
+Use transitive `impact.md` mode when a material value crosses a place where its meaning, identity or availability can change. Connect the producer or source, each transformation or partial reconstruction, each contract or transport boundary and every material consumer or variant to a planned scenario or an evidence-backed disposition.
+
+A helper-level check cannot prove that a value survived its producer, boundaries and observable consumers. Select evidence at the boundary where the wrong value could be dropped, replaced, delayed or reinterpreted. When both an explicit value and fallback precedence matter, the fixture and assertion for the explicit value and fallback precedence must produce distinguishable observations. Newly discovered material consumers, variants or precedence rules make the affected Digest and evidence stale.
+
+Test material combinations, not only individual mechanisms. If one path reconstructs part of an object and a later path applies a fallback, create a case where the correct explicit value and the fallback yield different observations. A passing producer check plus a passing fallback check does not prove their composition. For every transitive ledger edge, name which observation would fail if that edge dropped, overwrote or reinterpreted the value.
 
 ## Evidence lanes
 
-| Lane | Can establish | Cannot establish alone |
+Use the lanes that can answer the claim:
+
+| Lane | Strong for | Does not prove by itself |
 | --- | --- | --- |
-| Static or semantic | Structure, symbol identity, candidate relationships, types, configuration shape | Runtime reachability, complete reference coverage, data state, product intent, global absence |
-| Focused tests | Executed behavior for specified fixtures and assertions | Production wiring, untested scenarios, complete regression absence |
-| Build, lint, or diagnostics | Conformance to the executed tool and configuration | Product correctness, runtime behavior, or semantic intent outside that scope |
-| Runtime or logs | Executed path and observed state in one environment | Universal correctness, complete side effects, or user-visible rendering |
-| Interface or browser | Visible behavior for one route, actor, data set, viewport, and session | Backend authorization, persistence, or all environments |
-| API or data | Request, response, or stored state for one setup | Interface visibility, complete product intent, or all consumers |
-| History | Prior changes, decisions, and likely context | Current authority, current source state, or current correctness |
-| Manual observation | Human-observed behavior under declared conditions | Automated reproducibility unless the steps and result are captured |
+| Static inspection | structure, types, configuration and code paths | runtime reachability or actual state |
+| Semantic navigation | definitions, references, callers and symbol diagnostics | full observable behavior |
+| Focused executable check | a bounded repeatable contract | unexercised scenarios |
+| Integration or interface run | connected behavior in one environment | every environment or future protection |
+| Logs and traces | events that occurred under recorded conditions | absence outside captured scope |
+| Persisted data inspection | stored state at a point in time | how it was produced without lineage |
+| Human observation | product meaning and visible behavior | an automated future detector |
+| History | ordered change and comparable revisions | intent or complete causality |
 
-## Please, Plan What Could Break
+Two weak lanes do not automatically become one strong lane. Combine them when each closes a different bridge.
 
-Use this responsibility for every material behavior change, defect correction, or contract-sensitive refactor. It creates a **Scenario Coverage Contract** before solution-shaped verification artifacts or implementation. It is not a required file, a testing framework, or proof that any scenario was executed.
+## Delegated execution
 
-Standard and High work require an explicit artifact. Light work MAY compress it when the behavior is genuinely local, reversible, well specified, and free of a material shared boundary. Escalate instead of compressing when investigation reveals another consumer, state, permission, persistence, delivery, configuration, or lifecycle dimension.
+When one actor designs an operation and another executes it, keep executor and observer separate. The execution package names the intended effect and boundary, exact scope, prerequisites, expected cost or load, stop signal, cleanup and the evidence the executor must return. It also distinguishes evidence already available, evidence visible only during execution and evidence that can be checked afterward. An executor's successful response proves only the operation they report; a later observer must verify the resulting contract through an independent observable when one exists.
 
-### Seed, then refine coverage
+“Read-only” means no intended mutation. It does not mean free, fast or safe at arbitrary scope. Bound consequential reads by target, expected work and a stop condition. Use an observable clock, source timestamp or revision for freshness; when none is available, record freshness as unknown rather than deriving a date from memory.
 
-Before broad investigation, create a small seed set from the provisional observable contract: requested success, explicitly preserved behavior, and any immediately known denied or boundary state. Mark its source and uncertainty. Seeds are navigation hypotheses, not a claim of complete coverage.
+## Choose the strongest sufficient accessible check
 
-Refine the same stable scenario identities as investigation establishes entry points, consumers, state, permissions, persistence, delivery, error behavior, history, and risk. Split or retire a seed only with an explicit mapping so the coverage trail remains understandable. Do not wait until after a solution is selected to ask what could break.
+Two checks come first in every task: the request's own case, and the behavior that must not change. Write them as claims with observed results before choosing any other check. When the plan contains non-file state objectives, preserve their agreed identity as `state: <id> — <before> => <after>` and `unchanged-state: <id> — <invariant>` lines in the same evidence file.
 
-Use every applicable source class:
+Before implementation, state:
 
-Use every applicable source class:
+- the changed contract
+- the scenarios that matter
+- the intended repeatable protection
+- the strongest observable check available
+- any required capability and whether it is executable
+- what remains for a human or unavailable environment
 
-1. **Intent and authority:** requested behavior, acceptance criteria, domain rules, collaborator knowledge, non-goals, consequence, and risk acceptance.
-2. **Inspected system surface:** entry points, normalization, identity and permission boundaries, state transitions, persistence, side effects, shared consumers, delivery paths, error behavior, configuration, and existing protection.
-3. **Risk and history:** prior failures, adjacent invariants, known fragile boundaries, refuted hypotheses, change type, and consequence of omission.
+Write those decisions in `verification.md` before a Standard or High plan Digest using these fields: `contract`, `request-case`, `preserved-case`, `entry`, `environment`, `actor`, `data`, `steps`, `expect`, `capability`, `evidence` and `cleanup`. Each field needs an actionable value. `Not applicable` and `unavailable` need the reason that keeps the limitation honest.
 
-Preserve source, basis, and verification status for material scenario claims. A task description does not establish complete technical reachability. Code does not establish product intent. Human recollection does not establish the full system surface.
+For interface behavior, inspect the capabilities actually exposed by the host and project before assigning the run to the human. Look for an executable interface driver, documented local entry points, safe fixture creation, data-query tools and authenticated-session constraints. The pattern is capability discovery, not dependence on one browser framework. If data chooses a branch, connect the safe record to the persisted field, transformation and observable result; a plausible record name is not evidence that it exercises the code path.
 
-Use a compatible semantic navigator for symbol identity and candidate relationships when a verified adapter makes it available and applicable, then corroborate material coverage through other evidence lanes. Otherwise use the safest sufficient combination of definitions, callers, text search, configuration, tests, direct inspection, and runtime evidence. State lost coverage. A remaining blast-radius uncertainty that can change the scenario contract keeps readiness below `READY`.
+When verification depends on starting or restarting local resources, preflight the environment before requesting authority or running the service. Resolve command indirection recursively, inspect current configuration and resources, identify ownership, check health, reuse what is healthy and start only what is missing. If a manager reports one state while the actual process or resource reports another, the environment is unknown until rediscovered. Record this in task-local `environment.md`; do not turn a repository-specific command into a global rule.
 
-### Scenario Coverage Contract
+After implementation, attempt the strongest sufficient check that is accessible and authorized. Convenience is not a reason to substitute lint for behavior. For non-file state, separate evidence that the exact operation succeeded from evidence that the resulting state matches the agreed contract. A receipt or successful tool response establishes only the first. A declared non-persistent verification follows the read path until observed evidence shows a mutation; its name does not manufacture one. A check that rewrites source, snapshots, generated output or build state is a project mutation. Record the resulting state, invalidate prior plan authority and verify again against the new state.
 
-Use one compact record per material scenario:
+Syntax, metadata, documentation and exploratory checks may support investigation or validate a tool, but they do not become final task verification merely because they pass. Keep their literal results as evidence. Do not issue a passed verification receipt or move to the Test Digest while planned file objectives are open.
 
-```text
-Scenario identity and reason:
-Contract dimension or affected consumer:
-Source, basis, and verification status:
-Preconditions — actor, state, data, environment, configuration:
-Trigger or action:
-Expected observable and preserved invariant:
-Forbidden or failure outcome:
-Evidence lane and candidate repeatable guard:
-Coverage disposition: planned | excluded-with-reason
-Execution result when planned:
-  not-run | passed | failed-product | failed-environment | blocked |
-  partial | invalidated
-Coverage limit and residual risk:
-```
+Inspection is not an executed check. If code changed and project evidence exposes an executable check, do not report passed verification from inspection alone without asking the human to accept that weaker evidence. Human verification is not passed until the human reports the observation in a later turn. When the human declares the check is theirs, no other passing check substitutes for it: record `how=human` after their report, not `how=command` for something else that ran. A failed or unavailable check remains failed, blocked or partial; inspection does not erase it.
 
-Use these as omission prompts only when applicable:
+When a check is too broad, flaky or expensive, use a focused discriminator first and then the widest proportional check that can still change confidence. Record the cost and limitation rather than silently skipping it.
 
-- requested success behavior;
-- preserved adjacent behavior and shared consumers;
-- denied, invalid, empty, partial, or boundary conditions;
-- state transitions, persistence, reopening, cancellation, or cleanup;
-- repeated execution, retry, stale result, ordering, idempotence, or concurrency;
-- failure and recovery behavior;
-- identity, permission, configuration, compatibility, or lifecycle variants;
-- relationships between surfaces when agreement is part of the contract.
+## Adjudicate semantic evidence when risk requires it
 
-Avoid a Cartesian product. Prefer evidence-backed partitions, boundary values, state transitions, decision combinations, and interaction pairs only where a material interaction exists. A large matrix is not evidence of completeness.
+At High effort, or when the human asks, use a non-author review to challenge what the current evidence can support. Bind `review.md` to the current plan hash, verification fingerprint and changed surface. Record the contract, author evidence, strongest concrete counterexample, one genuinely different independent check, any disagreement and the residual limit. When `impact.md` applies, the reviewer also derives impact roots independently, asks what the plan omitted and checks the six non-functional dispositions.
 
-Create a coverage mapping from every material contract dimension and affected consumer to at least one scenario. If a material item will not be exercised, use mapping disposition `excluded-with-reason` and preserve the exclusion authority, reason, consequence, and residual risk. It may point to a corresponding scenario whose coverage disposition is also `excluded-with-reason`; that scenario has no execution result. Do not silently treat all adjacent behavior as in scope.
+The review is evidence, not a verdict. Its job is to expose a non-discriminating check, a substitute that exercises another contract, stale evidence, a missing precondition or a branch where correct and incorrect behavior look identical. If the independent check repeats the author's evidence, the counterexample is unavailable, or disagreement remains, do not make an unqualified passed claim. Reconcile the evidence with the human or close as partial or blocked.
 
-### Human scope-and-scenario checkpoint
+The Codex guard can verify that the packet is present, current, distinct in text and free of an explicitly unresolved disagreement. It cannot prove that the reviewer is independent, that a counterexample is strongest or that either interpretation is correct. Other hosts apply the same reasoning without claiming this structural enforcement.
 
-After sufficient read-only investigation, show:
+## Interpret every result literally
+
+For each material check record:
 
 ```text
-Observable fix contract:
-In scope:
-Behavior that must remain unchanged:
-Out of scope and non-goals:
-Blast-radius evidence and tool limits:
-Material scenario groups:
-Explicit omissions and residual risk:
-Product or domain uncertainty the system cannot answer:
-Agent recommendation:
-Exact collaborator decision or prior delegated basis:
-Result: CONTINUE-INVESTIGATION | AWAITING-COLLABORATOR | SCENARIO-ALIGNED
+Claim:
+Method or command:
+Environment and relevant fixture:
+Literal result:
+What it proves:
+What it does not prove:
+Status: passed | failed | partial | blocked
 ```
 
-Use the results literally:
+For a planned state transition, also retain its stable objective id, agreed before and after values, exact operation identity, literal operation result and the observation that tests the resulting state. For preserved state, retain the invariant and how it was checked. Never turn a successful command into a claim that external state changed when no result observation supports it.
 
-- `CONTINUE-INVESTIGATION` permits safe read-only discovery and already authorized bounded instrumentation; it does not permit solution-shaped artifacts or implementation.
-- `AWAITING-COLLABORATOR` ends the turn because the required human response or collaborator-owned decision is absent.
-- `SCENARIO-ALIGNED` means the current coverage contract may be considered by change readiness. It is not implementation authority and does not authorize another effect class.
+Separate:
 
-For Standard and High defect or material behavior work, `SCENARIO-ALIGNED` requires one current collaborator response to this evidence-backed checkpoint or a prior explicit scope-specific delegation covering the material scenario decisions. A generic request to implement is not such a response or delegation. Light work MAY use a compressed evidence-backed result without another response when no collaborator-owned product, scope, consequence, or risk decision remains.
+- `failed`: the product violates the tested contract
+- `blocked`: the check did not reach the product assertion
+- `partial`: only part of the intended contract ran
+- environment failure: setup, resources or tooling prevented a valid result
 
-Do not ask the collaborator to inspect code, enumerate callers, select routine test mechanics, or invent technical edge cases available from current sources. Ask only the smallest evidence-based product, scope, priority, operational, consequence, or risk question. When **Please, Align Before You Choose** also triggers, merge the user-facing presentation and ask at most one focused question; preserve separate direction and scenario results in the audit trail.
+A check that never started is not a failed product test. A clean diagnostic is not a user-visible pass. A manual handoff is not executed evidence.
 
-### Keep four claims separate
+## Changed artifacts
 
-1. **Scenario coverage contract:** behavior that must be exercised or explicitly omitted.
-2. **Current verification:** scenarios actually checked in the final state and what the evidence establishes.
-3. **Repeatable regression protection:** scenarios with a discriminating guard expected to recur under declared conditions.
-4. **Independent challenge:** additional exploration that did not treat the author's scenario inventory as complete.
+Every changed artifact supported by a current executable diagnostic should receive coverage before closure. This includes new files and generated or configuration surfaces that are part of the Digest.
 
-A planned scenario is not current evidence. A one-time pass is not automatically a repeatable guard. An author-derived plan is not independent challenge. When an independent reviewer, tool, or validation function exists, provide the observable contract, reproducible conditions, known risks, evidence, and gaps without prescribing its complete exploration. Its material discoveries update and may invalidate the scenario contract. The first three responsibilities remain required when no independent challenge is available.
+For each changed artifact, record one of:
 
-## Scenario record
+- covered by a named current check
+- covered indirectly through a named contract and why
+- unsupported by the available diagnostic channel
+- intentionally excluded with reason and risk
 
-Use one record per material scenario:
-
-```text
-Requirement or claim:
-Evidence lane:
-Pre-state and source:
-Post-state and source:
-Route or entry point:
-Actor and permissions:
-Fixture, data, and environment:
-Action:
-Expected observable:
-Observed result:
-Coverage disposition:
-Execution result:
-What this proves:
-What this does not prove:
-Residual gap:
-```
-
-Keep pre-state and post-state inputs equivalent. If they differ, explain why the comparison remains valid.
-
-## Status vocabulary
-
-Coverage and execution are independent axes:
-
-- **planned**: the scenario belongs to the current coverage contract and requires an execution disposition before the applicable completion claim.
-- **excluded-with-reason**: current authority intentionally omits the scenario and preserves the reason, consequence, and residual risk. It is not a pass or `not-run` execution.
-
-For a planned scenario, use exactly one execution result:
-
-- **passed**: the executed check matched the declared expectation within scope.
-- **failed-product**: the intended product path executed and contradicted the contract.
-- **failed-environment**: setup, infrastructure, authentication, dependency, or tool failure prevented a product conclusion.
-- **blocked**: required authority, fixture, credential, environment, or external state remains unavailable after reasonable non-destructive discovery.
-- **not-run**: no execution occurred.
-- **partial**: evidence supports only part of the claim.
-- **invalidated**: source or material conditions changed after collection.
-
-`absent-within-scope` belongs to claim evidence in `epistemic-integrity.md`; it is not scenario execution. Migrate an older `out-of-scope` value to coverage disposition `excluded-with-reason` plus its authority, consequence, and residual risk.
-
-Do not collapse these into a generic “verified” or “failed.”
-
-## Selecting checks
-
-Before running a material check:
-
-1. Name the claim or requirement it can falsify.
-2. Rank applicable checks by contract coverage, directness, current-state relevance, and ability to discriminate product failure from environment failure or a competing explanation.
-3. Establish the minimum sufficient combination for current risk.
-4. Only then minimize cost, scope, and operational burden.
-5. Widen when risk, failure, shared contracts, or a coverage gap requires it.
-6. Obey project commands, authority, and resource limits.
-
-There is no universal priority among tests, runtime observation, interfaces, requests, data inspection, static analysis, or human validation. The contract and accessible evidence determine the order.
-
-When a preferred tool is unavailable, use the safest accessible alternative. State the lost coverage instead of simulating a successful check.
-
-## Verification intent before readiness
-
-For Standard or High work, define before `READY`:
-
-```text
-Material contract or policy claim:
-Check that can falsify it:
-Required actor, state, fixture, environment, or tool:
-Negative or bypass case when applicable:
-Expected evidence lane:
-Known limitation:
-```
-
-This is a verification plan, not a result. A test that proves only route, middleware, callback, helper, component, or handler invocation does not prove the behavior or policy that component must enforce. For a security, authorization, privacy, or other High-risk boundary, target observable allowed and denied behavior and the authoritative state transition.
-
-An environment or tooling failure can block execution, but it cannot confirm product behavior or solution safety. Keep the intended check `not-run` or `blocked` and preserve the exact cause separately.
-
-## Please, Keep It Verifiable
-
-For every material behavior change, resolve how the observable contract will be exercised. Do not stop after tests, diagnostics, source inspection, or an implementation summary when a stronger authorized runtime or collaborator-observable check is accessible.
-
-### Resolve the execution surface
-
-Derive the applicable fields from current project evidence rather than generic examples:
-
-```text
-Observable contract:
-Entry surface — route, command, request, event, job, device, or equivalent:
-Actor, identity, permissions, and starting state:
-Required data, fixture, configuration, environment, and services:
-Exact actions:
-Expected observations for success, negative, boundary, and repeated scenarios:
-Evidence to retain and where it may be stored:
-Cleanup or state restoration:
-Execution owner: agent | collaborator | shared | none
-Execution access: available-authorized | collaborator-controlled | unavailable | not-applicable
-Strongest accessible authorized check:
-```
-
-Use only fields that apply, but leave no material precondition implicit. Resolve URLs, identifiers, data, accounts, commands, and navigation from authoritative current sources when available. Never invent them. If a value cannot be established, name the missing source and its effect on execution.
-
-### Execute before delegating
-
-The agent MUST attempt the strongest accessible authorized check whose effects remain within current authority. It MAY use a running environment, interface tool, request surface, command, fixture, or other mechanism already established by the project. It MUST NOT create, reset, replace, restart, duplicate, or reconfigure an environment merely to avoid a handoff unless that effect is authorized.
-
-Before starting or changing local runtime state:
-
-1. inspect the existing execution surface and its health;
-2. reuse a healthy existing environment when it satisfies the check;
-3. record every process, service, fixture, configuration, or temporary state started or changed by the agent;
-4. stop or restore only state the agent owns and is authorized to change;
-5. when ownership is uncertain, preserve the state and report the uncertainty.
-
-These rules do not assume a browser, container, port convention, process manager, test framework, or deployment model.
-
-### Leave a reproducible handoff
-
-When an inaccessible account, device, environment, credential, human judgment, or other collaborator-controlled boundary prevents direct execution, provide a compact handoff containing the resolved entry surface, preconditions, exact actions, expected observations, evidence to return, cleanup, and the reason the agent could not perform it. The collaborator should not have to reconstruct routine mechanics or ask where, with what data, or what to observe.
-
-A handoff is `reproducible` only when another authorized actor can perform it without guessing a material value. If the missing value cannot be discovered or safely supplied, the result is `blocked`, not a vague handoff.
-
-### Final verification disposition
-
-Resolve exactly one disposition before the final audit:
-
-- `executed`: the agent performed the strongest required accessible check and captured its literal result;
-- `collaborative`: the agent and collaborator completed the check together, with conditions and observations captured;
-- `reproducible-handoff`: execution remains with the collaborator, but the complete evidence-backed procedure was delivered;
-- `blocked`: a named authority, environment, data, identity, capability, or safety boundary prevents execution or a reproducible handoff;
-- `not-applicable`: no runtime or collaborator-observable check is material to the changed contract, with the boundary stated.
-
-For `executed` and `collaborative`, preserve the result, evidence, conditions, non-coverage, and cleanup state. `reproducible-handoff` establishes continuity, not successful execution. When actual observation is part of the completion condition, a handoff or blocked check leaves the overall outcome `partial` or `blocked` even if implementation and internal checks are complete.
-
-Internal checks remain valuable supporting evidence. They may satisfy the observable contract when their boundary directly or representatively exercises it. Otherwise label them `supporting-only`; do not use them to close a runtime or user-visible claim.
-
-## Changed-artifact diagnostic gate
-
-After implementation mutation, inventory the exact changed artifacts from the current source or delivery state without assuming a version-control system. For every changed artifact, classify current diagnostic applicability as `applicable`, `unsupported`, or `unavailable`. When an executable current language-aware or project-native diagnostic capability applies, inspect every supported changed artifact before completion.
-
-Record one current coverage result:
-
-```text
-Changed artifacts:
-Applicable artifacts:
-Current trusted checks:
-Unsupported artifacts and reason:
-Untrusted or unavailable artifacts:
-Current errors and attribution:
-Fallback checks:
-Coverage lost:
-Result: clean | bounded-residual | blocked | not-applicable
-```
-
-Use the results literally:
-
-- `clean` requires trusted current coverage for every applicable artifact and no current diagnostic error;
-- `bounded-residual` permits a verified pre-existing error under current project or collaborator authority, or an explicitly bounded coverage loss with a sufficient fallback under current requirements and risk; it never means diagnostics are clean;
-- `blocked` applies when a current error was introduced or modified by the work, remains unattributed, or when missing coverage can change the completion claim and no sufficient fallback exists;
-- `not-applicable` requires evidence that none of the changed artifacts has an applicable executable diagnostic capability. It is not a synonym for unavailable.
-
-An untrusted diagnostic result is lost coverage, not a pass. Use the strongest sufficient project-native fallback, state what it can and cannot establish, and keep completion partial or blocked when the residual gap remains material. A verified pre-existing error may remain only when its attribution and the authority accepting that residual are current and explicit.
-
-Diagnostics are a conformance lane. They do not replace contract tests, runtime observation, interface checks, or another stronger material lane. Any mutation after this gate invalidates affected diagnostic coverage.
+Do not call the result clean when a relevant diagnostic was truncated, stale, unavailable or run against a different source state.
 
 ## Repeatable regression protection
 
-Keep two questions explicit:
+Current behavior and future detection are independent:
 
-1. **Current verification:** does the final state satisfy the material contract under the declared conditions?
-2. **Regression protection:** what repeatable mechanism, if any, can detect a future violation of that contract?
+1. **Current verification:** evidence that the intended behavior occurs now.
+2. **Repeatable protection:** an executable check likely to fail if the material defect returns.
 
-One artifact may answer both, but evidence for the current state does not automatically establish future detection. A manual observation, recording, successful request, or stored value may be valid current evidence without being a repeatable guard. A repeatable guard may be automatically executed or intentionally performed by a person; preserve that distinction and the expected execution conditions.
+For a behavior correction or contract-sensitive refactor, add or identify repeatable protection unless it is not applicable or a stronger existing check already covers the recurrence. State which.
 
-For every material behavior change, defect correction, or contract-sensitive refactor, record the intended disposition before `READY` and resolve the final disposition before completion:
+Do not require a unit test merely by category. Prefer the narrowest layer that can observe the failure without mocking away its cause. A unit test is useful when the contract is local. An integration or interface check is necessary when the defect exists only across a bridge. A static rule may be strongest for a structural invariant.
 
-```text
-Regression-protection status:
-  existing-sufficient | added-or-updated | not-applicable | omitted-with-reason | blocked
-Material contract protected:
-Repeatable guard and expected execution conditions:
-Evidence that it can detect the relevant recurrence:
-Coverage and blind spots:
-Authoritative requirement or omission reason:
-Residual risk:
-```
+A proposed regression check is admissible only when:
 
-Use the statuses literally:
+- it can fail for a real violation of the task contract
+- it passed or failed against the intended source state as reported
+- its fixtures represent material preconditions
+- it does not merely restate the implementation
+- its result is not explained by an unrelated environment failure
+- its fixture makes the relevant incorrect path observably fail
 
-- `existing-sufficient`: an existing repeatable guard is demonstrated to cover the changed contract and its expected execution conditions are established within scope;
-- `added-or-updated`: the final state includes a stable, proportionate guard and evidence shows that it can detect the relevant recurrence;
-- `not-applicable`: the change does not alter a material behavior or contract for which recurrence protection has meaning; state that boundary;
-- `omitted-with-reason`: protection is relevant, but no defensible guard was added because of a bounded reason such as no stable oracle, a wrong available layer, or disproportionate new infrastructure; state the consequence and residual risk;
-- `blocked`: a controlling protection requirement or evidence needed to justify the disposition cannot be satisfied, so completion remains blocked or incomplete.
+## Negative and repeated behavior
 
-Select the layer and mechanism by the observable contract it can falsify. Do not default to a unit-level artifact, a particular runner, or an automatic delivery mechanism. Prefer an established, stable, proportionate project mechanism when it materially reduces recurrence risk. An existing artifact is sufficient only when its assertions, conditions, and behavioral boundary can detect the relevant failure; existence, naming, or a passing result alone is insufficient.
+Verify denial, absence and repeated behavior directly when material. Useful questions include:
 
-Establish recurrence-detection ability through proportionate evidence such as a known failing state, a controlled counterexample, a test-first failure, or direct inspection of a discriminating oracle. Do not introduce unsafe or destructive faults merely to prove the guard.
+- Does the forbidden action remain forbidden through every reachable entry point?
+- Does an empty or missing value preserve the intended fallback?
+- Does retry duplicate state, spend authority twice or apply a stale response?
+- Does a repeated action retain identity and ordering?
+- Does the change expose an existing defect to a new consumer?
 
-Obey the applicable instruction hierarchy. A lower-authority preference cannot waive a controlling requirement for a test or repeatable guard. If no controlling requirement applies, omission may be defensible, but convenience alone is not a reason. Do not create a brittle, nondiscriminating, wrong-layer, or assertion-free artifact merely to avoid an honest omission.
+Negative search evidence is not an execution result. To claim an effect does not occur, observe the boundary that would reveal it under controlled conditions.
 
-For High-risk work, manual-only protection or `omitted-with-reason` requires an explicit risk rationale and sufficient independent current verification. Neither overrides a controlling protection requirement.
+## Test Digest
 
-## Regression artifact admissibility
+The plan Digest belongs before implementation and asks whether the proposed work is acceptable. The Test Digest belongs after implementation, current verification, any required independent review and the agent's final audit. It is the human acceptance handoff, normally immediately before commit, submit or close. Never present it as an intermediate progress report or in place of the plan Digest.
 
-Before treating an artifact as the activity's regression protection, record:
+After implementation, translate the remaining observable verification into this exact ordered shape. Each field has a non-empty value on the same line:
 
 ```text
-Observable contract it can falsify:
-Represented pre-change state:
-Represented post-change state:
-Expected discriminating behavior:
-Classification:
-  characterization | scope-guard | regression-guard | auxiliary
-Explicit non-coverage:
+Test — <task id>
+Where: <URL, screen, command or endpoint>
+Environment: <runtime and required setup>
+As: <user, role, account or caller characteristics>
+Data: <safe fixture or record and its provenance>
+Steps: 1. … 2. … 3. …
+Expect: <what should be seen at each material step>
+Evidence: <what to retain>
+Cleanup: <what must be restored, or why none is needed>
+Can run: <yes with the available capability | no with the exact limitation>
 ```
 
-Use the classifications literally:
+Investigate the real execution surface before asking the human. Supply known URL or entry point, environment, safe fixture characteristics, input values, expected observations, evidence to retain and cleanup. Never invent credentials, names or data. A repository route, runtime query or interface inspection may establish these details; a ticket description alone usually cannot.
 
-- **characterization** preserves an observed state without necessarily deciding whether it is desired;
-- **`scope-guard`** protects an adjacent invariant or prevents expansion beyond the requested boundary;
-- **`regression-guard`** can distinguish recurrence of the material contract violation under declared execution conditions;
-- **auxiliary** demonstrates a mechanism, helper, route, transformation, or supporting property without falsifying the complete observable contract.
+When an available interface tool can run the Digest safely, offer to execute it. When it cannot, say which capability or authority is missing and that the check has not run. Show the Digest only after the final audit is current, then wait for a later human response.
 
-Only a demonstrated `regression-guard` can support `existing-sufficient` or `added-or-updated` for the activity's material contract. Characterization, scope, and auxiliary artifacts may still be valuable, but their value and non-coverage must remain explicit. Do not reinterpret a passing auxiliary artifact as a regression guard because its subject appears in the final implementation.
+## Corrections and stale evidence
 
-## Observable-equivalence verification
+Evidence is bound to its source, environment, fixture and conditions. Invalidate the affected result when any of those materially changes.
 
-When **Please, Trace What Must Match** is active, verify the relationship rather than only each surface in isolation:
+A new consumer, changed contract, corrected assumption, failed required capability, modified fixture or post-check source edit requires the smallest affected verification to run again. Preserve the former result as historical evidence, not current proof.
 
-```text
-Observable property:
-Authority for agreement or intentional difference:
-Surface A conditions and result:
-Surface B conditions and result:
-Comparable identity, scope, filters, permissions, lifecycle, timing,
-deletion, pagination, error, and empty-state dimensions:
-Equivalence result: verified | refuted | unknown
-Bridge evidence:
-Negative control:
-What remains outside this comparison:
-```
+## Final disposition
 
-`verified` requires evidence that the compared property and relevant populations or states are contractually equivalent, not merely equal in one fixture. `refuted` may be the correct result when the surfaces intentionally differ; it blocks a forced-parity implementation rather than becoming a failed test. `unknown` or a missing material bridge keeps dependent readiness `INCOMPLETE`.
+Before the audit, summarize:
 
-A regression guard for an equivalence defect must be capable of failing when the relationship is violated. Separate tests for two internal mechanisms are not equivalent to testing the relationship unless their combined oracle discriminates the observable mismatch.
+- planned scenarios and their literal results
+- repeatable protection status
+- diagnostics on changed artifacts
+- human-only or unavailable checks
+- remaining uncertainty and risk
 
-## Evidence parity
-
-For before/after comparisons, keep these stable when applicable:
-
-- source state;
-- route or entry point;
-- actor and permissions;
-- fixture and data;
-- environment and configuration;
-- action and timing;
-- viewport or interface conditions.
-
-If the initial state already contains partial work, record the clean base, initial working state, and final state separately.
-
-## Historical oracle stability
-
-When historical localization is material, keep verification status separate from revision classification. Use [regression-localization.md](regression-localization.md) and record:
-
-```text
-Observable property:
-Revision identity and relevant predecessors:
-Comparable conditions:
-Attempts and observed results:
-Stability result:
-Verification status:
-Revision classification: old/good | new/bad | skip | inconclusive
-What this classification establishes:
-Remaining candidate or causal gap:
-```
-
-`old/good` and `new/bad` describe the two sides of the declared property. `skip` means deliberately untested for a known reason; `inconclusive` means attempted evidence could not classify the revision reliably. Neither is evidence for the opposite side. An unstable oracle, material condition drift, or adjacent unclassifiable revisions prevents a unique transition claim.
-
-## Absence and negative behavior
-
-An empty result is evidence only for the operation that produced it.
-
-Before a material absence claim, record search scope, attempts, aliases, excluded stores, parsing or indexing failures, and the strongest remaining blind spot. Prefer `absent-within-scope` over a universal negative claim.
-
-For interface absence, verify the correct route, actor, fixture, data, search/filter state, and relevant navigation or scrolling. A login page, error page, wrong route, missing fixture, or unauthorized state is not product verification.
-
-## Manual and automated evidence
-
-Keep one-time manual evidence, a repeatable human procedure, and automatically executable protection distinct. Identify who or what performed a check and under which conditions it is expected to recur. An unexecuted test may be design evidence if labeled `not-run`; it is not runtime confirmation. The existence of an executable artifact does not establish that a relevant future workflow will execute it.
-
-## Invalidation
-
-A material source or condition change invalidates dependent evidence and any Change Readiness Receipt that relied on it. A newly discovered material consumer, state, contract dimension, scenario, omission consequence, or tool-coverage loss also invalidates affected scenario coverage and its human-alignment result. Re-run the check or downgrade the claim. When a route, fixture, actor, assumption, required-tool result, or hypothesis is refuted, find and reclassify dependent artifacts rather than leaving them presented as current evidence.
-
-After invalidation, identify the affected scenario mappings, direction alignment when dependent, readiness fields, verification, and regression-protection claims; then return to `INCOMPLETE` or `BLOCKED`. A corrected implementation, changed fixture, new consumer, or replacement tool needs refreshed scenario alignment, a new readiness result, and affected verification evidence before completion can be claimed.
-
-A change from one verification status to another does not by itself require a conversational hard stop. Trigger **Please, Stop and Reconcile** only when the new status or evidence materially changes what the agent should believe, recommend, verify, or do next, or when the collaborator explicitly rejects the direction built on that evidence. Preserve the prior result as history with its new invalidated or refuted status; do not erase it or leave it competing as current proof.
-
-When correction drift triggers `RECOVERY`, classify every dependent verification artifact as `retain`, `experimental`, `invalid`, `collaborator-owned`, `unrelated`, or `unknown`. Do not adapt or delete an artifact merely to fit the corrected direction. A new readiness epoch requires a fresh admissibility decision for any artifact later presented as regression protection.
+Completion is bounded by that evidence. A passed audit requires a current passed verification even when no implementation was needed. Do not use “all tests pass” unless every test in the declared set ran and passed on the current source state.

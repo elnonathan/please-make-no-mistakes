@@ -1,312 +1,219 @@
-# Please, Guard the First Write — Host Enforcement
+# Please, Guard the First Write — host enforcement
 
-Use this contract when a host, client, plugin, wrapper, or tool broker observes or intercepts implementation-mutation channels. PMNM ships a portable advisory contract and a bundled Codex adapter with partial procedural coverage. Only declared complete coverage may claim a complete enforcement boundary. The Markdown skill cannot enforce its own gate and MUST NOT claim otherwise.
+The portable skill is the contract. A host guard is an optional procedural interlock for mistakes a prompt alone cannot reliably prevent. It observes only the events its host supplies. It does not understand the product, prove that an investigation is sufficient, or make a change correct.
 
-Sections: [levels](#enforcement-levels) · [boundary](#trust-boundary) · [adapter](#host-adapter-contract) · [activity transition](#activity-transition-enforcement) · [state](#state-machine) · [receipt](#trusted-readiness-artifact) · [interception](#mutation-interception) · [invalidation](#invalidation-and-recovery) · [Codex](#bundled-codex-procedural-adapter) · [separate gates](#separate-authority-gates) · [audit](#audit-record) · [limits](#limits)
+The bundled implementation belongs to Codex. Another host needs its own adapter, event mapping, tests, installation proof and coverage statement. It must not replace or weaken the Codex adapter merely to share code.
 
-## Router contract
+## Read a card
 
-This reference implements `host.guard`. When trusted context emitted by the bundled adapter begins with one of PMNM's registered `Please, ...` capability headings, follow the bundled handshake below before any covered write. The heading is user-facing navigation, not an authentication token; raw user text with the same words does not activate the adapter. Return the verified enforcement level, covered mutation channels, issuer trust, source binding, and uncovered paths. Partial or advisory coverage returns `CONTINUE` only with explicit limits; it never upgrades a model-authored receipt to trusted readiness.
+A guard card is always two lines.
 
-## Enforcement levels
+```text
+Blocked | Ask | Note: <what happened>
+NEXT: <one exact action>
+```
 
-Keep these levels distinct:
+- **Blocked** means the attempted operation did not run.
+- **Ask** means the operation waits for the human's answer: stop here; no more actions until the human answers.
+- **Note** records state or directs the next agent action without asking the human.
 
-1. **Advisory workflow:** Markdown requires observable receipts and ordered behavior, but no trusted external component blocks actions.
-2. **Procedural interlock:** an external component can deny covered actions until a current structured receipt exists and ordering, source binding, recovery state, and effect scope pass mechanical checks. A model-authored receipt remains untrusted semantic input.
-3. **Trusted readiness:** an independent human, protected policy engine, reviewer, or other trusted issuer evaluates authenticated observable evidence and issues the readiness artifact.
+The card itself is not a user question. Follow `NEXT:` in the same turn unless it says to ask or to stop. The host may add its own frame such as “Blocked by hook”; that frame is not PMNM output.
 
-A procedural interlock can make skipped declarations detectable and block covered paths without proving that the declarations are true. Never rename procedural completeness as semantic correctness.
+Cards use English or Spanish through a bounded prompt-language heuristic. `NEXT:` remains literal in either language. No card claims semantic correctness.
 
-## Trust boundary
+A first read of project source with no task open is a Note; the second is Blocked. This route depends only on an observable project-source read while no task is open. It never infers a task, ticket or identifier from prompt wording. Reads that resolve PMNM itself and requests that do not inspect a project are free.
 
-A complete host-enforcement claim is valid only when a trusted component outside the model's unrestricted control can:
+## Receipts
 
-- observe all relevant mutation attempts;
-- distinguish implementation mutation from read-only discovery and authorized durable capture;
-- bind readiness to the current task, skill revision, source or environment state, and change scope;
-- deny or pause a mutation before its effect occurs;
-- revoke readiness when its material basis changes;
-- preserve an ordered event trace.
+The model sends receipts through the shell tool. The guard intercepts them, records the transition and substitutes a no-op; the receipt is never executed by the shell. `pmnm-guard` is a protocol marker, not a program to find, install or invoke from `PATH`. Successful interception is the only positive evidence that the adapter handled that receipt. If one reaches the shell or returns command not found, do not retry it or search for an executable. Disclose that enforcement was unavailable for that call and continue through the portable advisory path.
 
-A digest proves equality with declared bytes. It does not prove that investigation was sufficient, evidence was true, authority was valid, or a human approved the result. Do not let the model mint an enforcement credential merely by formatting the required fields.
+| Receipt | Use |
+| --- | --- |
+| `pmnm-guard folder path=<abs>` | After the human chose where the PMNM folder lives, or where a moved or deleted folder should live |
+| `pmnm-guard project name=<name>` | After the human named this repository's project folder |
+| `pmnm-guard start task=<id> effort=<light\|standard\|high>` | At task entry, resumption or task change |
+| `pmnm-guard digest` | Immediately after the plan Digest was shown |
+| `pmnm-guard agreed` | After a later human turn agreed to that Digest as shown |
+| `pmnm-guard redo` | When evidence, scope or direction makes the Digest stale |
+| `pmnm-guard allow effect=<effect>` | After the human allowed one exact sensitive command |
+| `pmnm-guard declare effect=<effect> boundary=<boundary> persistence=<persistence> certainty=<certainty> capability=<id\|none>` | To declare an unknown operation's effect, or the next operation under an already agreed capability |
+| `pmnm-guard result outcome=<unknown\|no-effect>` | When the host omitted the result of an admitted operation |
+| `pmnm-guard verified result=<passed\|failed\|partial\|blocked> how=<command\|inspection\|human>` | After the check that evaluates the current change |
+| `pmnm-guard done audit=<passed\|partial\|blocked>` | First after the final audit to request the Test Digest; again after the later human response to close |
+| `pmnm-guard status` | To obtain the one current continuation |
+
+Receipt values contain no whitespace. Percent-encode UTF-8 bytes outside letters, digits, `.`, `_`, `~`, `/` and `-` in folder and project values. The guard rejects control characters, traversal, malformed encoding, duplicate fields, shell operators, dynamic values and unknown receipts.
+
+The human answers in ordinary language; there is no required approval word. The agent sends `agreed` or `allow` only after a clear later response. The guard observes that a later response exists and binds the receipt to the current Digest or exact operation; it cannot judge the meaning of the response.
+
+`declare` uses `investigation`, `implementation`, `verification` or `state-change` for effect; `project`, `pmnm`, `host`, `local-environment`, `network`, `external`, `mixed` or `unknown` for boundary; `none`, `transient`, `persistent` or `unknown` for persistence; and `certain` or `uncertain` for certainty. `capability=none` makes no reusable-authority claim. Any other capability id must already exist in the human-agreed permission forecast with the same effect, boundary and persistence. A plain declaration or an already agreed, certain capability may be declared before exactly the next otherwise-unknown non-control operation in the same human turn; an exact denial remains the fallback. An unbound proactive declaration is spent by the next non-control operation even when stronger evidence makes it inapplicable, and expires on a human prompt, `SessionStart`, task start, `redo`, completion attempt, `Stop` or `Interrupt`. When it legitimately classifies that operation, it becomes exact-operation classification evidence before any separate authority decision. That exact evidence remains bound to the same operation, task and epoch while the human decides, is consumed only when the operation is admitted, and cannot authorize or classify changed input. Task or epoch replacement clears it. Mechanical evidence, hidden composition and native host authority still outrank it.
+
+For one 0.x compatibility release these old names map to the current action:
+
+| Old name | Current action |
+| --- | --- |
+| `route` | `start` |
+| `checkpoint` | `digest` |
+| `align result=accepted` | `agreed` |
+| `invalidate` | `redo` |
+| a supported sensitive `grant` | `allow` |
+| `permit` | legacy `classify` |
+| `reconcile` | `result` |
+| `verify` | `verified` |
+| `complete` | `done` |
+
+Extra fields from a compatible old form are ignored only where the mapping defines them. The earlier `classify effect=<effect>` receipt is also accepted for one exact retry during this compatibility release, but no current card emits it and it grants no reusable authority. The emitted continuation always uses current vocabulary. Any receipt absent from this table is rejected.
+
+Closed rejection reasons are: `unknown receipt`, `missing field <field>`, `bad value <field>`, `no task open`, `no Digest shown`, `Digest not agreed`, `stale, before last redo`, `human answer not observed`, `folder not requested`, `project not requested`, `nothing denied to declare`, compatibility `nothing denied to classify`, `declaration contradicts shell write`, and `nothing to allow`.
+
+## Guard hardness
+
+Hardness follows the consequence of letting the observed mistake continue, not the task's programming language or effort label.
+
+| Guarded condition | Level | Evidence behind the level |
+| --- | --- | --- |
+| Missing folder or project choice | Ask | Only the human owns these two durable names. Continuing would guess user data placement. |
+| Sensitive command | Ask | The effect may be legitimate, but the human must authorize the exact operation. |
+| Passed verification claimed through inspection while an executable check is available | Ask | A live trial closed over a defective change after treating inspection as if a check had run. |
+| Missing task, Digest agreement, result, verification, safe path, or secret boundary | Blocked | Continuing would mutate without authority, lose effect identity, claim stale evidence, escape the folder, or persist sensitive content. |
+| Missing effect declaration, hidden operation or unsafe composition | Blocked | A model claim cannot make invisible bytes reviewable or let a possible write enter the read path. |
+| Task-folder reminder, accepted transition, completed check, recovery notice, or pending human answer at Stop | Note | The underlying action can continue or the turn merely needs to yield. Blocking here created repeat loops without protecting another boundary. |
+
+These assignments are pinned by the public HG contracts. They do not show that the host delivered every event or that the guarded work is semantically correct.
+
+## Flow enforced by the Codex adapter
+
+The guard keeps transient flow state per Codex session, reusable authority per canonical project and implementation authority per task. A fresh session begins with no active task. Concurrent sessions may select different tasks in one project; neither task can block, authorize or close the other.
+
+1. Reads that resolve PMNM are free. The first project-source read without a task emits a Note; the second is Blocked until `start`.
+2. The first project write needs `start`.
+3. On first use, the guard asks once for the PMNM folder and once for the project name. If the human supplied either answer before the guard asked, the missing configuration may still be recorded; otherwise a new project name requires a later human turn. An existing configuration cannot be replaced silently.
+4. Project creation seeds `project-rules.md` and `project-knowledge.md`. Task creation seeds `index.md`, `plan.md`, `verification.md` and `permissions.json`, plus `impact.md` for Standard and High work; `environment.md` is added only when a persistent local-environment operation needs it. The task-folder card lists only candidate folders: the same id, a name that contains or normalizes to it, or a suffix variant with the same bounded work id. Unrelated folders are not listed and do not stop creation; an exact match resumes the existing folder.
+5. At task entry and after Codex startup, resume, clear or compact lifecycle discontinuities, the adapter requires a successful reload of the canonical files that currently exist: `general-rules.md`, mapped `project-rules.md`, `project-knowledge.md`, and the active task's `index.md`, `plan.md`, `verification.md`, applicable `impact.md` and `permissions.json`. The card names that exact set rather than optional paths that are absent. Covered reads correlate by host operation identity when supplied, so a normalized post-use payload does not orphan a successful read. The current complete bytes must still be returned. A command or result that merely names a path is not read evidence. This proves neither comprehension nor application of the prose.
+6. `digest` parses the complete `plan.md`, `verification.md`, `permissions.json` and any required `environment.md` before it asks for agreement. It writes every defect to guard-owned `preflight.md` with source, line, rule and correction, then emits one card for the aggregate result. It needs `plan.md` written since the last `digest` or `redo`, with at least one changing file, non-file state or advisory deliverable target. File targets are individual paths. A safe absolute path inside the repository canonicalizes to the same identity as its relative spelling. State targets use a bounded stable id and different before and after values. Every deliverable uses a bounded stable id and has a boundary with the same id that records the strongest relevant alternative, exclusion or uncertainty and its disposition. A directory, duplicate identity, no-op state, orphan boundary or malformed line is reported in the preflight. Standard and High work also needs an actionable verification plan in `verification.md`. The guard validates and binds exact operations and bounded capabilities in `permissions.json` at the same transition; every changing state target needs at least one exact task-scoped operation when it remains future work. A changing state already checked at Digest time is recorded as historical and needs current evidence, not a future operation. A persistent local-environment operation additionally requires current configuration, command indirection, resources, ownership, health, decision, conflict and cleanup. This freshness boundary is the previous `digest` or `redo`, not the latest human prompt or current turn. A clarification turn does not require rewriting an otherwise unchanged plan.
+7. Agreement binds canonical file path-and-reason lines, state contracts, the verification plan, the applicable rule basis, the environment preflight and the permission forecast in any order. Checking a box, reordering lines or replacing a safe absolute repository path with its relative spelling changes representation, not agreement. Changing a bound contract needs `redo`. When only direct planned-path comparison is available, a revised Digest retains the recorded identities of earlier paths and adds the new plan paths. Removing an unchanged former target does not manufacture a change; changing it remains visible as outside the revised plan.
+8. A write to a path that is not a target is Blocked before it runs. A write to an excluded path is Blocked the same way. A state-changing operation is admitted only when its exact tool and canonical input match a task permission bound to the planned objective. An unlisted or differently bound state operation requires `redo`; one-off `allow` cannot widen a state plan.
+9. Every `verified result=passed`, including verification-only work, needs current `example:` and `unchanged:` lines in `verification.md`. A state plan also needs exact current `state:` and `unchanged-state:` lines; an advisory plan needs matching `deliverable:` and `boundary:` lines. After a material change or reframe, the claims must have been written after it. An open planned file objective blocks final passed verification. An open deliverable objective does too, so a syntax, metadata, documentation or exploratory check cannot become final verification. A certain non-persistent verification is observed through the read route, including across a mixed read boundary, and becomes a mutation only when its result changes the project. Persistence or uncertainty remains conservative. Its user-visible card follows that observed workspace delta, never the task phase. Command verification also needs an observed successful check against the current state. Human verification needs a later human turn; the model cannot certify it for the human. The guard checks identity, shape, order and freshness, never truth.
+10. A command admitted as verification that changes the project is a project mutation: it clears the prior Digest authority and returns to investigation. `done audit=blocked` records that disposition, clears any final-handoff arming and keeps the task open for corrected work and fresh verification. The first `done audit=passed` after verification audits the current work. With a plan it needs every objective checked; every file target materially changed; every changing state objective associated with a successful exact operation and current matching evidence; every excluded path unchanged; and no change outside the plan. When `impact.md` applies, it also needs the agreed impact contract plus a final omission audit bound to the current verification fingerprint. A no-op or a change later restored to baseline does not satisfy a file target. A successful operation alone does not prove external state. Large files are compared by complete streamed content identity rather than timestamps. At High effort, the audit also needs a current `review.md` bound to the plan hash and verification fingerprint. It must name the contract, changed surface, evidence, strongest concrete counterexample, a different independent check, impact roots, an omission challenge, non-functional dispositions, disagreement and residual limit. Missing, stale, repeated or unresolved review evidence blocks an unqualified passed audit. The guard checks those structural and identity facts; it does not establish reviewer independence, comprehension or semantic truth.
+11. Only after that audit passes does the guard request the final Test Digest. Codex's Stop event supplies the latest assistant message; the canonical block starts with `Test — <task id>` or `Prueba — <task id>`, followed immediately by one non-empty line for each field, in this order: Where, Environment, As, Data, Steps, Expect, Evidence, Cleanup and Can run, or their bounded Spanish labels. The ASCII hyphen remains accepted as a compatibility spelling. If Codex omits that Stop event, the next `UserPromptSubmit` may recover only the latest assistant message from a fixed-size tail of the literal host-provided `transcript_path`. Transcript format is not stable. The adapter rejects links, unreadable paths, oversized records or messages, malformed or unsupported records and an older Digest followed by another assistant message. It retains no transcript path or content. A later human response and the repeated `done` close the task. The guard checks presence, shape, ordering and freshness, never semantic truth. The card reports file comparison and state evidence separately; a state-only plan reports no project-file comparison instead of inventing one.
+12. The closing card reports how many rules files were written during the task. Starting the same completed task opens a fresh epoch. Starting another task in the same session cannot erase an operation in flight. When current work has observed but unfinished effects, the guard asks once whether to pause it and switch; a later human response plus the repeated `start` isolates the successor from the prior task's agreement, counters and task permissions. Another session begins task-neutral and may select a different task immediately. If another session changes the same task after it was loaded, material work is Blocked until explicit `start` reloads the newer revision and the agent reconciles any conflicting conclusion.
+
+An exact project-declared read or verification command may run without an implementation Digest when it has no project mutation. The agent must still report its exact scope and limitation. Any project write returns to steps 5–9.
+
+Starting the same open task is idempotent. Effort may rise but cannot fall silently. A later prompt does not by itself invalidate an agreed Digest. New evidence that changes it requires `redo`; this is an agent obligation, not something the guard can infer from prose.
+
+## PMNM folder boundary
+
+The host pointer is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is not set. It contains one absolute path and nothing else. The PMNM folder begins as:
+
+```text
+<PMNM folder>/
+  index.json
+  general-rules.md
+  projects/<project>/
+    project-rules.md
+    project-knowledge.md
+    tasks/<task>/
+```
+
+`index.json` belongs to the guard. It maps canonical repository paths to stable project folders. The model writes the rules and task contents.
+
+An existing path under `projects/` that is absent from `index.json` is occupied, not evidence that it belongs to a new repository. The guard preserves it and selects an unused collision-safe folder for the new mapping.
+
+The human's first folder answer authorizes ordinary work anywhere strictly inside the PMNM folder. There are no per-task schema approvals or per-file permission receipts. The guard still checks:
+
+- the destination resolves physically inside the folder;
+- neither the destination nor an internal component is a symbolic link or special file;
+- a mixed operation does not cross the folder boundary;
+- the operation does not write `index.json`;
+- added content and copied sources do not look like secrets.
+
+The PMNM folder cannot be the repository, the host configuration directory, the filesystem root, or an ancestor of either. Ordinary maintenance strictly inside it, including moving or deleting an internal task artifact, remains inside the free-write boundary. Moving, deleting or replacing the PMNM root itself does not. Evidence may be copied from elsewhere into a task folder, but linked sources, linked destinations and secret-like sources fail closed.
+
+An existing empty folder is seeded before its pointer is written. If the pointer or `index.json` is invalid, the guard asks for one explicit recovery decision, preserves the invalid artifact under a unique recovery name and only then rebuilds it. It never overwrites unreadable state merely because the intended replacement looks obvious.
+
+The secret scan recognizes common private-key, token, credential and password shapes. It never echoes a detected value. It is a bounded heuristic, not a complete secret scanner; host sandboxing and repository review remain necessary.
+
+## Commands and effects
+
+The guard classifies the observable command, not the project's language or toolchain. Its effect classes are:
+
+- investigation;
+- implementation;
+- verification;
+- deletion;
+- movement;
+- version-control change;
+- dependency change;
+- publication;
+- environment change;
+- network access;
+- a direct write outside both the repository and the PMNM folder.
+- a planned non-file state change.
+
+The adapter has no positive executable catalog. An executable name, familiar flag or remembered convention is not evidence that an operation reads, writes or verifies. Apart from literal shell structure, every operation without trusted host effect metadata starts on the same dynamic declaration route.
+
+The shell envelope still recognizes narrow mechanical contradictions and high-consequence signals: hidden or dynamic composition, output redirection, deletion, movement, version-control mutation, dependency mutation, publication, environment lifecycle, network access and direct filesystem writes. These rules prevent a model declaration from downgrading an observable hazard; they do not make other commands safe. A literal ordinary write outside both the repository and PMNM folder counts as sensitive, including when it appears beside an otherwise admissible command. A literal `cd <directory> && <command>` prefix preserves the nested operation and target base. Any other compound or hidden operation must be split until one complete effect is reviewable; more than one independently sensitive effect must also be split. A declared outer wrapper does not reveal its nested behavior. Dynamic or opaque inner commands remain unknown.
+
+For one isolated operation, the agent declares expected effect, boundary, persistence, certainty and an applicable capability id or `none`. This is a falsifiable claim, not permission. Before the operation appears, it can classify only the one same-turn operation described above; after a denial it binds to that exact tool input for one retry. When proactive intent legitimately classifies the operation, the guard binds the same claim to that exact tool input before evaluating separate authority. A sensitive Ask does not discard that classification, and an allowance does not recreate it; admission consumes both independently. Proactive intent has no operation hash before it is applied, so it can classify but never pre-authorize a sensitive effect. The concrete operation must appear before an exact sensitive allowance can be bound. Uncertain declarations and boundaries outside the project or PMNM folder retain a sensitive authority path. A declaration that contradicts an observed write is rejected. If command bytes are hidden, declaration is unavailable because the human and guard cannot review the operation.
+
+Predictable exact sensitive operations may be listed in `permissions.json` and approved with the plan Digest. The same file may declare a bounded capability when the human intends to reuse an operation family. A capability names its provider-neutral effect, boundary, persistence, operation shape, constraints and reason. Task capabilities expire with the task and Digest. Project capabilities remain bound to the same canonical project until an explicit replacement revokes them; `project: []` revokes every earlier project capability. The agent may cite only an already agreed capability whose effect, boundary and persistence match; the declaration cannot create one. Shape and constraints remain human-readable semantic boundaries: the guard cannot prove that arbitrary command arguments satisfy them, so mechanical hard stops and native host controls remain authoritative.
+
+A planned state transition is always task scoped, names its plan objective and uses an exact operation rather than a reusable capability. Trusted host metadata or a mechanical signal keeps a more specific classified effect when one exists; `state-change` is the conservative fallback for an exact covered operation with no other supported effect. Such an operation may bind another covered host tool by its exact canonical JSON input. Forecast entries are bounded, secret-scanned and bound to the current agreement; the guard persists hashes rather than raw input in its private state. This optimization covers only tools named by the Codex hook and never bypasses native host approval.
+
+After a clear later human answer to an unforecast command, the agent sends `allow`; the guard admits only the identical operation once. The Ask shows the complete bounded one-line command, or a small direct-file write; if the operation cannot be shown in full, the guard requires it to be split or shortened before asking. A permission for one effect, task, epoch or command cannot be spent on another. PMNM does not commit, push, tag or publish by itself.
+
+An ordinary write strictly inside the PMNM folder is free even before the plan Digest. A sensitive command remains sensitive when its output happens to land there.
+
+Geometry is evaluated before authority. A repository mutation enters the plan-Digest path. A contained PMNM write enters the folder path. An external-only effect asks for its own exact authority and does not invent a repository plan. When the host or shell envelope exposes literal targets, the guard checks them; a familiar tool name never substitutes for target evidence.
+
+Shell actions generated by the adapter quote every literal path accepted by PMNM; the displayed command is the command the guard evaluates.
+
+## Host results and recovery
+
+Pre-use admission is not evidence that the operation ran. The adapter binds each admitted effect to its tool, host operation identity when available, full operation identity, task and epoch. A matching successful post-use event records the effect. A reported failure records no mutation. Non-persistent verification is tracked as a check without presuming it wrote; an observed changed target still promotes it to a project mutation and invalidates dependent authority.
+
+When no result arrives, another write cannot overtake it. Reads remain available for diagnosis. `result outcome=no-effect` records the current belief while retaining enough identity to recognize a contradictory late success. `result outcome=unknown` preserves the possible effect and enters recovery, but does not count as a successful state operation. An Interrupt with a write in flight also enters recovery.
+
+A late successful result is counted once, invalidates dependent verification when necessary and tells the model to inspect the current state. Conversation age never turns an unknown result into success. A successful state-operation mark is bound to the task epoch, plan identity and permission-forecast identity; a revised contract cannot reuse it.
+
+Stop may block once in a turn for a missing result, missing verification or unfinished audit. A successful external or system effect enters the same verification and audit path even when no project file changed, and it blocks transition to another task until that path is complete. When a folder, project, Digest, inspection exception or sensitive-command answer is already pending, Stop emits a Note and yields; it does not compete with the earlier Ask. Repeated blocking Stop in the same turn becomes a Note with the same continuation so the host does not loop.
+
+A successful standalone curation write to `general-rules.md`, `project-rules.md` or `project-knowledge.md` may stop without the generic missing-Digest reminder only when `plan.md` was not materially written and no project or system effect exists. Before such a write, the guard requires a current reload of all three canonical files and detects a concurrent revision; this is freshness evidence, not semantic approval of the promoted claim. A curation write inside broader work never waives its Digest, verification or audit.
+
+## Verification and fingerprint
+
+`verified` records result, method, epoch, current mutation/effect counters and the current claim identity. Every passed result needs current `example:` and `unchanged:` claims; state plans also require exact state claims matching the agreed contract. Planned file objectives must be marked complete before final passed verification. `how=command` with `result=passed` requires a successful observed verification command after the latest material change. `how=human` requires an actual later human response. When project evidence exposes an executable check, `result=passed how=inspection` asks the human to accept that weaker evidence or directs the agent to run the check. Other inspection remains an explicit weaker channel; the guard does not turn an administrative check, model-authored claim or successful state operation into truth.
+
+The guard prints a timestamped fingerprint. When a compatible version-control provider is present, it reports the exact available base, current revision and counts for staged, unstaged and untracked paths. An unavailable parent or upstream is reported as unavailable, never replaced with the current revision. Without a provider, it reports only distinct project targets observed by PMNM. At closure, file comparison and the count of observed planned state objectives are reported separately. The fallback never invents version-control state or turns those counts into semantic proof.
+
+The fingerprint is an audit binding, not proof that the diff is correct or complete. Tools outside the covered host events can change files without the guard seeing them. The final audit must reconstruct the whole surface independently.
+
+## State and privacy
+
+Codex adapter state lives under `PLUGIN_DATA/host-guard/v3` in three layers. A session file holds the selected task, pending operations, questions and other transient flow. A project file holds only reusable project-scoped permissions and capabilities. A task file holds that task's Digest authority, plan and evidence counters, verification and completion state. Canonical working-directory and task hashes keep aliases on the same durable identities, while the session id keeps simultaneous conversations independent. Each layer uses its own bounded lock and monotonic revision. State contains hashes, enums, counters, bounded event metadata and fingerprints; it does not persist raw prompts, command previews, tool output, evidence or secrets. It also retains no transcript paths or transcript content.
+
+A fresh session does not read a “latest task” pointer. It remains task-neutral until an explicit `start`. Different sessions may advance different tasks under one project. When two sessions select the same task, a newer task revision is observable: reads remain available, but material work waits until explicit reload and reconciliation. This is conflict detection, not automatic merging.
+
+State files and locks are real local files with bounded size. Writes are atomic. A corrupt current state, corrupt resumable state, unsafe pointer, unsafe index or unresolved physical path fails closed for mutation. Reads remain available when their effect and boundary are established.
+
+## Coverage
+
+The bundled hook listens to Codex `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop` and `Interrupt`. `SessionStart` distinguishes startup, resume, clear and compact sources when the host supplies them; an active task then enters rule-basis reload before material work. Its write coverage is limited to the host tool names declared in `hooks/hooks.json`. A tool not emitted through those events is outside the adapter's evidence. The entry runtime is `pmnm-guard.mjs`; its only local runtime dependency is the independently reviewable `pmnm-shell.mjs` classifier. Packaging accepts exactly that local module graph, regular in-package files only, with per-file and aggregate inspectability budgets.
+
+`evals/host-guard-cases.json` lists the stable synthetic claims. `evals/host-guard-action-oracle.json` contains executable normalized sequences. `scripts/test_host_guard.mjs` runs both the direct adversarial cases and the public oracle.
+
+Those tests establish behavior for supplied events. They do not establish host discovery, hook trust, live client execution, semantic understanding, complete filesystem mediation or another host's compatibility. Verify discovery, review, trust and observed interception separately after installation.
 
 ## Host adapter contract
 
-A host adapter MUST declare:
-
-```text
-Host and adapter identity:
-Mutation channels covered:
-Mutation channels not covered:
-Material-investigation channels covered or unobservable:
-Read-only channels:
-Durable-capture classification:
-Trusted readiness issuer:
-Artifact integrity or authentication mechanism:
-Task and source-state binding:
-Expiry or invalidation conditions:
-Denial and recovery behavior:
-Ordered-trace destination and privacy:
-Context-store authority integration:
-Known bypasses and residual risk:
-```
-
-If an implementation-mutation channel cannot be intercepted, label coverage partial. Partial coverage may improve observability, but it is not enforcement of the complete first-write gate.
-
-## Adapter ownership and noninterference
-
-Treat each host adapter as an independently verified translation boundary. Shared vocabulary, event names, environment variables, or JSON fields are candidate compatibility only. They do not prove equivalent firing order, tool identity, input shape, failure reporting, interruption semantics, persistence, trust, blocking behavior, or bypass coverage.
-
-The bundled `hooks/hooks.json`, `hooks/pmnm-guard.mjs`, `evals/host-guard-cases.json`, and `scripts/test_host_guard.mjs` currently belong to the Codex adapter. A future Claude Code or other host implementation MUST add separate host-owned manifest, hook configuration, event mapper, runtime entry, fixtures, native validation, installation evidence, and clean-session evaluation. It MUST NOT replace the Codex default hook, weaken a Codex invariant, or treat the Codex test suite as execution evidence for another host.
-
-If a future implementation proposes a shared engine, make that extraction a separate cross-host change. Preserve host-specific input and output adapters, run every existing Codex guard case unchanged, add equivalent and host-difference cases for the new adapter, and state which lifecycle signals have no native equivalent. A missing signal produces partial or advisory coverage. Do not emulate it by silently assigning another event a stronger meaning.
-
-## Activity-transition enforcement
-
-For an identified activity, a host with lifecycle hooks or a complete tool broker MAY require a trusted activity-transition artifact before permitting observable material investigation. Bind it to the activity identity, registry or locator result, evaluated and applicable gate conditions, record/delegation state, literal transition result, and current source or environment state.
-
-`planned-and-awaiting-approval` and `blocked` deny material investigation and implementation. A newly observed durable-record trigger revokes `no-record-with-valid-reason` until reevaluation produces another trusted transition result. The host MUST still allow the bounded orientation needed to resolve identity, record existence, the gate, and the exact approval plan.
-
-If the host cannot observe internal model reasoning, conversation-only analysis, direct filesystem reads, or another investigation channel, label transition enforcement partial. A mutation gate can still reject the first write when the readiness artifact lacks a valid transition, but it cannot prove that premature investigation did not occur.
-
-## State machine
-
-Use the portable transition literally:
-
-```text
-ORIENT -> INVESTIGATE -> AWAITING-COLLABORATOR
-             |                    -> later turn -> COLLABORATOR-RESPONDED
-             |                    -> explicit response reconciliation
-             |                    -> ALIGNED -> READY -> IMPLEMENT -> VERIFY -> COMPLETE
-             |
-             -> BLOCKED when activity creation or another authority boundary awaits approval
-
-missing covered result, material loss of the active direction's basis,
-explicit collaborator rejection, or correction after dependent mutation
-  -> RECOVERY -> explicit effect/result reconciliation when needed
-  -> corrected checkpoint -> collaborator turn -> refreshed alignment and READY
-```
-
-After `ACTIVITY-READY` when that transition applies, the host MAY allow read-only investigation before change readiness. It MUST block or pause a material implementation mutation unless a current trusted readiness artifact covers it.
-
-An attempted mutation while `INCOMPLETE` or `BLOCKED` is an observable gate failure even when the host successfully denies it. Preserve the attempt in the trace without treating it as an applied change.
-
-## Trusted readiness artifact
-
-Bind at least:
-
-```text
-Artifact schema version:
-Skill identity and revision:
-Task or activity identity:
-Activity-transition result and artifact identity:
-Effort and risk class:
-Material contract identity:
-Source or environment state:
-Inspected surface summary:
-Required-reference load evidence:
-Required adapter and tool evidence:
-Counterexample and baseline status:
-Expected mutation scope:
-Authorized effect classes:
-Triggered observable-equivalence or asynchronous-delivery artifacts:
-Decision-alignment artifact, when triggered:
-Scenario Coverage Contract, mappings, and collaborator-response or delegated basis, when triggered:
-Realignment or recovery state:
-Verification and regression-protection intent:
-Remaining bounded uncertainty:
-Issued state: READY
-Issuer identity:
-Issued time, expiry, or one-use condition:
-Integrity or authentication value:
-```
-
-The trusted issuer MAY validate observable completeness and ordering. It cannot certify hidden reasoning or semantic truth merely from field presence. High-risk hosts should require an independent policy or human decision when the underlying authority boundary demands it.
-
-Do not expose signing material, approval secrets, or an unrestricted issuer interface to the same actor whose mutation is being gated. If the host has no trusted issuer, retain the textual readiness receipt and trace it honestly as advisory.
-
-## Mutation interception
-
-Before allowing an implementation mutation:
-
-1. Canonicalize the target and effect without applying it.
-2. Resolve the current task, source or environment state, and applicable adapter.
-3. For an identified activity, verify that the readiness artifact binds a still-valid activity-transition result.
-4. Verify the readiness artifact's integrity, issuer, expiry, and exact state binding.
-5. When scenario coverage is triggered, verify that a current `SCENARIO-ALIGNED` artifact follows the latest evidence-backed understanding and carries an allowed collaborator-response or scope-specific delegated basis for Standard or High work.
-6. Confirm that the requested target and effect remain within expected mutation scope.
-7. Confirm that the requested effect class was authorized and that no collaborator-defined stage boundary is crossed.
-8. Confirm that no transition, scenario-coverage or readiness invalidation, unresolved `REALIGNMENT` or `RECOVERY`, explicit directional rejection, or new prompt invalidation event occurred after issuance.
-9. Deny the effect before execution on any mismatch or unknown channel.
-10. Record allowed, denied, failed, and unavailable decisions separately.
-
-Do not silently allow an “unchanged subset” after scope or source-state drift. Return to investigation and issue a new artifact.
-
-## Invalidation and recovery
-
-Revoke dependent readiness on a material correction, source-state change, newly discovered consumer, state, contract dimension, scenario, scope change, failed required tool, refuted hypothesis, changed authority rule, changed verification plan, newly required effect class, or incomplete observable bridge. Revoke affected scenario alignment as well as direction alignment and verification evidence.
-
-After ordinary invalidation:
-
-1. preserve which readiness fields and evidence became stale;
-2. deny another material implementation mutation;
-3. permit safe read-only discovery;
-4. require refreshed shared understanding and affected evidence;
-5. issue a new trusted artifact only after readiness is restored.
-
-A denied attempt does not authorize rollback or cleanup. Classify any resulting external or partial state independently and use its applicable authority protocol.
-
-When new evidence materially removes the basis for an active direction, or the collaborator explicitly rejects it, revoke readiness and decision alignment, record `REALIGNMENT` or `RECOVERY`, and deny covered dependent investigation and mutation. The artifact must bind the prior and new basis, verification status, source, affected work, canonical current understanding, one evidence-based question, and the turn boundary. A model-authored `turn_boundary` field is only a declaration unless the host independently observes turns.
-
-After an observed collaborator response, the host may reopen covered read-only investigation. It must still require refreshed evidence-backed understanding, a new valid decision-alignment artifact and Scenario Coverage Contract when triggered, and new readiness before mutation. Neither severity authorizes restoration, deletion, or overwriting collaborator work.
-
-## Bundled Codex procedural adapter
-
-The plugin bundles hooks/hooks.json and hooks/pmnm-guard.mjs. When the current Codex host discovers, enables, and trusts that exact hook definition, it supplies a partial procedural interlock. Installation alone is not activation evidence. Use /hooks to inspect the source, review its current hash, trust or disable it, and confirm whether it ran. Any hook change invalidates prior trust.
-
-The adapter intentionally does not handle PermissionRequest and cannot approve a sandbox, network, destructive, or external effect. Native host authority remains separate. It observes these lifecycle events:
-
-- SessionStart loads compact procedural state keyed to the session and working directory; a fresh session begins with a clean orientation state.
-- UserPromptSubmit records only a bounded language choice and prompt hash, binds the next window to one observed collaborator turn, invalidates stale readiness and delegated capture, and preserves consequential covered writes already in flight.
-- PreToolUse classifies covered Bash and apply_patch aliases, records control transitions, and denies an out-of-order covered write.
-- PostToolUse records a covered call previously allowed by the guard and makes a late result visible when it contradicts an earlier reconciliation.
-- Stop requests one bounded continuation when a collaborator response still needs classification, an observed implementation lacks closure, or Recovery remains unresolved, then avoids a continuation loop.
-- Interrupt invalidates a pending write window and preserves any consequential covered write in Recovery until its result is reconciled.
-
-### Runtime handshake
-
-Use a guard control command only after trusted bundled-hook context announces a registered `Please, ...` capability heading. Codex sends the command through PreToolUse and the adapter rewrites it to a silent harmless no-op. If the literal command reaches a shell, returns command-not-found, or no trusted hook context appears, treat the adapter as absent or broken and continue under the portable advisory contract.
-
-At the first applicable turn, record one concrete route. Do not use examples such as `stable-id`, `unknown`, or `missing` as values:
-
-    pmnm-guard route effort=standard activity=work-identifier transition=loaded basis=1 locator=registry-entry record=canonical-record
-
-Allowed activity transitions are not-applicable, loaded, created, no-record-with-valid-reason, planned-and-awaiting-approval, and blocked. Use `activity=none` only with `transition=not-applicable`. `loaded` requires concrete locator and record receipts. A missing store is not a no-record exception. A `blocked` transition may carry the same `digest=` field so a later `created` transition can bind to the approved plan without another route. Receipt values may begin with a dot, such as `.ai/activities/work-1.md`; parent-directory traversal is rejected.
-
-For a missing required record, complete storage preflight and present one outcome-complete plan before recording the blocked transition:
-
-    pmnm-guard route effort=standard activity=work-identifier transition=planned-and-awaiting-approval basis=1 digest=lowercase-sha256
-
-After the collaborator responds, classify that response explicitly. Acceptance is never inferred merely because another turn exists:
-
-    pmnm-guard align result=accepted basis=1
-
-Then apply only the approved structural operations under native authority and record the resulting concrete receipts:
-
-    pmnm-guard route effort=standard activity=work-identifier transition=created basis=1 locator=registry-entry record=canonical-record authority=lowercase-sha256
-
-The `authority` value must equal the approved plan digest. `created` also requires that every approved covered structural operation was observed successful: a `durable-structure` grant is accepted only with `authority` equal to the approved plan digest, its `uses` value is the exact number of approved covered operations rather than a budget, a later grant or retry can raise that number but never lower it, and `created` stays unavailable until that many successful results are observed and no covered result is pending. A late result keeps the identity of the activity and plan it belonged to; it can reopen Recovery, but it never advances another activity's plan or effect accounting. A grant is authority, not execution evidence, so the action after a grant is the pending operation itself, never the `created` declaration. A structure created through an uncovered channel cannot be labeled `created`; it may be declared `loaded` with the plan digest as authority, and the adapter records that as a model-declared retrieval receipt under partial coverage. A Standard or High `no-record-with-valid-reason` decision likewise requires a later explicit collaborator response after a blocked or planned transition, plus a concrete exception and authority receipt. Light work may remain proportional when the portable durable gate genuinely does not apply.
-
-The adapter accepts activity routing only from initial orientation, investigation, aligned or blocked activity resolution, or a closed lifecycle. It rejects route as a reset from awaiting-collaborator, readiness, implementation, verification, recovery, or exemption. It also rejects a route while any covered write is in flight, a silent effort downgrade or backward basis inside one activity lifecycle, and a different activity after an observed implementation mutation or an observed authorized effect until the current one has an honest completed, partial, or blocked closing disposition. A route after closure starts fresh activity-local mutation accounting. This preserves attribution; it does not prove that the closing account is semantically complete.
-
-For a loaded or created delegated activity, `capture=current` is not a free-form assertion. Before readiness, issue a bounded `durable-content` grant under the existing delegation, perform the actual record update through a covered write, and let `PostToolUse` observe its success. The guard binds that capture to the current prompt, basis, and implementation-mutation count. A later collaborator prompt invalidates prior capture freshness, and a capture call that began before that prompt remains stale when it finishes. A failed capture, missing capture, stale capture, or capture preceding a later implementation call cannot satisfy the next dependent boundary. The guard still cannot verify that the selected file or content is semantically the correct activity record.
-
-Before a material direction for Standard or High work, show the collaborator the combined evidence-backed checkpoint, then record it and stop:
-
-    pmnm-guard checkpoint kind=combined basis=1
-
-The next UserPromptSubmit establishes only that a later collaborator turn occurred. Reconcile its meaning before readiness or sensitive authority use:
-
-    pmnm-guard align result=accepted basis=1
-
-Allowed results are accepted, changed, unclear, and rejected. Accepted preserves the current basis. Every other result requires a higher basis and returns to investigation or Recovery. A later collaborator prompt during aligned work returns the adapter to this explicit reconciliation before readiness or sensitive authority can be used again. An authority-only checkpoint cannot satisfy direction or scenario alignment. Current aligned scenarios require a combined checkpoint; prior scope-specific delegation must be declared as delegated rather than current alignment. If the basis changed, reconcile or invalidate instead of asserting alignment. When the response supports readiness, first show the ordinary Change Readiness receipt, then record:
-
-    pmnm-guard ready basis=1 scope=bounded-scope effects=implementation,verification verification=planned-checks capture=current alignment=current scenarios=aligned constraints=current-constraints capabilities=required-capabilities
-
-Current alignment requires the later collaborator turn. Explicit scope-specific delegation may use alignment=delegated plus delegation=short-basis. Light work may use alignment=not-required when the portable contract genuinely makes the checkpoint unnecessary. Every new user prompt expires an unused write window.
-
-Keep other effect classes separate from implementation. After the corresponding portable authority is established, a bounded nonimplementation call can use:
-
-    pmnm-guard grant effect=durable-content authority=delegated-record uses=1 basis=1
-
-Supported effect classes are implementation, structure, dependencies, environment, verification, version-control, external, publication, durable-content, durable-structure, movement, and deletion. The receipt does not replace host approval. Durable content requires a loaded or created delegated activity. Sensitive classes require a later authority or combined checkpoint.
-
-An unclassified shell command is denied with a random one-use token. Classify only the unchanged command and only when its actual effect is known:
-
-    pmnm-guard permit token=token-from-denial effect=investigation
-
-The token is bound to the command bytes, prompt, and one retry. Definite mutation patterns never enter this classification route. Classification is not authority. The classifier lexes top-level segments and quote boundaries first and applies mutation rules to executable positions by verified command family: quoted data of a read-only command, such as a search pattern that mentions a destructive command or a redirection character, never becomes a mutation; interpreters and evaluation-capable commands stay unknown unless their quoted code carries definite mutation vocabulary; top-level redirection, mutating subcommands, `find` execution and file-output actions, `sed` in-place editing and unequivocal `w` write commands, ripgrep preprocessors and compressed-search modes, and pipelines into mutations remain covered; `sed` script files, block scripts that mention writing or execution, and other ambiguous scripts stay unknown; escaped or unterminated quoting stays unknown; bounded host diagnostics such as a client version query or a Git ignore, variable, or read-only configuration query need no permit. This is command-shape classification, not proof of shell safety.
-
-Only one covered write may remain in flight. If its PostToolUse result is missing, another covered write is denied until the effect is reconciled conservatively:
-
-    pmnm-guard reconcile outcome=unknown reason=missing-post-use basis=2
-
-Use `failed-no-effect` only when current evidence supports that literal result. `unknown` counts an unresolved implementation call as a possible mutation. A late successful result after `failed-no-effect` for any consequential effect, implementation or otherwise, records the effect, invalidates dependent state, and reopens Recovery at a higher basis instead of disappearing from the trace.
-
-A collaborator prompt that arrives while a nonimplementation covered result is pending preserves that result, the checkpoint, the plan digest, and the still-unclassified turn, removes the active grant, and enters Recovery. The result is settled first, through its host result or `reconcile`; only then is the response classified with `align`. An accepted response after a resolved result restores the prior aligned phase and the same grant path without another human round. An unknown or contradicted result keeps Recovery open even when the response is accepted. A prompt during a pending implementation call keeps the stricter existing behavior and clears the collaborator binding.
-
-When evidence, scope, authority, or source state invalidates the basis, advance the revision and reconcile:
-
-    pmnm-guard invalidate reason=material-correction basis=2
-
-Every implementation call invalidates earlier verification. A successful covered verification command can establish current procedural evidence. When verification occurs through the collaborator, an interface, or another uncovered tool, record its literal current disposition separately:
-
-    pmnm-guard verify basis=2 result=passed source=collaborator scope=observable-scenarios
-
-Allowed results are passed, failed, partial, and blocked. Allowed sources are collaborator, interface, and uncovered-tool. This receipt records provenance and freshness; it does not upgrade a report into trusted execution evidence. It is also admissible for an activity whose authorized nonimplementation effects were observed without any implementation call.
-
-After an observed implementation call, finish current verification, observable disposition, protection, capture, and audit before recording closure:
-
-    pmnm-guard complete basis=2 verification=passed observable=executed protection=added-or-updated capture=complete audit=passed
-
-`verification=passed` requires current successful evidence after the latest implementation mutation and therefore requires `observable=executed`. A reproducible handoff is useful but remains partial rather than passed. When an activity is delegated, perform and observe its final durable-content update after the latest implementation call before this completion command. Completion is also rejected while any tracked covered write lacks its post-use result. For work with no delegated record, use `capture=not-applicable`; the adapter rejects a contradictory capture state.
-
-Closure is progressive: the adapter names verification, then delegated capture, then the completion receipt, one requirement per output. An activity whose observed covered effects contained no implementation mutation, such as an authorized version-control or structural operation, closes from investigation or alignment with the same receipt; `verification=passed` then requires current evidence after the latest authorized effect. Work with neither implementation nor authorized covered effects closes only with `verification=not-applicable observable=not-applicable protection=not-applicable`. Stop requests one bounded continuation while such a closing disposition is missing.
-
-Use status with no fields to request the compact current state. Use exempt only from a clean initial orientation for a genuinely non-triggering task, bound to the current prompt, and only for implementation or verification. Never use exemption to reset routed or active work, or to authorize structure, dependencies, environment, version control, external state, publication, durable state, movement, or deletion.
-
-Ordinary hook output begins with the full friendly capability name, one short sentence in the agent's own first-person guard voice that says what is being protected, and one action marked `NEXT:`. Every phase card and denial names exactly one action justified by the observable state and its declared unknowns, carries at most one `pmnm-guard` line, never advertises a control command its own state would reject, never assumes a value the model or the collaborator still has to decide, and states that the line is sent through the shell tool where that channel could be misunderstood. The voice stays calm, blames no one, and claims no safety, correctness, or verification without evidence. A denied covered write is retained as one bounded unresolved cursor bound to the exact tool and command hash together with its effect class, phase, basis, prompt epoch, and denial count. An admitted exact retry marks the cursor in flight; only a successful matching result clears it. A failed retry, a missing result, a different operation of the same class, or a second distinct denial preserves the original obligation, and the second denial is reported as deferred behind it. Conversational age never clears the cursor. It clears, each time with a recorded cause, on observed success, on `invalidate`, on `align` with `changed`, `unclear`, or `rejected` after a real collaborator turn, on completion, or on an authorized activity change. Stop decides from the cursor's own compiled action and continues once while that action is executable by the agent; a genuine collaborator wait still stops silently. The output exposes no diagnostic code or abbreviated product label. `evals/host-guard-action-oracle.json` records the expected action for normalized sequences of these states. The adapter selects English or Spanish through a bounded best-effort prompt heuristic, persists only the selected enum, and falls back conservatively when the language is unclear. This is not universal language detection. Lifecycle event names remain the host's native identifiers, and internal `pmnm-guard` commands remain implementation receipts rather than user-facing nomenclature.
-
-### State and privacy
-
-The adapter stores its own bounded state beneath PLUGIN_DATA, keyed by hashes of session and working directory. It uses owner-tagged create-only locks that only their owner removes, recovers an orphaned lock after a threshold above the hook timeout, waits with bounded jitter so concurrent lifecycle deliveries serialize, skips rewriting unchanged state, and uses atomic replacement. It keeps a bounded event list and stores hashes, enums, counters, and effect classes rather than raw prompts, commands, tool results, evidence, or context. Persisted evidence written before effect accounting existed is bound to zero observed effects, so it stays current until the first newly observed effect and becomes stale afterwards; absence of a newer field never upgrades old evidence. The session and resolved working directory bind the procedural state location; the hook does not independently inspect a revision graph, file tree, environment, or external system to authenticate source state. Model-declared basis and scope remain untrusted. This state is not an Activity Record, context store, evidence archive, authority source, or recovery substitute. User-controlled durable context remains external to the installed package.
-
-Corrupt or unverifiable adapter state denies a covered write when the runtime executes. A missing runtime, disabled hook feature, untrusted hook, host launch failure, hosted tool, specialized opt-out path, or unsupported host may bypass the adapter entirely. Those states reduce coverage to advisory and must be reported rather than described as a successful guard.
-
-### Coverage claim
-
-The bundled adapter can enforce declared ordering for covered local Bash and apply_patch calls. It cannot establish whether investigation was sufficient, a checkpoint was honestly summarized, a delegation was valid, a scenario set was complete, a command classifier captured every possible shell effect, or a final claim was true. It does not intercept hosted tools, all specialized tools, direct external actors, or every mutation mechanism. Treat its receipts as model-authored procedural claims unless an independent issuer validates them.
-
-## Separate authority gates
-
-Implementation readiness does not replace other gates:
-
-- a context-store structure, configuration, locator, lifecycle, or out-of-delegation extension mutation still requires its exact plan, digest, and fresh approval;
-- an authorized routine durable capture is not an implementation mutation and must remain limited to its active delegation;
-- destructive or externally consequential operations still require their own human authority and containment;
-- a regression-protection disposition is required before completion when triggered, not merely before the first write.
-
-The host MUST classify these effects explicitly instead of routing every write through one ambiguous token.
-
-## Audit record
-
-Preserve a bounded ordered trace containing:
-
-```text
-Sequence and time when available:
-Task, skill revision, and source state:
-Required instruction and adapter loads:
-Activity-transition receipts and gate-trigger invalidations:
-Readiness issuance or denial:
-Invalidation events:
-Mutation attempts and classification:
-Effect classes and authorization result:
-Decision-alignment, scenario-coverage, epistemic-reconciliation, observable-equivalence, asynchronous-delivery, and recovery events when triggered:
-Gate decision and reason:
-Verification and final-audit events:
-Coverage gaps and unavailable channels:
-```
-
-Minimize sensitive command arguments and evidence content. Prefer event identity, path class, digest, and bounded result over raw secrets, payloads, or transcripts.
-
-## Limits
-
-- A host adapter can enforce ordering and declared scope; it cannot guarantee correct reasoning or outcome.
-- A model-visible checksum without a trusted issuer is not authorization.
-- A wrapper covering one tool does not cover shell, editor, API, database, browser, or external-service mutations automatically.
-- A trace validator can detect missing or misordered observable events; it cannot prove unrecorded events did not occur unless the host event source is complete.
-- A procedural interlock validates declared shape, order, and scope for covered channels; it does not establish causal truth, product intent, observable equivalence, or test admissibility by field presence alone.
-- A structurally valid Scenario Coverage Contract cannot prove that its declared material items are complete, its sources are truthful, or a model-labeled collaborator response actually occurred unless the event source authenticates those facts.
-- A host that intercepts writes but not material investigation can enforce readiness before mutation, not the earlier transition boundary; report those coverages separately.
-- When interception is unavailable, use the textual `READY` gate and report that enforcement is advisory.
+Keep the portable skill and PMNM folder unchanged. Add a host-owned adapter with:
+
+1. a separate adapter declaration and lifecycle mapping;
+2. a private state location owned by that host;
+3. the same observable receipt meanings and two-line card contract;
+4. native tests for admission, result matching, interruption and resumption;
+5. an explicit tool-coverage boundary;
+6. an installation test in the real host.
+
+Do not make a generic adapter by taking the weakest intersection of host APIs. Share a pure engine only after both adapters have independent passing evidence and the extraction preserves each host's stronger guarantees.

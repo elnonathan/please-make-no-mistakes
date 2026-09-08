@@ -1,119 +1,101 @@
 # Contributing
 
-Please, Make No Mistakes keeps one portable Agent Skill as its semantic source of truth. The Codex package also bundles a small dependency-free lifecycle guard, progressively loaded references, non-operative examples, an optional read-only context-store inspector and planner, and an optional read-only checker for its explicitly adopted Standard file profile.
+Please, Make No Mistakes keeps one portable Agent Skill and one optional Codex lifecycle guard. `skills/please-make-no-mistakes/SKILL.md` is the contract every change serves; a change that cannot name the kernel sentence it improves is not ready. Contributions should make a demonstrated failure less likely without turning one person's project, toolchain or preferences into a universal rule.
 
 ## Requirements
 
-- Node.js 22 or 24 for the release envelope and bundled Codex guard.
-- Python 3.9 through 3.13 for bundled validators. The optional context-store runtime additionally requires its documented POSIX filesystem primitives.
-- npm with lifecycle scripts disabled for isolated artifact checks.
-- Codex only when testing the current host-specific plugin route.
-
-The core skill is host- and operating-system-neutral Markdown. Runtime and distribution portability are separate claims and must be established by their own checks.
+- Node.js 22 or 24 for the Codex guard and JavaScript tests
+- Python 3.9 through 3.13 for dependency free release validators
+- no runtime registry dependencies
 
 ## Before Changing Behavior
 
-1. State the observable outcome and affected contract.
-2. Inspect the relevant skill route, references, evaluations, validators, and public documentation owner.
-3. Search for counterexamples, existing mechanisms, incompatible hosts, and unintended consumers.
-4. Keep universal rules separate from project, tool, host, or person adapters.
-5. Preserve the public/private and package/user-data boundaries.
-6. Add positive and adversarial evidence capable of falsifying the changed contract.
+Start from an observable failure, an accepted design decision or a bounded compatibility requirement. Record what currently happens and which check would distinguish the desired behavior. Add the smallest failing evaluation before changing the runtime when a deterministic surface exists.
 
-Do not add a named capability merely to hold a new paragraph. Prefer the smallest existing responsibility or triggered protocol that preserves coherent routing.
+Do not solve a model communication problem only by adding another guard. Improve the shortest portable instruction first. A guard is justified when a real trial shows that prose alone is skipped and the host exposes a reliable event boundary.
+
+## Writing Rules For Models
+
+- State the pattern, never a worked example. Public prose and cards use shapes with placeholders; an example teaches the instance, not the rule.
+- A card's `NEXT:` line is an order: one verb in the imperative or a short sequence joined by "then", its limit, and who acts next. No explanation on that line, no alternatives the model must weigh, no "wait", no "turn". Stopping is written as: stop here; no more actions until the human answers.
+- A claim the guard cannot observe is not written on a card. The guard states what it recorded, not what the model meant.
+- A small model must be able to read the sentence and act on it. When it cannot, the sentence is wrong, not the reader.
 
 ## Source Of Truth
 
-- `skills/please-make-no-mistakes/SKILL.md` owns runtime invariants and reference routing.
-- `skills/please-make-no-mistakes/references/` owns detailed runtime procedures.
-- `evals/trace.schema.json` owns the portable ordered-trace shape.
-- `scripts/validate_trace.py` owns executable trace semantics.
-- `evals/behavior-cases.md` owns readable behavior expectations.
-- `evals/agent-evaluation-cases.json` owns model-facing blind evaluation inputs.
-- `skills/please-make-no-mistakes/scripts/context_store.py` owns the inspect-and-plan schema and review output.
-- `skills/please-make-no-mistakes/scripts/record_conformance.py` owns checks for `pmnm.standard-file/v1` only.
-- `hooks/hooks.json` owns the Codex event surface and matcher boundary.
-- `hooks/pmnm-guard.mjs` owns the bounded procedural state machine for covered events.
-- `evals/host-guard-cases.json` and `scripts/test_host_guard.mjs` own deterministic guard expectations.
-- `SETUP.md` owns every detailed setup, update, rollback, removal, and installation-verification procedure.
-- `scripts/documentation_contract.py` owns machine-checked documentation structure.
-- `package.json` owns the exact public npm allowlist and release script surface.
+- `skills/please-make-no-mistakes/SKILL.md` owns the portable kernel and reference routing.
+- `skills/please-make-no-mistakes/references/` owns condition specific procedures.
+- `hooks/pmnm-guard.mjs` owns Codex procedural state and cards.
+- `evals/host-guard-cases.json` owns stable guard claims.
+- `evals/host-guard-action-oracle.json` owns normalized Codex event sequences and expected actions.
+- `evals/activation-cases.json` and `evals/agent-evaluation-cases.json` own model selection and blind routing fixtures.
+- `evals/behavior-cases.md` owns observable portable behavior cases.
+- `scripts/documentation_contract.py` owns public documentation invariants.
+- `SETUP.md` alone owns detailed installation, update, rollback, removal and verification commands.
 
-When two owners disagree, fix the disagreement instead of documenting both as valid alternatives.
+Private coordination under `.ai/` can explain intent and preserve evidence. It never changes public behavior by itself.
 
 ## Host Adapter Isolation
 
-The shipped hook is a Codex adapter. Treat `.codex-plugin/plugin.json`, `hooks/hooks.json`, `hooks/pmnm-guard.mjs`, `evals/host-guard-cases.json`, and `scripts/test_host_guard.mjs` as one protected compatibility surface.
+Do not share a hook implementation between hosts by resemblance. Preserve the portable receipt meanings and behavioral outcomes, then implement each adapter against documented native events and test it independently.
 
-Support for another host must add its own manifest, hook configuration, native event mapper, runtime entry, fixtures, validator, installation proof, and clean-session evidence. Do not point another host at the Codex hook merely because some lifecycle names or JSON fields resemble its own. Do not modify the Codex adapter as part of another host's implementation unless the proposal explicitly extracts a shared neutral engine and proves both adapters independently afterward.
-
-Every host adapter must document native tool names and inputs, success and failure events, missing lifecycle signals, persistent-data semantics, trust and disablement behavior, update behavior, covered and uncovered mutation paths, and the strongest decision it can actually enforce. A host without a pre-mutation blocking channel remains advisory or partial.
+Changes to the Codex guard must not silently redefine the portable skill. Changes to the portable skill must not claim enforcement that no host provides.
 
 ## Focused Checks
 
-Use the narrowest check while iterating:
+Run the narrow check while iterating:
 
-```bash
-npm run check:documentation
-```
-
-```bash
-npm run test:documentation
-```
-
-```bash
+```text
 npm run test:host-guard
 ```
 
-```bash
+For documentation changes:
+
+```text
+npm run test:documentation
+```
+
+For blind decision fixtures:
+
+```text
 npm run smoke:evaluation
 ```
 
-```bash
-npm run ci:portable
-```
+Before a release readiness claim:
 
-```bash
-npm run validate:trace -- <trace.json>
-```
-
-Before proposing a release-ready change, run:
-
-```bash
+```text
 npm run release:verify
 ```
 
-The release verifier runs every configured check and reports an aggregate result rather than stopping after the first failure. A passing source gate is not a clean-session behavior claim.
+Each check must state what it can falsify. A validator pass is not behavioral evidence from a live model or host.
 
 ## Documentation Ownership
 
-- `README.md` explains the product, points to setup, summarizes capabilities, and states boundaries.
-- `SETUP.md` is the only detailed installation authority.
-- `docs/getting-started.md` contains representative use and interpretation guidance.
-- `CHANGELOG.md` records user-visible changes by release.
-- `SECURITY.md` owns threat, privacy, supply-chain, and supported-claim boundaries.
-- `ROADMAP.md` contains public direction, not private execution state.
-- `docs/architecture-decisions.md` records durable public design boundaries.
-- `docs/distribution.md` owns release identity, Trusted Publishing, and postpublication verification.
+- `README.md` explains the product and routes setup elsewhere.
+- `SETUP.md` is the single detailed setup procedure.
+- `ARCHITECTURE.md` describes component and trust boundaries.
+- `docs/architecture-decisions.md` records durable public rationale.
+- `docs/distribution.md` owns release identity and supply chain procedure.
+- `docs/getting-started.md` explains expected use.
+- `SECURITY.md` owns supported security claims and reporting.
+- `CHANGELOG.md` records user visible release changes.
+- `ROADMAP.md` records deferred public work without promising dates.
 
-Do not duplicate setup commands outside `SETUP.md`. Do not publish local paths, private activity records, raw internal evaluations, credentials, customer data, internal identifiers, or maintainer handoffs.
+Do not duplicate setup commands outside `SETUP.md`. Do not publish local paths, private task folders, raw internal evaluations, credentials, customer data, internal identifiers or maintainer handoffs.
 
 ## Evaluation Changes
 
-Behavioral changes should include:
+A behavior change needs:
 
-- a representative positive case;
-- a negative or adversarial case;
-- an explanation of the violated observable contract;
-- an ordered-trace check when ordering is material;
-- a clean-session evaluation plan when compliance depends on a real model or host.
+1. a case that failed before the change
+2. the smallest implementation that closes it
+3. a negative or adversarial case where overreach would be harmful
+4. exact test results and remaining limits
 
-Changes to the Codex guard must also include a positive transition, a denied or recovery transition, a privacy or bounds assertion when state changes, and the exact covered and uncovered host paths. Keep the runtime dependency-free, do not inspect conversation transcripts, do not persist raw prompts, commands, evidence, source, or tool output, and do not treat a procedural receipt as semantic truth or human authority. A hook-content change also changes the trust hash users review.
+Blind evaluation inputs must not contain their expected decision. Deterministic graders may keep expected outcomes in code, separate from the prompt sent to a model.
 
-Blind evaluation inputs must not contain their expected decision. Deterministic graders may live in the repository, but the prompt supplied to the model must include only the case and allowed context. Model execution remains external to package validation.
+Model trials must record the exact skill and guard identity, host, model, effort, available tools, prompt, source fixture, human turns, writes, verification and cleanup. Sanitize private source and personal data before publishing any result.
 
 ## Pull Requests
 
-Describe the contract changed, evidence collected, checks run, checks not run, compatibility impact, and residual risk. Include the aggregate release summary when applicable. A passing check is evidence only for the claim it was designed to falsify.
-
-Do not combine a behavior change, distribution redesign, and unrelated documentation cleanup merely because they share a version. Keep review boundaries recoverable.
+Describe the observed problem, contract change, evidence, affected public surfaces, tests run and residual risk. Keep unrelated cleanup separate. Do not claim installation, hook trust or live behavior from package validation alone.

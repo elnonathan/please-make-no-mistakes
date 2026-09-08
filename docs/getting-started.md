@@ -1,120 +1,106 @@
 # Getting Started
 
-Please, Make No Mistakes is designed to activate for non-trivial software work without requiring a ceremonial prompt. Explicit invocation is useful when you want to make the contract unmistakable.
-
 ## First Request
 
-A direct request can be short:
+Once installed, ask your coding agent for the software work you actually need. PMNM is designed to activate for investigation, design, implementation, debugging, refactoring, review, verification, migration and resumption when the work can materially change a system.
 
 ```text
-$please-make-no-mistakes investigate this regression and implement the smallest defensible fix
+<what is wrong or wanted>. Show me the plan, implement the smallest supported change and verify it.
 ```
 
-An indirect request should work as well:
+You may invoke the skill explicitly when the host supports it:
 
 ```text
-This behavior changed recently. Find out what is actually happening, confirm the affected paths with me, and fix it without widening the scope.
+$please-make-no-mistakes <the work you need>
 ```
 
-The agent should not answer either request with a long recital of rules. It should make the next meaningful state observable: authority, current understanding, missing evidence, activity-record state when applicable, and the smallest question or investigation step that advances the work.
+The agent should begin with the result it is trying to establish, not a recital of PMNM rules.
 
-PMNM uses a compact central router internally. You should see the consequence, not a verbose router transcript: safe investigation continues, a human decision is requested only when it belongs to you, an authorization boundary is explicit, and a material capability limit is escalated with a resume point.
+## The First PMNM Folder
+
+On first use, PMNM inspects only the literal pointer path declared by the host integration. It never searches the machine, history or unrelated work for a plausible PMNM folder. If the pointer is absent, PMNM asks where its folder should live, suggests `~/PMNM`, and stops there: no more actions until you answer, no repository inspection before that. The host stores only a pointer in its own configuration area. The folder itself stays outside repositories and installed packages.
+
+The first repository adds one more question: its project name, with the repository name as the suggestion. The agent then creates task folders as work begins without requesting permission for each file.
+
+The only other folder questions are whether a possibly matching task folder is the same work, and whether an always or never should become a project rule or general rule. No storage schema, per task approval or file layout decision belongs to the user.
 
 ## When The Codex Guard Is Active
 
-The Codex package includes a procedural lifecycle guard. After you inspect and trust it through `/hooks`, the agent receives short transitions headed by the relevant `Please, ...` capability and covered local write attempts can be denied until the current route, alignment, readiness, and effect authority have been declared. Internal control receipts stay internal; the user should see one calm next action rather than codes or a second conversation to manage. The bundled adapter currently selects English or Spanish on a bounded best-effort basis and falls back when language is unclear.
+The Codex plugin includes an optional lifecycle guard. After you review and trust its current definition through `/hooks`, covered events can make a skipped transition observable.
 
-The hook should reduce skipped gates, not create duplicate approval prompts. One collaborator checkpoint may align direction, scenario coverage, and an outcome-complete activity-record plan while preserving each authority scope independently. After a response, the agent must classify it as accepted, changed, unclear, or rejected; the existence of another user turn is not agreement. After approved structure is created and the activity transition is recorded, the guard carries the applicable decision forward instead of asking for it again. Approval of authority alone is not silently promoted into agreement with a direction or scenario set.
+A card has two lines: what happened, and `NEXT:` with one exact action. Its first word is the level. Blocked means the action did not run. Ask means you answer next. Note means continue. A card is not a question for you: the agent reports it in one sentence and takes the `NEXT:` action; after an Ask it stops until you answer.
 
-The guard is intentionally partial. A trusted hook receipt proves only the procedural event and covered state transition it represents. It does not prove that the evidence is correct, that the system was fully understood, or that every mutation path was intercepted. If the hook is absent, disabled, untrusted, unsupported, or cannot run, PMNM continues as a portable advisory skill and the lost enforcement coverage should remain visible.
+The guard is intentionally partial. It can enforce declared order for events Codex sends it, but it cannot establish product intent, evidence quality, complete tool coverage or semantic correctness. When it is absent, disabled, untrusted, unsupported or bypassed, PMNM continues as a portable advisory skill.
 
 ## Shared Understanding
 
-For material behavior work, expect the agent to distinguish:
+The agent investigates before proposing a change. It follows the observable path, checks consumers, searches for an existing contractually equivalent pattern and tries to disprove its own leading explanation.
 
-- what you reported from what it observed;
-- the observable contract from a possible cause;
-- confirmed scope from inferred blast radius;
-- requirements from implementation suggestions;
-- current understanding from hypotheses already refuted.
+Technical facts that the repository or available tools can settle remain investigation. The agent asks the human only for product intent, priority, risk acceptance or another decision evidence cannot make.
 
-When materially different directions remain, the agent should expose the decision frontier before promoting one into a solution. Standard- and High-risk behavior changes also require current human alignment on scenario coverage unless a prior, scope-specific delegation already covers those decisions.
-
-This is collaboration, not a request for the human to rediscover facts available from the codebase or tools. The agent investigates those facts and asks only questions whose answers can change product meaning, authority, scope, risk, or the next material decision.
+A task folder starts with `index.md`, `plan.md`, `verification.md` and `permissions.json`, and is updated as understanding changes: what was read and what it showed, what was decided and why, what was rejected, what was verified. Reusable claims move to project knowledge with their original certainty; human-owned always-or-never instructions remain rules. After interruption, the folder outranks conversation memory.
 
 ## Before A Material Change
 
-The visible readiness result is one of:
+Before showing the Digest, the agent writes `plan.md`: one line per file the implementation will write, one per file that must stay as it is, and one per material non-file state transition or invariant. A state transition names explicit before and after values and an exact task operation in `permissions.json`. The agent also writes an actionable verification plan and lists every predictable exact sensitive operation by task or project scope. The Digest reads that combined contract aloud. The agent shows one plan Digest after investigation and before changing the project or external state:
 
-- `READY`: the current contract, investigation, required checkpoints, scenario coverage, authority, and planned effects support implementation;
-- `INCOMPLETE`: a required bridge or decision is missing and the agent remains in investigation;
-- `BLOCKED`: progress requires unavailable evidence, authority, environment, or collaborator input.
+```text
+Digest — <task>
+Understanding: <requested result>
+Current state: <what the system does and the evidence>
+Change: <bounded implementation>
+Verification: <checks that can challenge the result; the wrong path and the observation that would expose it>
+Permissions: <exact sensitive operations by scope, or none>
+Ambiguities: <material uncertainty or none>
+Trade-offs: <material cost or none>
+Do you agree?
+```
 
-An instruction to implement does not erase this gate. If later evidence changes the basis of the direction, affected readiness and verification become stale.
+You answer in a later turn; the agent stops there. Agreement authorizes implementation inside that Digest. A correction, changed direction, wider surface or new evidence that breaks it requires a revised Digest and fresh agreement.
 
-The guard also refuses to use another route or exemption as a reset for active work, to lower effort silently inside one activity lifecycle, or to close while a covered result is still in flight. It permits only one covered write to await a result. A missing result must be reconciled as unknown or failed-with-no-effect before another covered write, and a contradictory late result reopens Recovery. An unresolved Recovery receives one bounded continuation before the host permits an incomplete stop, so the interlock remains visible without creating a loop.
-
-With the trusted Codex guard, Standard and High work cannot create a usable first-write token in the same turn that first presents its collaborator checkpoint unless an earlier explicit scope-specific delegation already supplies that decision. A later collaborator response plus explicit reconciliation is the observable boundary. Light work remains proportional.
+The Digest may group predictable exact sensitive operations into one decision when the host can bind them. Task permissions end with the task or a withdrawn Digest. Project permissions survive only for the same project and exact operations, and can be replaced or revoked. A changed or unlisted ordinary sensitive operation asks again. An unlisted state-changing operation requires a revised Digest because it changes the outcome contract. Native host approval remains controlling. A compound operation with an unknown part or several sensitive effects is split before authority is presented.
 
 ## When Direction Breaks
 
-Ordinary uncertainty does not require a stop. A real turn boundary is required when:
+New evidence sometimes invalidates work already done. The agent should stop the dependent direction, state the corrected current understanding, preserve what remains valid, mark the rejected hypothesis as history and investigate what changed.
 
-- new evidence materially removes the basis for the active direction; or
-- the collaborator explicitly rejects that direction.
-
-The agent should show the prior basis, the new evidence or rejection, affected artifacts, one canonical current understanding, and one evidence-based question. It then waits. `REALIGNMENT` applies before dependent artifacts exist; `RECOVERY` applies after plans, tests, code, or effects already depend on the displaced basis.
+If the correction changes the plan, the next implementation starts only after a new Digest. A successful later test cannot retroactively validate an abandoned premise.
 
 ## Verification
 
-Expect verification claims to say:
+Verification is selected by the changed contract, not by the name of a test layer. Every passed result needs two current claims: the request's own case and the thing that must not change. A state plan also repeats its exact state contracts there. After a material change, the agent writes them in `verification.md` after its last change, then obtains the evidence against that state. A successful state operation proves only that it ran, not that the resulting state is correct. Human verification waits for the human's later report. A check that changes the project returns the work to investigation and a revised Digest. The agent runs the strongest sufficient accessible check and says exactly what it proves and does not prove. Product failures remain separate from environment, fixture and tool failures.
 
-- what was executed or inspected;
-- the literal result;
-- which contract or scenario it can falsify;
-- what it does not prove;
-- any environmental failure, skipped scenario, or residual risk.
+After implementation, the test Digest gives the human an exact handoff:
 
-A unit test is not automatically the right evidence, and manual evidence is not automatically sufficient. The selected guard should observe the material contract, fail for a real recurrence, fit the repository, and remain proportional to risk.
+```text
+Test — <task>
+Where: <screen, URL, endpoint or command>
+Environment: <runtime and setup>
+As: <role, account or caller characteristics>
+Data: <safe fixture and provenance>
+Steps: <ordered actions>
+Expect: <observable result at each material point>
+Evidence: <what to retain>
+Cleanup: <what to restore or why none is needed>
+Can run: <yes with the available capability, or no with the exact limitation>
+```
 
-For a material runtime or user-visible contract, expect the agent to attempt the strongest accessible authorized check. Every later implementation mutation makes earlier verification stale. If an account, device, environment, or human judgment keeps execution with you, the result should identify the exact entry surface or URL when known, starting state, data, actions, expected observations, evidence to retain, cleanup, and limits. `reproducible-handoff` means the procedure is usable; it does not mean the behavior passed.
+Before handing the run to you, the agent checks whether the host and project expose interface automation, a real entry route, safe data access and the needed environment. When it cannot run the check, it names the missing capability instead of presenting instructions as executed evidence. The final audit requires current passed verification and walks `plan.md`: every file materially changed or excluded for its reason, every state objective supported by its exact operation and current evidence, nothing material outside it. A no-op or a file restored to baseline is not a completed target. The audit tests the completion claim and names file comparison and state evidence separately. A state-only task says no project-file comparison occurred. Under the guard it also names the fingerprint of the observed source and state boundaries.
 
-## Durable Activities
+## Resuming Work
 
-When work has an identifier or is likely to outlive the current exchange, PMNM resolves the activity record before material investigation and compares it with the current source or delivery state. It may load an existing delegated record, plan a missing record and wait for exact approval, establish a complete reason not to create one, or remain blocked.
+A fresh conversation reads the task index first and only the detail needed for the next step. It should be able to state current status, decisive evidence, open uncertainty and the next action without repeating finished investigation.
 
-After a bounded delegation exists, material findings, corrections, decisions, evidence, verification, pauses, and handoffs are captured automatically. Creating another activity or changing record structure, location, visibility, lifecycle, or publication still requires fresh authority.
-
-When the Codex guard is active, a delegated record cannot become current merely because the agent writes `capture=current`. The guard requires a successful covered durable-content update under the current collaborator prompt and basis before readiness, and another after the latest implementation mutation before closure. A later prompt makes the prior capture stale, including a write that was still in flight. This is evidence that a classified write occurred, not proof that the record's claims are true or complete.
-
-If you choose a new context location, the plan should establish a recoverable activity, its locator or registry connection, update delegation, privacy boundary, and retrieval check in the smallest useful transaction. An empty folder alone is not successful onboarding.
-
-For a new file-backed Standard activity, expect stable index, understanding, timeline, and verification responsibilities. Optional records and evidence appear only when a demonstrated consumer needs them. Existing viable layouts are mapped rather than renamed for aesthetics.
-
-## When Current Capacity Is Not Enough
-
-If the current model or connected tools cannot responsibly reconcile material evidence, the correct result is not a polished guess. Expect the agent to preserve the unresolved claim, evidence already gathered, lost coverage, safe stopping point, recommended model, tool, or human contribution, and where the work should resume. A later model can continue from that handoff without pretending the earlier gap never existed.
+General rules load before project rules. Current human instructions outrank both. Decisions stay in their task folder. Only an explicit always, never or prevention intent can become a rule, and the human chooses whether it is project or general.
 
 ## Requests That Should Stay Light
 
-These normally should not activate the complete workflow:
+PMNM should not impose its full flow on a factual question, an isolated prose edit or a mechanical transformation.
 
-```text
-What does this error message mean?
-```
-
-```text
-Rewrite this paragraph for clarity.
-```
-
-```text
-Where is the configuration file documented?
-```
-
-A factual question can become non-trivial when the user asks for investigation, a code change, security judgment, regression attribution, or a claim that depends on the current repository.
+Explicit invocation still activates the skill. A small implementation can use Light effort, but it still has a compact Digest before the write and a direct check afterward.
 
 ## Reading Evaluation Evidence
 
-Source validators can prove that the packaged references resolve, declared event ordering is internally consistent, covered invalid traces are rejected, and the host guard follows its deterministic fixtures. Artifact checks can prove exact packaged and installed bytes. Neither proves that a particular model followed the skill, that Codex trusted or invoked the hook, or that uncovered effects were prevented in a real conversation.
+Source validators can prove that declared files resolve, package identities agree, public boundaries hold and covered guard transitions match their executable fixtures. Artifact checks can prove exact packaged and installed bytes. Neither proves that a particular model followed the skill, that a host trusted or invoked a hook, or that the implementation is correct.
 
-Behavioral confidence requires a fresh host session using the exact candidate, representative positive and negative prompts, recorded outcomes, and comparison across relevant model or host configurations. See [the evaluation guide](../evals/README.md) and [distribution boundaries](distribution.md).
+Behavioral confidence requires a fresh session using the exact candidate, representative positive and negative prompts, recorded source state and explicit comparison across relevant model and host configurations. See the [evaluation guide](../evals/README.md) and [distribution boundaries](distribution.md).

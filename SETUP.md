@@ -32,6 +32,8 @@ Before changing state:
 
 Do not use `npx`, `npm exec`, `@latest`, an unrequested global install, a manual plugin-cache edit, or a copied skill directory as a substitute for the host's supported route. For this project, npm is the immutable artifact selected by the repository marketplace; `npm install` alone is not host registration.
 
+When the Codex guard is active during setup, documented Codex and Claude plugin add, remove, install, uninstall, update and marketplace changes are recognized as environment effects. The guard asks for the exact command instead of treating it as unknown. A plan Digest does not grant that authority.
+
 Setup authority does not authorize analyzing the user's source repositories. A bounded post-install behavior check should use a neutral prompt or a disposable fixture.
 
 ## Prerequisites
@@ -56,7 +58,7 @@ codex plugin marketplace add --help
 codex plugin add --help
 ```
 
-The repository's automated distribution checks currently cover Codex CLI `0.144.4` and the command shapes below. A later executable may change its grammar; current help and current official documentation outrank this historical minimum.
+The postpublication verifier rejects Codex CLI versions below `0.144.4`, and deterministic fixtures exercise the command shapes below with a mocked `0.144.4` response. That is a minimum and a fixture boundary, not live evidence that every `0.144.4` client behaves correctly. Current installed help and current official documentation outrank it.
 
 OpenAI's current [plugin packaging](https://developers.openai.com/plugins/build/plugins) and [complete-plugin testing](https://developers.openai.com/plugins/deploy/connect-chatgpt) documentation are the public platform references for the manifest, marketplace, fresh-conversation, positive, and negative evaluation boundaries.
 
@@ -110,9 +112,9 @@ codex plugin list --json
 
 No separate clone or npm installation is required. The same operation can be delegated to Codex by sharing the repository URL and explicitly asking it to install the plugin according to this file.
 
-The skill and hook have separate runtime boundaries. In Codex, open `/hooks`, locate the PMNM hook source, inspect its commands, and explicitly trust the current definition only if it matches the installed package. Installation or enablement does not trust a non-managed hook automatically. A changed hook hash returns to review-required state.
+Start a new conversation after installation. The skill and hook have separate runtime boundaries. In Codex, open `/hooks`, locate the PMNM hook source, inspect its commands, and explicitly trust the current definition only if it matches the installed package. Installation or enablement does not trust a non-managed hook automatically. A changed hook hash returns to review-required state.
 
-Start a new conversation after installation. Then use a bounded direct activation check:
+Then use a bounded direct activation check:
 
 ```text
 $please-make-no-mistakes explain how you would investigate a non-trivial regression; do not modify files
@@ -126,7 +128,7 @@ When the hook was intentionally trusted, use a second read-only check:
 $please-make-no-mistakes report the current procedural guard state without modifying files
 ```
 
-The conversation should receive a compact message headed by the current `Please, ...` capability, without a diagnostic code, and an internal status control call should be rewritten rather than executed by the shell. The language may follow a bounded English or Spanish heuristic. This proves only that the reviewed hook ran for that session. It does not prove semantic readiness, complete tool interception, or correct future decisions.
+The conversation should receive a two-line card: the first word is the level (Blocked, Ask or Note), then what happened, then a `NEXT:` line with the exact receipt. The internal status receipt is intercepted by the hook rather than executed by the shell. `pmnm-guard` is not a `PATH` executable. This proves only that the reviewed hook ran for that session and intercepted that call; it does not prove that the model will follow the flow.
 
 ## Install With Another Host
 
@@ -143,6 +145,8 @@ There is no universal command that registers an Agent Skill in every coding agen
 7. Verify discovery in a clean conversation with a positive and a negative activation prompt.
 
 When the agent cannot inspect or operate the target host directly, the user remains the command runner. Do not ask the user to choose among speculative integrations; derive the supported route from host evidence and ask only for the missing fact or output.
+
+No complete Claude Code integration is claimed in this release. Claude Code may discover the portable Agent Skill through a host-supported route, but PMNM's complete PMNM folder workflow also requires one documented literal pointer, which this repository has not yet established or verified for Claude Code. No Claude guard exists or is promised here.
 
 The npm package can transport the exact public files to environments that understand npm artifacts, but it does not register or activate PMNM by itself. A host-specific adapter may be documented later only after its complete install, update, rollback, removal, and clean-session verification path has been tested.
 
@@ -171,15 +175,27 @@ Use one terminal result:
 
 Package installation, a successful validator, a saved marketplace entry, a hook file in the package, or a manually started process is not proof that a conversation loaded the skill or ran the hook. Report skill activation and hook activation separately. When the host cannot reveal the loaded revision or trusted hook hash, say so explicitly.
 
-### Optional durable context onboarding
+### The PMNM folder
 
-Skill installation and user-context connection are separate outcomes. A successful installation MUST NOT create a context store, locator, activity record, or personal profile automatically.
+Skill installation and the PMNM folder are separate outcomes. Installation does not create the folder, its pointer, a project folder or a personal profile.
 
-When the user wants cross-session continuity, first inspect whether an authorized store and locator already exist. If none exists, complete the storage preflight: ownership and subject, audience, repository relationship, access, versioning or ignore state, synchronization or publication exposure, sensitivity, retention, recovery, retrieval needs, and existing stores. Recommend the smallest supported location from that evidence. Ask one focused location question only when a user-owned choice remains material; do not make the user invent the storage design or offer conversation-only continuity as the default.
+The first task after installation asks two questions, in this order, before the agent reads your repository: where to create the PMNM folder, suggesting `~/PMNM`; then the project name, suggesting the repository name. With the trusted guard, the guard asks through its cards and records the answers with the `folder` and `project` receipts. Without a guard, the agent inspects only the one literal pointer path declared by the host integration. In Codex that path is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. Another host must document its own single pointer path. Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it.
 
-Then prepare one outcome-complete reviewed plan for the smallest canonical activity, required locator or registry connection, bounded routine-update delegation, privacy and retention boundary, and retrieval validation. Present adjacent known authority needs once while preserving each target, scope, and digest independently. Keep every structural and configuration effect explicit in the digest and obtain fresh approval before applying it. Creating only an empty root does not prove that a fresh conversation can recover the activity.
+Choose a location outside your repositories and outside the host's config directory. The host's config directory receives only the pointer, one line with the folder's absolute path, so another host on the same machine can read the same memory once its own pointer is configured. If you later move or delete the folder, the agent asks once more where it is or where it should be. An existing empty folder is seeded before the pointer is written. An invalid pointer or index is preserved under a unique recovery name and rebuilt only after your explicit recovery answer.
 
-Verify context connection separately by starting from the authoritative locator, resolving the canonical activity, and reporting the exact recovery boundary. Missing optional context does not invalidate the installed public skill.
+The folder has this shape:
+
+```text
+<PMNM folder>/
+  index.json                      projects and their repository paths; one writer at a time
+  general-rules.md                rules for every project
+  projects/<project>/
+    project-rules.md              human-owned rules for this project
+    project-knowledge.md          reusable claims with basis and freshness
+    tasks/<id>/                   one per task: index.md, plan.md, verification.md, permissions.json
+```
+
+A fresh `index.json` holds the schema `pmnm.projects/v1`, `pointer_version` 1 and an empty `projects` list. One writer at a time: the guard when it is active, otherwise the agent. Never both in one session. Inside the folder the agent needs no further permission: it creates the project and task folders, keeps reusable evidence-backed knowledge separate from human-owned rules, fills the task plan, verification and permission forecast, and records evidence as it appears. The skill can be discovered before this folder exists, but material project work does not proceed without the literal pointer, project mapping and task record that preserve its decisions and evidence.
 
 ## Troubleshooting
 
@@ -196,7 +212,7 @@ Classify the first unproven boundary before changing anything:
 - **guard-runtime failure** — the trusted hook cannot start Node.js, persist bounded state, or return a valid lifecycle decision;
 - **behavior failure** — discovery succeeds but representative prompts do not follow the contract.
 
-Do not convert a command failure into `pending-restart`. Do not use similarly named local files, a readable `SKILL.md`, or an executable on `PATH` as evidence for a different boundary. Report the literal failure, the evidence collected, and the smallest next action.
+Do not convert a command failure into `pending-restart`. Do not use similarly named local files, a readable `SKILL.md`, or an executable on `PATH` as evidence for a different boundary. If a `pmnm-guard` receipt reaches the shell or returns command not found, do not search for, install or retry it. Report that this call was not intercepted and continue through the portable advisory path. Report the literal failure, the evidence collected, and the smallest next action.
 
 ## Update
 
@@ -250,7 +266,7 @@ Remove the project-specific marketplace only when the user also authorizes that 
 codex plugin marketplace remove please-make-no-mistakes
 ```
 
-Removing a marketplace source is distinct from removing an installed plugin. Neither operation authorizes deleting an external context store, activity records, project adapters, or user data; those are deliberately outside the installed plugin.
+Removing a marketplace source is distinct from removing an installed plugin. Neither operation authorizes deleting the external PMNM folder. Its pointer, project folders, task folders and user data are deliberately outside the installed plugin.
 
 For another host, use its documented removal mechanism and preserve unrelated configuration and user context.
 
@@ -258,15 +274,25 @@ For another host, use its documented removal mechanism and preserve unrelated co
 
 ### 11. Test a source tree without publishing it
 
-Maintainers and contributors may add an absolute checkout path after explicitly choosing the `local-checkout` operation:
+The repository marketplace at `.agents/plugins/marketplace.json` selects the exact published npm artifact. Adding the checkout directory itself as a marketplace therefore installs nothing from source, and before the first publication it installs nothing at all; that result is expected, not a broken checkout.
+
+To exercise unpublished source in Codex, choose the `local-checkout` operation explicitly and build a disposable local marketplace outside the repository. Codex local marketplace entries use a `local` source whose `path` starts with `./` and stays inside the marketplace root:
+
+1. From the repository root, run `npm pack --pack-destination <tmp>` and extract the archive's `package/` directory to `<tmp-marketplace>/plugins/please-make-no-mistakes`.
+2. Write `<tmp-marketplace>/.agents/plugins/marketplace.json` with the same `name`, `interface`, and `plugins` shape as the repository marketplace, a distinct marketplace name such as `please-make-no-mistakes-local`, and the plugin source replaced by `{"source": "local", "path": "./plugins/please-make-no-mistakes"}`.
+3. Register the disposable marketplace, then install from it and inspect each result separately:
 
 ```bash
-codex plugin marketplace add /absolute/path/to/please-make-no-mistakes
+codex plugin marketplace add /absolute/path/to/tmp-marketplace
 ```
 
-Then use the plugin-add step from section 4.
+```bash
+codex plugin add please-make-no-mistakes@please-make-no-mistakes-local --json
+```
 
-After changing the local plugin, remove and add its installed copy again, review the changed hook in `/hooks`, then start a new conversation. Local-path marketplaces are an authoring route and cannot be upgraded with Git marketplace semantics.
+4. Review the bundled hook in `/hooks` and start a new conversation before judging behavior.
+
+After changing the source, pack again, replace the plugin directory, remove and add the installed copy again, review the changed hook in `/hooks`, then start a new conversation. Local-path marketplaces are an authoring route and cannot be upgraded with Git marketplace semantics. Codex's plugin-creator tooling can generate an equivalent local marketplace; either way, remove the disposable marketplace when the test ends so it cannot shadow the published route.
 
 From the repository root, validate the source candidate with:
 

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import ast
 import hashlib
 import json
 import os
@@ -26,10 +25,19 @@ MAX_TREE_BYTES = 250_000_000
 MAX_TREE_ENTRIES = 10_000
 LINK_RE = re.compile(r"\[[^\]]*\]\((?P<target>references/[^)\s]+\.md)\)")
 FRONTMATTER_NAME_RE = re.compile(r"(?m)^name:\s*(?P<name>[^\s]+)\s*$")
-LEGACY_CAPABILITY_RE = re.compile(r"(?m)^\| \*\*(?P<name>Please, [^*]+)\*\* \|")
-CAPABILITY_ID_RE = re.compile(
-    r"(?m)^\| `(?P<identifier>[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+)` \|"
-)
+HEADING_RE = re.compile(r"(?m)^## (?P<heading>[^\n]+)$")
+REQUIRED_HEADINGS = {
+    "1. The folder",
+    "2. The flow",
+    "3. Rules",
+    "4. Effort",
+    "5. Claims",
+    "6. Sensitive actions",
+    "7. Under a guard",
+    "8. How to speak",
+    "Stop and ask",
+    "References",
+}
 
 
 class SmokeFailure(Exception):
@@ -162,11 +170,10 @@ def validate_skill_shape(root: Path) -> dict[str, Any]:
     if name_match is None or name_match.group("name") != SKILL_NAME:
         raise SmokeFailure("SKILL.md does not declare the expected skill name")
 
-    capabilities = sorted(
-        set(LEGACY_CAPABILITY_RE.findall(text)) | set(CAPABILITY_ID_RE.findall(text))
-    )
-    if not capabilities:
-        raise SmokeFailure("SKILL.md capability table is missing or unreadable")
+    headings = set(HEADING_RE.findall(text))
+    missing_headings = sorted(REQUIRED_HEADINGS - headings)
+    if missing_headings:
+        raise SmokeFailure(f"SKILL.md is missing kernel sections: {missing_headings}")
 
     linked_references = sorted(set(LINK_RE.findall(text)))
     actual_references = sorted(
@@ -186,85 +193,8 @@ def validate_skill_shape(root: Path) -> dict[str, Any]:
 
     return {
         "skill_name": SKILL_NAME,
-        "capability_count": len(capabilities),
+        "section_count": len(headings),
         "reference_count": len(actual_references),
-    }
-
-
-def validate_runtime_contract(root: Path) -> dict[str, Any]:
-    runtime = root / "scripts" / "context_store.py"
-    try:
-        source = runtime.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=os.fspath(runtime))
-    except FileNotFoundError as exc:
-        raise SmokeFailure("installed context-store runtime is missing") from exc
-    except (OSError, UnicodeError, SyntaxError) as exc:
-        raise SmokeFailure(f"context-store runtime cannot be inspected safely: {exc}") from exc
-
-    operations = {
-        node.args[0].value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
-        and node.func.attr == "add_parser"
-        and node.args
-        and isinstance(node.args[0], ast.Constant)
-        and isinstance(node.args[0].value, str)
-    }
-    if operations != {"inspect", "plan"}:
-        raise SmokeFailure(
-            "context-store runtime does not expose exactly the expected read-only interface"
-        )
-    return {
-        "status": "passed",
-        "operations": sorted(operations),
-        "inspection": "static-ast",
-    }
-
-
-def validate_conformance_contract(root: Path) -> dict[str, Any]:
-    runtime = root / "scripts" / "record_conformance.py"
-    try:
-        source = runtime.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=os.fspath(runtime))
-    except FileNotFoundError as exc:
-        raise SmokeFailure("installed record-conformance runtime is missing") from exc
-    except (OSError, UnicodeError, SyntaxError) as exc:
-        raise SmokeFailure(
-            f"record-conformance runtime cannot be inspected safely: {exc}"
-        ) from exc
-
-    constants = {
-        node.targets[0].id: node.value.value
-        for node in tree.body
-        if isinstance(node, ast.Assign)
-        and len(node.targets) == 1
-        and isinstance(node.targets[0], ast.Name)
-        and isinstance(node.value, ast.Constant)
-        and isinstance(node.value.value, str)
-    }
-    if constants.get("LOGICAL_CONTRACT") != "pmnm.activity-record/v1":
-        raise SmokeFailure("record-conformance logical contract is missing or unexpected")
-    if constants.get("PROFILE") != "pmnm.standard-file/v1":
-        raise SmokeFailure("record-conformance profile is missing or unexpected")
-
-    arguments = {
-        node.args[0].value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
-        and node.func.attr == "add_argument"
-        and node.args
-        and isinstance(node.args[0], ast.Constant)
-        and isinstance(node.args[0].value, str)
-    }
-    if "--activity-root" not in arguments:
-        raise SmokeFailure("record-conformance runtime lacks its activity-root boundary")
-    return {
-        "status": "passed",
-        "logical_contract": constants["LOGICAL_CONTRACT"],
-        "profile": constants["PROFILE"],
-        "inspection": "static-ast",
     }
 
 
@@ -335,12 +265,6 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         result["shape"] = validate_skill_shape(installed_root)
-        # Parse the reference runtime without executing either tree. Tree equality
-        # establishes that the installed runtime has the same inspected bytes.
-        result["runtime_contract"] = validate_runtime_contract(expected_root)
-        result["record_conformance_contract"] = validate_conformance_contract(
-            expected_root
-        )
 
         if arguments.host_loaded_digest is None:
             result["client_session"] = {"status": "unverified"}
@@ -364,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
 
         result["status"] = "passed"
         result["limitations"].append(
-            "Concurrent replacement of an ancestor directory can invalidate this read-only snapshot; run against a stable installation."
+            "Concurrent replacement of an ancestor directory can invalidate this read-only inspection; run against a stable installation."
         )
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return 0
