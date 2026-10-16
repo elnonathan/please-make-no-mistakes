@@ -19,6 +19,7 @@
     "epistemic-integrity"
   ],
   "skills": "./skills/",
+  "hooks": "./hooks/codex/hooks.json",
   "interface": {
     "displayName": "Please, Make No Mistakes",
     "shortDescription": "Evidence-first discipline for software work",

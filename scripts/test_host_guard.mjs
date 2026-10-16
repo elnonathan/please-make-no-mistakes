@@ -14,7 +14,7 @@ import {
   processPersistedEvent,
   testing,
 } from "../hooks/pmnm-guard.mjs";
-import {declarationSensitiveEffect, toolResult} from "../hooks/pmnm-shell.mjs";
+import {classifyToolEvent, declarationSensitiveEffect, toolResult} from "../hooks/pmnm-shell.mjs";
 
 const IMPLEMENTATION_PATCH =
   "*** Begin Patch\n*** Update File: example.txt\n@@\n-old\n+new\n*** End Patch";
@@ -169,6 +169,13 @@ function v2Receipt(state, where, turn, command, id = "receipt", options = {}) {
   return v2Pre(state, where, turn, command, id, "Bash", null, options);
 }
 
+function v2ApproveSensitive(denied, where, turn, effect, id = "allow") {
+  const token = visibleText(denied).match(/PMNM-ALLOW-[A-F0-9]{12}/)?.[0];
+  assert.ok(token, visibleText(denied));
+  const answered = v2Prompt(denied.state, where, turn, token);
+  return v2Receipt(answered.state, where, turn, "pmnm-guard allow effect=" + effect, id);
+}
+
 function v2DeclaredPre(
   state,
   where,
@@ -190,11 +197,11 @@ function v2DeclaredPre(
   return v2RawPre(result.state, where, turn, command, id);
 }
 
-function v2Configured(t, language = "en") {
+function v2Configured(t, language = "en", work = "implementation", effort = "standard") {
   const where = v2Temp(t);
   let state = testing.baseState();
   state = v2Prompt(state, where, "turn-1", language === "es" ? "Investiga esta tarea" : "Investigate this task").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=" + effort + " work=" + work, "start").state;
   state = v2Prompt(state, where, "turn-2", language === "es" ? "Guárdalo aquí" : "Keep it here").state;
   state = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(where.notes), "folder").state;
   state = v2Prompt(state, where, "turn-3", language === "es" ? "Llámalo ejemplo" : "Call it example").state;
@@ -260,8 +267,8 @@ function v3CreateTask(state, where, turn = "turn-3") {
   return {task, state: result.state};
 }
 
-function v3Setup(t, {workspace = false} = {}) {
-  const {where, state: configured} = v2Configured(t);
+function v3Setup(t, {workspace = false, work = "implementation"} = {}) {
+  const {where, state: configured} = v2Configured(t, "en", work);
   fs.mkdirSync(path.join(where.cwd, "src"), {recursive: true});
   fs.writeFileSync(path.join(where.cwd, "src", "a.js"), "a=1\n");
   fs.writeFileSync(path.join(where.cwd, "src", "b.js"), "b=1\n");
@@ -474,6 +481,9 @@ function v3TestDigestMessage(task = "TASK-101") {
     "Evidence: retain the literal observed result",
     "Cleanup: temporary fixture removed by the test harness",
     "Can run: yes, with the fixture's executable check",
+    // A closing message for implementation work now carries the hand-over too. Fixtures that are
+    // about something else say the neutral form; HG-311 builds its own message and stays honest.
+    "No version-control step applies to this task.",
   ].join("\n");
 }
 
@@ -550,6 +560,7 @@ function oracleCommand(value, where) {
 function runOracleSequence(t, sequence) {
   let setup;
   if (sequence.setup === "configured") setup = v2Configured(t);
+  else if (sequence.setup === "configured-advisory") setup = v2Configured(t, "en", "advisory");
   else if (sequence.setup === "agreed") setup = v2Agreed(t);
   else if (sequence.setup === "armed-test-digest") setup = v3ArmedTestDigest(t);
   else setup = {where: v2Temp(t), state: testing.baseState()};
@@ -560,7 +571,14 @@ function runOracleSequence(t, sequence) {
     const turn = event.turn || "oracle-turn";
     const id = event.id || "oracle-" + index;
     const command = oracleCommand(event.command, where);
-    if (event.event === "prompt") result = v2Prompt(state, where, turn, event.text || "Continue");
+    if (event.event === "prompt") {
+      let prompt = event.text || "Continue";
+      if (prompt === "$APPROVAL_TOKEN") {
+        prompt = visibleText(result).match(/PMNM-ALLOW-[A-F0-9]{12}/)?.[0];
+        assert.ok(prompt, sequence.id + " approval token");
+      }
+      result = v2Prompt(state, where, turn, prompt);
+    }
     else if (event.event === "prompt-transcript") {
       const transcript = v3WriteTranscript(where, "oracle-transcript-" + index, [v3TestDigestMessage(state.task_id)]);
       result = v2Process(state, where, "UserPromptSubmit", turn, {prompt: event.text || "Continue", transcript_path: transcript});
@@ -611,7 +629,7 @@ test("HG-109 exposes only the twelve release receipts and rejects retired contro
 test("HG-110 start opens the task and asks once for the host PMNM folder", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Please investigate TASK-101").state;
-  const started = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start");
+  const started = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start");
   assert.equal(isControlRecorded(started), true);
   assert.equal(started.state.task_id, "TASK-101");
   assert.equal(started.state.phase, "INVESTIGATE");
@@ -627,7 +645,7 @@ test("HG-110 start opens the task and asks once for the host PMNM folder", (t) =
 test("HG-111 folder creates the root and pointer atomically and preserves an existing root", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Use the suggested folder").state;
   const configured = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(where.notes), "folder");
   assert.equal(isControlRecorded(configured), true);
@@ -743,13 +761,12 @@ test("HG-117 sensitive permission is later-turn, effect-bound, exact-command, an
   assert.equal(isDenied(asked), true);
   assert.match(
     visibleText(asked),
-    /name what this command changes and ask the human whether to allow it; stop until they answer/,
+    /ask the human to reply exactly PMNM-ALLOW-[A-F0-9]{12}/,
   );
   assert.match(visibleText(asked), /pmnm-guard allow effect=deletion/);
   const sameTurn = v2Receipt(asked.state, where, "turn-4", "pmnm-guard allow effect=deletion", "allow-early");
   assert.equal(isDenied(sameTurn), true);
-  state = v2Prompt(sameTurn.state, where, "turn-5", "Yes, delete that file").state;
-  state = v2Receipt(state, where, "turn-5", "pmnm-guard allow effect=deletion", "allow").state;
+  state = v2ApproveSensitive(sameTurn, where, "turn-5", "deletion", "allow").state;
   const allowed = v2Pre(state, where, "turn-5", command, "delete-retry");
   assert.equal(isDenied(allowed), false);
   const second = v2Pre(allowed.state, where, "turn-5", command, "delete-again");
@@ -783,15 +800,15 @@ test("HG-119 verified fingerprints are honest with and without a Git provider", 
   });
 });
 
-test("HG-120 cards are localized, bounded to two lines, and contain one literal NEXT", (t) => {
+test("HG-120 cards render one language, bounded to two lines, with one literal NEXT", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investiga y corrige esta tarea por favor").state;
-  const result = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TAREA-1 effort=standard", "start");
+  const result = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TAREA-1 effort=standard work=implementation", "start");
   const lines = twoLines(visibleText(result));
   assert.equal(lines.length, 2);
-  assert.match(lines[0], /^Pregunta:/);
+  assert.match(lines[0], /^Ask:/);
   assert.match(lines[1], /^NEXT:/);
-  assert.match(lines[1], /detente hasta que responda/);
+  assert.match(lines[1], /stop until they answer/);
   assert.equal((visibleText(result).match(/NEXT:/g) || []).length, 1);
   assert.doesNotMatch(visibleText(result), /^Please,/m);
 });
@@ -817,7 +834,7 @@ test("HG-121 PMNM bootstrap and contained notes need only the folder choice and 
 test("HG-122 unsafe PMNM roots and cross-boundary task writes fail closed", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Use this location").state;
   const insideRepo = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(path.join(where.cwd, "PMNM")), "bad-folder");
   assert.equal(isDenied(insideRepo), true);
@@ -914,7 +931,7 @@ test("HG-125 mixed writes, links, and symlink escapes cannot cross the PMNM boun
 test("HG-126 project display names are Unicode while physical folders remain portable", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investiga TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Usa esa carpeta").state;
   state = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(where.notes), "folder").state;
   state = v2Prompt(state, where, "turn-3", "El proyecto se llama Proyecto Ártico").state;
@@ -951,7 +968,7 @@ test("HG-127 a moved or deleted PMNM folder is recovered through the same folder
 test("HG-128 PMNM folder roots reject the repository, host configuration, filesystem root, and traversal", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Use this location").state;
   for (const candidate of [where.cwd, path.join(where.cwd, "notes"), where.codexHome, path.parse(where.root).root]) {
     const result = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(candidate), "bad-folder");
@@ -1022,6 +1039,7 @@ test("HG-131 Digest agreement requires a later human turn and redo invalidates i
     "- [x] example.txt — exercise later-turn agreement\n",
   ).state;
   state = v2Receipt(state, where, "turn-3", "pmnm-guard digest", "digest").state;
+  // A retired language value must not change what the human reads.
   const spanishState = structuredClone(state);
   spanishState.language = "es";
   const spanishRejected = v2Receipt(
@@ -1031,7 +1049,7 @@ test("HG-131 Digest agreement requires a later human turn and redo invalidates i
     "pmnm-guard agreed",
     "same-turn-agreed-es",
   );
-  assert.match(visibleText(spanishRejected), /NEXT: detente aquí; ninguna acción más hasta que el humano responda/);
+  assert.match(visibleText(spanishRejected), /NEXT: stop here; no more actions until the human answers/);
   let result = v2Receipt(state, where, "turn-3", "pmnm-guard agreed", "same-turn-agreed");
   assert.equal(isDenied(result), true);
   assert.match(visibleText(result), /human answer not observed/);
@@ -1047,7 +1065,7 @@ test("HG-131 Digest agreement requires a later human turn and redo invalidates i
 test("HG-132 status never repeats an unanswered bookkeeping question as a new Ask", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   const status = v2Receipt(state, where, "turn-1", "pmnm-guard status", "status");
   assert.match(visibleText(status), /^Note: PMNM is waiting for the human/m);
   assert.match(visibleText(status), /NEXT: stop here; no more actions until the human answers/);
@@ -1218,18 +1236,23 @@ test("HG-143 a fresh session starts neutral and resumes only the task it explici
   const options = {dataRoot: where.dataRoot, environment: {CODEX_HOME: where.codexHome, PLUGIN_DATA: where.dataRoot}, now: 100};
   const send = (event) => ({output: processPersistedEvent(event, options)});
   send(v2Event(where, "UserPromptSubmit", "turn-1", {prompt: "Investigate TASK-101"}));
-  send(v2Event(where, "PreToolUse", "turn-1", {tool_name: "Bash", tool_use_id: "start", tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard"}}));
+  send(v2Event(where, "PreToolUse", "turn-1", {tool_name: "Bash", tool_use_id: "start", tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard work=implementation"}}));
   send(v2Event(where, "UserPromptSubmit", "turn-2", {prompt: "Use this folder"}));
   send(v2Event(where, "PreToolUse", "turn-2", {tool_name: "Bash", tool_use_id: "folder", tool_input: {command: "pmnm-guard folder path=" + encodePathField(where.notes)}}));
   send(v2Event(where, "UserPromptSubmit", "turn-3", {prompt: "Call it example"}));
   send(v2Event(where, "PreToolUse", "turn-3", {tool_name: "Bash", tool_use_id: "project", tool_input: {command: "pmnm-guard project name=example"}}));
+  const taskRuntimeFiles = fs.readdirSync(path.join(where.dataRoot, "host-guard", "v3"))
+    .filter((name) => name.startsWith("task-") && name.endsWith(".json"));
+  assert.equal(taskRuntimeFiles.length, 1);
+  const taskRuntime = JSON.parse(fs.readFileSync(path.join(where.dataRoot, "host-guard", "v3", taskRuntimeFiles[0]), "utf8"));
+  assert.equal(taskRuntime.fields.work_type, "implementation");
 
   const neutralEvent = {...v2Event(where, "PreToolUse", "turn-4", {tool_name: "Bash", tool_use_id: "status", tool_input: {command: "pmnm-guard status"}}), session_id: "second-session"};
   const neutral = send(neutralEvent);
   assert.match(visibleText(neutral), /No task is open/);
   send({...v2Event(where, "UserPromptSubmit", "turn-5", {prompt: "Resume TASK-101"}), session_id: "second-session"});
   const resumed = send({...v2Event(where, "PreToolUse", "turn-5", {
-    tool_name: "Bash", tool_use_id: "resume", tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard"},
+    tool_name: "Bash", tool_use_id: "resume", tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard work=implementation"},
   }), session_id: "second-session"});
   assert.match(visibleText(resumed), /TASK-101/);
   const stateFiles = fs.readdirSync(path.join(where.dataRoot, "host-guard", "v3")).filter((name) => name.startsWith("session-") && name.endsWith(".json"));
@@ -1252,7 +1275,7 @@ test("HG-145 schema-v1 state resets visibly into the 0.1.0 contract", (t) => {
   const legacy = {schema_version: 1, phase: "ORIENT", language: "es", prompt_epoch: 2, current_turn_hash: null};
   const result = v2Process(legacy, where, "SessionStart", "turn-1", {source: "startup"});
   assert.equal(result.state.schema_version, 2);
-  assert.match(visibleText(result), /reinició el estado previo/);
+  assert.match(visibleText(result), /reset pre-release guard state/);
   assert.match(visibleText(result), /pmnm-guard start/);
 });
 
@@ -1289,17 +1312,17 @@ test("HG-147 unreadable pointers and indexes produce recovery instead of guessed
 test("HG-148 switching tasks clears old authority but cannot erase an in-flight result", (t) => {
   const {where, state: agreed} = v2Agreed(t);
   let state = v2Pre(agreed, where, "turn-4", IMPLEMENTATION_PATCH, "patch", "apply_patch").state;
-  let result = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard", "switch-pending");
+  let result = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard work=implementation", "switch-pending");
   assert.equal(isDenied(result), true);
   assert.match(visibleText(result), /host reported no result/);
   state = v2Post(state, where, "turn-4", IMPLEMENTATION_PATCH, "patch", "apply_patch").state;
-  result = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard", "switch-unverified");
+  result = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard work=implementation", "switch-unverified");
   assert.equal(isDenied(result), true);
   assert.match(visibleText(result), /unfinished, unverified|nothing verified/i);
   state = v2Receipt(state, where, "turn-4", "pmnm-guard verified result=partial how=inspection", "verified").state;
   state = v3AcknowledgeTestDigest(state, where, "turn-4", "turn-5", "partial");
   state = v2Receipt(state, where, "turn-4", "pmnm-guard done audit=partial", "done").state;
-  result = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard", "switch");
+  result = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard work=implementation", "switch");
   assert.equal(isControlRecorded(result), true, visibleText(result));
   assert.equal(result.state.task_id, "TASK-202");
   assert.equal(result.state.digest_agreed_epoch, null);
@@ -1324,13 +1347,13 @@ test("HG-150 output-producing read tools are never silently classified as pure r
 test("HG-151 starting the same open task is idempotent and can only raise effort", (t) => {
   const {where, state: agreed} = v2Agreed(t);
   const epoch = agreed.epoch;
-  let result = v2Receipt(agreed, where, "turn-4", "pmnm-guard start task=TASK-101 effort=high", "resume-high");
+  let result = v2Receipt(agreed, where, "turn-4", "pmnm-guard start task=TASK-101 effort=high work=implementation", "resume-high");
   assert.equal(isControlRecorded(result), true, visibleText(result));
   assert.equal(result.state.epoch, epoch);
   assert.equal(result.state.phase, "READY");
   assert.equal(result.state.digest_agreed_epoch, epoch);
   assert.equal(result.state.effort, "high");
-  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard start task=TASK-101 effort=light", "resume-light");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard start task=TASK-101 effort=light work=implementation", "resume-light");
   assert.equal(result.state.epoch, epoch);
   assert.equal(result.state.effort, "high");
   assert.equal(result.state.digest_agreed_epoch, epoch);
@@ -1353,8 +1376,7 @@ test("HG-153 a network command writing into PMNM still needs exact human permiss
   let result = v2Pre(configured, where, "turn-3", command, "network");
   assert.equal(isDenied(result), true);
   assert.match(visibleText(result), /pmnm-guard allow effect=network/);
-  result = v2Prompt(result.state, where, "turn-4", "Yes, make that exact request");
-  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard allow effect=network", "allow");
+  result = v2ApproveSensitive(result, where, "turn-4", "network", "allow");
   result = v2Pre(result.state, where, "turn-4", command, "network-retry");
   assert.equal(isDenied(result), false, visibleText(result));
   result = v2Post(result.state, where, "turn-4", command, "network-retry");
@@ -1392,7 +1414,9 @@ test("HG-154 every compatibility alias maps to its release receipt without hidin
   pending = v2Agreed(t);
   const command = "git commit -m change";
   result = v2Pre(pending.state, pending.where, "turn-4", command, "git");
-  result = v2Prompt(result.state, pending.where, "turn-5", "Yes, run that exact command");
+  const token = visibleText(result).match(/PMNM-ALLOW-[A-F0-9]{12}/)?.[0];
+  assert.ok(token, visibleText(result));
+  result = v2Prompt(result.state, pending.where, "turn-5", token);
   result = v2Receipt(result.state, pending.where, "turn-5", "pmnm-guard grant effect=version-control uses=1 basis=1", "grant");
   assert.equal(isControlRecorded(result), true, visibleText(result));
   assert.equal(isDenied(v2Pre(result.state, pending.where, "turn-5", command, "git-retry")), false);
@@ -1402,7 +1426,7 @@ test("HG-155 receipt parsing rejects injection, duplicate fields, and malformed 
   for (const command of [
     "pmnm-guard status; rm file",
     "pmnm-guard status\npmnm-guard done audit=passed",
-    "pmnm-guard start task=A task=B effort=light",
+    "pmnm-guard start task=A task=B effort=light work=implementation",
     "pmnm-guard folder path=$HOME/PMNM",
     "pmnm-guard project name='quoted'",
   ]) {
@@ -1428,7 +1452,7 @@ test("HG-157 a corrupt canonical project state fails closed across sessions", (t
   processPersistedEvent(v2Event(where, "PreToolUse", "turn-1", {
     tool_name: "Bash",
     tool_use_id: "start",
-    tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard"},
+    tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard work=implementation"},
   }), options);
   const statePath = testing.statePaths(where.dataRoot, {
     ...v2Event(where, "SessionStart", "turn-2"),
@@ -1473,7 +1497,7 @@ test("HG-159 restarting a completed task opens a fresh epoch without stale autho
   result.state = v3AcknowledgeTestDigest(result.state, where);
   result = v2Receipt(result.state, where, "turn-4", "pmnm-guard done audit=passed", "done");
   const previousEpoch = result.state.epoch;
-  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard start task=TASK-101 effort=standard", "reopen");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "reopen");
   assert.equal(result.state.epoch, previousEpoch + 1);
   assert.equal(result.state.phase, "INVESTIGATE");
   assert.equal(result.state.digest_agreed_epoch, null);
@@ -1497,7 +1521,7 @@ test("HG-161 representative cards always have two lines and exactly one NEXT act
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
   const cards = [];
-  let result = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start");
+  let result = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start");
   cards.push(visibleText(result));
   result = v2Receipt(result.state, where, "turn-1", "pmnm-guard done audit=passed", "bad-done");
   cards.push(visibleText(result));
@@ -1513,7 +1537,7 @@ test("HG-162 folder and project fields preserve spaces and Unicode through perce
   const where = v2Temp(t);
   where.notes = path.join(where.root, "PMNM Ártico");
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investiga TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Usa esa carpeta").state;
   let result = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(where.notes), "folder");
   assert.equal(isControlRecorded(result), true, visibleText(result));
@@ -1530,7 +1554,7 @@ test("HG-163 repositories with the same display name receive collision-safe proj
   fs.mkdirSync(secondCwd, {recursive: true});
   const second = {...where, cwd: secondCwd};
   let state = v2Prompt(testing.baseState(), second, "turn-1", "Investigate TASK-202").state;
-  state = v2Receipt(state, second, "turn-1", "pmnm-guard start task=TASK-202 effort=standard", "start").state;
+  state = v2Receipt(state, second, "turn-1", "pmnm-guard start task=TASK-202 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, second, "turn-2", "Call it example too").state;
   const result = v2Receipt(state, second, "turn-2", "pmnm-guard project name=example", "project");
   assert.equal(isControlRecorded(result), true, visibleText(result));
@@ -1540,13 +1564,21 @@ test("HG-163 repositories with the same display name receive collision-safe proj
   assert.equal(firstState.project_slug, "example");
 });
 
-test("HG-164 a declared project read routes before a task while any write names the missing start receipt", (t) => {
+test("HG-164 a project read is refused before a task and every write names the missing start receipt", (t) => {
   const where = v2Temp(t);
-  let state = testing.baseState();
-  const read = v2DeclaredPre(state, where, "turn-1", "rg pattern src", "read");
-  assert.equal(isDenied(read), false, visibleText(read));
-  state = read.state;
-  const result = v2Pre(state, where, "turn-1", IMPLEMENTATION_PATCH, "write", "apply_patch");
+  const state = testing.baseState();
+  const read = v2Pre(
+    state,
+    where,
+    "turn-1",
+    "",
+    "read",
+    "Read",
+    {file_path: path.join(where.cwd, "src", "index.js")},
+  );
+  assert.equal(isDenied(read), true, visibleText(read));
+  assert.match(visibleText(read), /pmnm-guard start task=<ticket-or-id>/);
+  const result = v2Pre(read.state, where, "turn-1", IMPLEMENTATION_PATCH, "write", "apply_patch");
   assert.equal(isDenied(result), true);
   assert.match(visibleText(result), /pmnm-guard start task=<ticket-or-id>/);
 });
@@ -1567,6 +1599,45 @@ test("HG-165 persisted-state collections are bounded and malformed entries fail 
   const projectState = testing.baseState();
   projectState.project_permissions = [{effect: "network", operation_hash: "a".repeat(64), objective_hash: "b".repeat(64)}];
   assert.throws(() => testing.validateState(projectState));
+
+  const forgedApproval = testing.baseState();
+  forgedApproval.pending_denied = {
+    kind: "sensitive",
+    effect: "network",
+    minimum_effect: null,
+    reason: "network-tool",
+    command_hash: "a".repeat(64),
+    asked_prompt_epoch: 1,
+    approved_prompt_epoch: 2,
+    denied_turn_hash: "b".repeat(64),
+  };
+  forgedApproval.prompt_epoch = 1;
+  assert.throws(() => testing.validateState(forgedApproval));
+
+  const malformedApproval = testing.baseState();
+  malformedApproval.pending_denied = {
+    kind: "sensitive",
+    effect: "network",
+    minimum_effect: null,
+    reason: "network-tool",
+    command_hash: "a".repeat(64),
+    asked_prompt_epoch: 0,
+    approved_prompt_epoch: "1",
+    denied_turn_hash: null,
+  };
+  assert.throws(() => testing.validateState(malformedApproval));
+
+  const legacyApproval = testing.baseState();
+  legacyApproval.pending_denied = {
+    kind: "sensitive",
+    effect: "network",
+    minimum_effect: null,
+    reason: "network-tool",
+    command_hash: "a".repeat(64),
+    asked_prompt_epoch: 0,
+    denied_turn_hash: null,
+  };
+  assert.equal(testing.validateState(legacyApproval).pending_denied.approved_prompt_epoch, null);
 });
 
 test("HG-166 the public action oracle replays against the current guard", async (t) => {
@@ -1628,7 +1699,7 @@ test("HG-169 an unrequested folder replacement names the actual recovery step", 
   );
   assert.equal(isDenied(result), true);
   assert.match(visibleText(result), /folder not requested/);
-  assert.match(visibleText(result), /NEXT: pmnm-guard start task=TASK-101 effort=standard/);
+  assert.match(visibleText(result), /NEXT: pmnm-guard start task=TASK-101 effort=standard work=implementation/);
   assert.doesNotMatch(visibleText(result), /bad value path/);
 });
 
@@ -1713,7 +1784,7 @@ test("HG-172 porcelain parsing preserves the leading unstaged column", () => {
 test("HG-173 Stop yields while a bookkeeping or sensitive human answer is pending", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   let stopped = v2Process(state, where, "Stop", "turn-1");
   assert.equal(stopped.output?.decision, undefined);
   assert.match(visibleText(stopped), /^Note: PMNM is waiting for the human/m);
@@ -1727,7 +1798,8 @@ test("HG-173 Stop yields while a bookkeeping or sensitive human answer is pendin
   assert.match(visibleText(sensitive), /^Ask: This command runs git/m);
   stopped = v2Process(sensitive.state, readyWhere, "Stop", "turn-4");
   assert.equal(stopped.output?.decision, undefined);
-  assert.match(visibleText(stopped), /^Note: PMNM is waiting for the human/m);
+  assert.match(visibleText(stopped), /^Ask: The exact operation-bound approval token was not observed/m);
+  assert.match(visibleText(stopped), /PMNM-ALLOW-[A-F0-9]{12}/);
   assert.doesNotMatch(visibleText(stopped), /nothing verified them yet/);
 });
 
@@ -1859,25 +1931,1006 @@ test("HG-181 any unknown command segment dominates the whole compound command", 
   assert.equal(classifyShell("rm obsolete.txt && node scripts/lint.js").kind, "unknown");
 });
 
-test("HG-182 project-source reads route into a task without guessing identifiers from prose", (t) => {
+test("HG-182 project-source reads are refused until a task is open, without guessing identifiers from prose", (t) => {
   const where = v2Temp(t);
   fs.mkdirSync(path.join(where.cwd, "src"), {recursive: true});
   fs.writeFileSync(path.join(where.cwd, "src", "example.js"), "export const example = true;\n");
-  let state = v2Prompt(testing.baseState(), where, "turn-1", "Please help me understand this behavior").state;
+  const state = v2Prompt(testing.baseState(), where, "turn-1", "Please help me understand this behavior").state;
 
-  let result = v2DeclaredPre(state, where, "turn-1", "date", "metadata", {boundary: "host"});
-  assert.equal(isDenied(result), false, visibleText(result));
-  assert.equal(result.state.source_reads_without_task, 0);
+  // The first attempt is refused, not noted, and the card names start rather than a guessed id.
+  const first = v2Pre(
+    state,
+    where,
+    "turn-1",
+    "",
+    "first-source-read",
+    "Read",
+    {file_path: path.join(where.cwd, "src", "example.js")},
+  );
+  assert.equal(isDenied(first), true, visibleText(first));
+  assert.match(visibleText(first), /^Blocked: Project source cannot be read before a task is open/m);
+  assert.match(visibleText(first), /pmnm-guard start task=<ticket-or-id>/);
+  assert.doesNotMatch(visibleText(first), /understand this behavior/);
 
-  result = v2DeclaredPre(result.state, where, "turn-1", "sed -n '1,20p' src/example.js", "first-source-read");
-  assert.equal(isDenied(result), false, visibleText(result));
-  assert.match(visibleText(result), /^Note: Project source was read without an open task/m);
-  assert.match(visibleText(result), /pmnm-guard start task=<ticket-or-id>/);
+  // Repeating it changes nothing and still creates no declaration authority.
+  const second = v2Pre(
+    first.state,
+    where,
+    "turn-1",
+    "",
+    "second-source-read",
+    "Grep",
+    {pattern: "example", path: path.join(where.cwd, "src")},
+  );
+  assert.equal(isDenied(second), true, visibleText(second));
+  assert.match(visibleText(second), /pmnm-guard start task=<ticket-or-id>/);
+  assert.notEqual(second.state.pending_denied?.kind, "declare");
+});
 
-  result = v2DeclaredPre(result.state, where, "turn-1", "rg example src", "second-source-read");
+test("GO-01 an opaque operation with no open task asks for one dynamic declaration", (t) => {
+  const where = v2Temp(t);
+  fs.mkdirSync(path.join(where.cwd, "src"), {recursive: true});
+  fs.writeFileSync(path.join(where.cwd, "src", "example.js"), "export const example = true;\n");
+  const state = v2Prompt(testing.baseState(), where, "turn-1", "Please look at this behavior").state;
+
+  const result = v2RawPre(state, where, "turn-1", "date", "opaque-read");
   assert.equal(isDenied(result), true, visibleText(result));
-  assert.match(visibleText(result), /^Blocked: Project source was read again without an open task/m);
+  assert.match(visibleText(result), /pmnm-guard declare effect=/);
+  assert.doesNotMatch(visibleText(result), /pmnm-guard start task=<ticket-or-id>/);
+  assert.equal(result.state.pending_denied?.kind, "declare");
+  assert.equal(result.state.source_reads_without_task, 0);
+});
+
+test("GO-02 the same opaque operation reaches declare once the task is open", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  const state = v3CreateTask(configured, where).state;
+  const first = v2RawPre(state, where, "turn-3", "sed -n '1,20p' src/example.js", "opaque-read");
+  assert.equal(isDenied(first), true, visibleText(first));
+  assert.match(visibleText(first), /pmnm-guard declare effect=/);
+  const declared = v2RawPre(first.state, where, "turn-3", "pmnm-guard declare effect=investigation boundary=project persistence=none certainty=certain capability=none", "declare");
+  assert.equal(isControlRecorded(declared), true, visibleText(declared));
+  const retry = v2RawPre(declared.state, where, "turn-3", "sed -n '1,20p' src/example.js", "opaque-read");
+  assert.equal(isDenied(retry), false, visibleText(retry));
+});
+
+test("GO-03 native Read, Glob and Grep inside the project are denied on their first attempt with no task", (t) => {
+  const where = v2Temp(t);
+  const source = path.join(where.cwd, "src", "index.js");
+  fs.mkdirSync(path.dirname(source), {recursive: true});
+  fs.writeFileSync(source, "export const x = 1;\n", "utf8");
+  const shapes = [
+    ["Read", {file_path: source}],
+    ["Glob", {pattern: "src/**/*.js"}],
+    ["Grep", {pattern: "export", path: where.cwd}],
+  ];
+  for (const [tool, input] of shapes) {
+    const result = guardProcessEvent(testing.baseState(), {
+      hook_event_name: "PreToolUse", session_id: "s-1", cwd: where.cwd,
+      tool_name: tool, tool_input: input, tool_use_id: "read-" + tool,
+    }, {});
+    assert.equal(isDenied(result), true, tool + ": " + visibleText(result));
+    assert.match(visibleText(result), /pmnm-guard start task=<ticket-or-id>/, tool);
+    assert.doesNotMatch(visibleText(result), /^Note:/m, tool);
+  }
+});
+
+test("GO-04 a read outside the project keeps its boundary and needs no task", (t) => {
+  const where = v2Temp(t);
+  const outside = path.join(where.root, "outside.txt");
+  fs.writeFileSync(outside, "not project source\n", "utf8");
+  const result = guardProcessEvent(testing.baseState(), {
+    hook_event_name: "PreToolUse", session_id: "s-1", cwd: where.cwd,
+    tool_name: "Read", tool_input: {file_path: outside}, tool_use_id: "read-outside",
+  }, {});
+  assert.equal(isDenied(result), false, visibleText(result));
+  assert.doesNotMatch(visibleText(result), /pmnm-guard start task=<ticket-or-id>/);
+});
+
+test("GO-05 hard stops cannot borrow the read treatment from the start precedence", (t) => {
+  const where = v2Temp(t);
+  const state = v2Prompt(testing.baseState(), where, "turn-1", "clean this up").state;
+
+  const hidden = v2RawPre(state, where, "turn-1", "eval \"$(printf 'rm -rf /tmp/x')\"", "hidden");
+  assert.equal(isDenied(hidden), true, visibleText(hidden));
+  assert.doesNotMatch(visibleText(hidden), /pmnm-guard start task=<ticket-or-id>/);
+
+  const compound = v2RawPre(state, where, "turn-1", "find . -name '*.js' | xargs rm", "compound");
+  assert.equal(isDenied(compound), true, visibleText(compound));
+  assert.doesNotMatch(visibleText(compound), /pmnm-guard start task=<ticket-or-id>/);
+});
+
+test("GO-06 control receipts stay available before a task and start still transitions", (t) => {
+  const where = v2Temp(t);
+  let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate this task").state;
+  const started = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start");
+  assert.equal(isControlRecorded(started), true, visibleText(started));
+  assert.equal(started.state.task_id, "TASK-101");
+  state = v2Prompt(started.state, where, "turn-2", "Keep it here").state;
+  const folder = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(where.notes), "folder");
+  assert.equal(isControlRecorded(folder), true, visibleText(folder));
+});
+
+test("HG-295 an opaque host operation declares its boundary before task routing", (t) => {
+  const where = v2Temp(t);
+  let state = v2Prompt(testing.baseState(), where, "turn-1", "What time is it?").state;
+
+  let result = v2RawPre(state, where, "turn-1", "date", "host-date");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /pmnm-guard declare effect=/);
+  assert.doesNotMatch(visibleText(result), /Project source cannot be read/);
+
+  result = v2Receipt(
+    result.state,
+    where,
+    "turn-1",
+    "pmnm-guard declare effect=investigation boundary=host persistence=none certainty=certain capability=none",
+    "declare-host-date",
+  );
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  result = v2RawPre(result.state, where, "turn-1", "date", "host-date");
+  assert.equal(isDenied(result), false, visibleText(result));
+  assert.equal(result.state.task_id, null);
+});
+
+test("HG-296 a declared project operation still reaches start before it can read", (t) => {
+  const where = v2Temp(t);
+  fs.mkdirSync(path.join(where.cwd, "src"), {recursive: true});
+  fs.writeFileSync(path.join(where.cwd, "src", "example.js"), "export const example = true;\n");
+  let state = v2Prompt(testing.baseState(), where, "turn-1", "Inspect the project source").state;
+
+  let result = v2RawPre(state, where, "turn-1", "sed -n '1,20p' src/example.js", "declared-project-read");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /pmnm-guard declare effect=/);
+  result = v2Receipt(
+    result.state,
+    where,
+    "turn-1",
+    "pmnm-guard declare effect=investigation boundary=project persistence=none certainty=certain capability=none",
+    "declare-project-read",
+  );
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  result = v2RawPre(result.state, where, "turn-1", "sed -n '1,20p' src/example.js", "declared-project-read");
+  assert.equal(isDenied(result), true, visibleText(result));
   assert.match(visibleText(result), /pmnm-guard start task=<ticket-or-id>/);
+});
+
+test("HG-300 the evidence mismatch card names the claim kinds the plan actually carries", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  const created = v3CreateTask(configured, where);
+  const state = v3Agree(
+    v3WritePlan(created.state, where, created.task, "turn-4",
+      "- [x] deliverable: finding — the reachable cause with its evidence\n" +
+      "- [x] boundary: finding — the strongest alternative and its disposition\n").state,
+    where,
+  );
+  const verification = path.join(created.task, "verification.md");
+  const written = v3Write(state, where, "turn-4", verification,
+    fs.readFileSync(verification, "utf8") +
+      "\n- example: requested finding → delivered with direct evidence\n" +
+      "- unchanged: project files → no project mutation requested or observed\n",
+    "claims-without-kinds").state;
+  let result = v2Pre(written, where, "turn-4", "npm test", "check");
+  result = v2Post(result.state, where, "turn-4", "npm test", "check");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard verified result=passed how=command", "verified");
+  assert.equal(isDenied(result), true, visibleText(result));
+  // The card must name the kinds this plan carries and must not prescribe kinds it does not.
+  assert.match(visibleText(result), /deliverable:/);
+  assert.match(visibleText(result), /boundary:/);
+  assert.doesNotMatch(visibleText(result), /unchanged-state:/);
+});
+
+test("HG-301 a state plan still receives the state claim kinds in its mismatch card", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  const created = v3CreateTask(configured, where);
+  const state = v3Agree(
+    v3WritePlan(created.state, where, created.task, "turn-4",
+      "- [x] state: feature-flag — disabled => enabled\n" +
+      "- [x] unchanged-state: billing-mode — stays monthly\n").state,
+    where,
+  );
+  const verification = path.join(created.task, "verification.md");
+  const written = v3Write(state, where, "turn-4", verification,
+    fs.readFileSync(verification, "utf8") +
+      "\n- example: requested transition → observed\n" +
+      "- unchanged: billing → observed unchanged\n",
+    "claims-without-state").state;
+  let result = v2Pre(written, where, "turn-4", "npm test", "check");
+  result = v2Post(result.state, where, "turn-4", "npm test", "check");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard verified result=passed how=command", "verified");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /state:/);
+  assert.match(visibleText(result), /unchanged-state:/);
+  assert.doesNotMatch(visibleText(result), /deliverable:/);
+});
+
+test("HG-302 every card that can lead to done exposes the current impact fingerprint", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  const created = v3CreateTask(configured, where);
+  const target = path.join(where.cwd, "src", "index.js");
+  fs.mkdirSync(path.dirname(target), {recursive: true});
+  fs.writeFileSync(target, "export const x = 1;\n", "utf8");
+  let state = v3Agree(
+    v3WritePlan(created.state, where, created.task, "turn-4", "- [x] src/index.js — change it\n").state,
+    where,
+  );
+  state = v3Write(state, where, "turn-4", target, "export const x = 2;\n", "implement").state;
+  const verification = path.join(created.task, "verification.md");
+  state = v3Write(state, where, "turn-4", verification,
+    fs.readFileSync(verification, "utf8") +
+      "\n- example: requested case → observed\n- unchanged: preserved case → observed\n",
+    "claims").state;
+  let result = v2Pre(state, where, "turn-4", "npm test", "check");
+  result = v2Post(result.state, where, "turn-4", "npm test", "check");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard verified result=passed how=command", "verified");
+  const current = result.state.last_verification?.fingerprint?.hash;
+  assert.ok(current, "the fixture needs a current verification fingerprint");
+  // Reach the impact gate: the Test Digest handoff comes first and is satisfied here.
+  let acknowledged = v3AcknowledgeTestDigest(result.state, where, "turn-4", "turn-5");
+  // The reported case is a closure whose impact contract is bound and no longer current. The bound
+  // hash is set directly because the card, not the gate, is what this contract is about.
+  acknowledged = {...acknowledged, impact_plan_hash: "f".repeat(64)};
+  // An incomplete omission audit is the reported case: the receipt needs a fingerprint no card prints.
+  fs.writeFileSync(path.join(created.task, "impact.md"),
+    "# Impact\n\nMode: local\nReason: bounded\n\n## Omission audit\n\n- before-plan: derived\n", "utf8");
+  const done = v2Receipt(acknowledged, where, "turn-5", "pmnm-guard done audit=passed", "done");
+  assert.equal(isDenied(done), true, visibleText(done));
+  const card = visibleText(done);
+  // The agent must never have to inspect private task state to learn a required receipt field.
+  assert.ok(
+    card.includes(current) || /pmnm-guard fingerprint\b/.test(card),
+    "the card exposes neither the current fingerprint nor one literal action that returns it: " + card,
+  );
+});
+
+test("HG-303 the reload card names which paths are still unsatisfied and what it observed", (t) => {
+  const {where, task, state: initial} = v3Setup(t);
+  let state = v3WritePlan(initial, where, task, "turn-3", "- [ ] example.txt — change a\n").state;
+  state = v3Agree(state, where);
+  let result = v2Process(state, where, "SessionStart", "turn-4", {source: "compact"});
+  result = v2Pre(result.state, where, "turn-4", IMPLEMENTATION_PATCH, "before-reload", "apply_patch");
+  assert.equal(isDenied(result), true);
+  const required = [...result.state.rule_basis_paths];
+  assert.ok(required.length >= 3, "the fixture needs several required paths");
+
+  // Read only the first two, with their exact bytes, so the rest stay unsatisfied.
+  const partial = required.slice(0, 2);
+  const command = "sed -n '1,240p' " + partial.map((target) => JSON.stringify(target)).join(" ");
+  result = v2Pre(result.state, where, "turn-4", command, "partial-read");
+  result = v2Receipt(result.state, where, "turn-4",
+    "pmnm-guard declare effect=investigation boundary=pmnm persistence=none certainty=certain capability=none",
+    "partial-declare");
+  result = v2Pre(result.state, where, "turn-4", command, "partial-read");
+  assert.equal(isDenied(result), false, visibleText(result));
+  const returned = partial.map((target) => fs.readFileSync(target, "utf8")).join("\n");
+  result = v2Post(result.state, where, "turn-4", command, "partial-read", "Bash", returned);
+  assert.equal(result.state.rule_basis_required, true, "the reload must still be pending");
+
+  const blocked = v2Pre(result.state, where, "turn-4", IMPLEMENTATION_PATCH, "still-blocked", "apply_patch");
+  assert.equal(isDenied(blocked), true);
+  const card = visibleText(blocked);
+  // The card must name what is still missing, and must not reprint what was already satisfied.
+  for (const target of required.slice(2)) {
+    assert.ok(card.includes(path.basename(target)), "unsatisfied path missing from the card: " + target + "\n" + card);
+  }
+  for (const target of partial) {
+    assert.doesNotMatch(card, new RegExp(escapeRegExp(target)), "a satisfied path was reprinted: " + card);
+  }
+  assert.match(card, /not read|absent|no result|awaiting/i, "the card says nothing about what it observed: " + card);
+});
+
+test("HG-304 the reload distinguishes the eight observable read conditions", (t) => {
+  // Diagnostic for the durable-rule reload. It documents which conditions satisfy the reload and which do not,
+  // so a later reproduction can be compared against a recorded baseline instead of a memory.
+  const outcomes = {};
+  const scenario = (label, drive) => {
+    const {where, task, state: initial} = v3Setup(t);
+    let state = v3WritePlan(initial, where, task, "turn-3", "- [ ] example.txt — change a\n").state;
+    state = v3Agree(state, where);
+    let result = v2Process(state, where, "SessionStart", "turn-4", {source: "compact"});
+    result = v2Pre(result.state, where, "turn-4", IMPLEMENTATION_PATCH, "blocked", "apply_patch");
+    assert.equal(isDenied(result), true, label);
+    const paths = [...result.state.rule_basis_paths];
+    result = drive(result.state, where, paths);
+    outcomes[label] = {
+      satisfied: result.state.rule_basis_required === false,
+      observed: result.state.rule_basis_observed_hashes.length,
+      unmatched: result.state.rule_basis_unmatched.length,
+      required: paths.length,
+    };
+    return result;
+  };
+  const declared = (state, where, command, id) => {
+    let r = v2Pre(state, where, "turn-4", command, id);
+    r = v2Receipt(r.state, where, "turn-4",
+      "pmnm-guard declare effect=investigation boundary=pmnm persistence=none certainty=certain capability=none",
+      id + "-declare");
+    return v2Pre(r.state, where, "turn-4", command, id);
+  };
+
+  scenario("multi-path exact bytes", (state, where, paths) => {
+    const command = "sed -n '1,240p' " + paths.map((p) => JSON.stringify(p)).join(" ");
+    const r = declared(state, where, command, "multi");
+    return v2Post(r.state, where, "turn-4", command, "multi", "Bash",
+      paths.map((p) => fs.readFileSync(p, "utf8")).join("\n"));
+  });
+
+  scenario("individual exact reads", (state, where, paths) => {
+    let r = {state};
+    for (const [index, target] of paths.entries()) {
+      const command = "sed -n '1,240p' " + JSON.stringify(target);
+      const pre = declared(r.state, where, command, "single-" + index);
+      r = v2Post(pre.state, where, "turn-4", command, "single-" + index, "Bash", fs.readFileSync(target, "utf8"));
+    }
+    return r;
+  });
+
+  scenario("rendered output", (state, where, paths) => {
+    const command = "sed -n '1,240p' " + paths.map((p) => JSON.stringify(p)).join(" ");
+    const r = declared(state, where, command, "rendered");
+    const rendered = paths
+      .map((p) => fs.readFileSync(p, "utf8").split("\n").map((line, n) => (n + 1) + "\t" + line).join("\n"))
+      .join("\n");
+    return v2Post(r.state, where, "turn-4", command, "rendered", "Bash", rendered);
+  });
+
+  scenario("truncated output", (state, where, paths) => {
+    const command = "sed -n '1,240p' " + paths.map((p) => JSON.stringify(p)).join(" ");
+    const r = declared(state, where, command, "truncated");
+    const joined = paths.map((p) => fs.readFileSync(p, "utf8")).join("\n");
+    return v2Post(r.state, where, "turn-4", command, "truncated", "Bash", joined.slice(0, Math.floor(joined.length / 2)));
+  });
+
+  scenario("uncorrelated operation", (state, where, paths) => {
+    const command = "sed -n '1,240p' " + paths.map((p) => JSON.stringify(p)).join(" ");
+    const r = declared(state, where, command, "uncorrelated");
+    // The result arrives under a different tool_use_id, so it cannot be correlated to the read.
+    return v2Post(r.state, where, "turn-4", command, "other-operation", "Bash",
+      paths.map((p) => fs.readFileSync(p, "utf8")).join("\n"));
+  });
+
+  scenario("tool that cannot return bytes", (state, where, paths) => {
+    const target = paths[0];
+    return v2RawPre(state, where, "turn-4", "", "file-tool", "Read", {file_path: target});
+  });
+
+  const repeated = scenario("repeated start after a satisfied reload", (state, where, paths) => {
+    const command = "sed -n '1,240p' " + paths.map((p) => JSON.stringify(p)).join(" ");
+    const r = declared(state, where, command, "before-restart");
+    return v2Post(r.state, where, "turn-4", command, "before-restart", "Bash",
+      paths.map((p) => fs.readFileSync(p, "utf8")).join("\n"));
+  });
+  const restarted = v2Receipt(repeated.state, repeated.state.__where || {cwd: process.cwd()}, "turn-4",
+    "pmnm-guard start task=TASK-101 effort=standard work=implementation", "restart");
+  outcomes["repeated start after a satisfied reload"].survives_restart =
+    restarted.state.rule_basis_required === false;
+
+  console.log("  reload diagnostic:", JSON.stringify(outcomes, null, 1));
+  // Recorded expectations. A change here is a change in the reload contract, not a flaky test.
+  assert.equal(outcomes["multi-path exact bytes"].satisfied, true);
+  assert.equal(outcomes["individual exact reads"].satisfied, true);
+  assert.equal(outcomes["rendered output"].satisfied, false);
+  assert.equal(outcomes["truncated output"].satisfied, false);
+  assert.equal(outcomes["uncorrelated operation"].satisfied, false);
+  assert.equal(outcomes["tool that cannot return bytes"].satisfied, false);
+});
+
+function where_of(configured) {
+  return configured.where;
+}
+
+function v3Expectations(rows = null) {
+  const body = rows || [
+    "| named identity | missing | requirement | BR4 | no discriminator exists in the current model |",
+    "| status listing | partial | observed-code | BR2 | the users table already lists both states |",
+  ];
+  return [
+    "# Expectations", "",
+    "| Expectation | Coverage | Source | Blast | Evidence or open boundary |",
+    "|---|---|---|---|---|",
+    ...body, "",
+  ].join("\n");
+}
+
+test("HG-305 high effort requires expectations.md before the Digest", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "high");
+  const created = v3CreateTask(configured, where);
+  let state = v3WritePlan(created.state, where, created.task, "turn-4", "- [ ] example.txt — change a\n").state;
+  const blocked = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "digest-without");
+  assert.equal(isDenied(blocked), true, visibleText(blocked));
+  assert.match(visibleText(blocked), /expectations\.md/);
+  state = v3Write(state, where, "turn-4", path.join(created.task, "expectations.md"), v3Expectations(), "expectations").state;
+  const allowed = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "digest-with");
+  assert.equal(isDenied(allowed), false, visibleText(allowed));
+});
+
+test("HG-306 standard effort may proceed without expectations.md and light never asks for it", (t) => {
+  const standard = v2Configured(t, "en", "implementation", "standard");
+  const createdStandard = v3CreateTask(standard.state, where_of(standard));
+  const stateStandard = v3WritePlan(createdStandard.state, where_of(standard), createdStandard.task, "turn-4",
+    "- [ ] example.txt — change a\n").state;
+  const digestStandard = v2Receipt(stateStandard, where_of(standard), "turn-4", "pmnm-guard digest", "standard");
+  assert.equal(isDenied(digestStandard), false, visibleText(digestStandard));
+
+  const light = v2Configured(t, "en", "implementation", "light");
+  const createdLight = v3CreateTask(light.state, where_of(light));
+  assert.equal(fs.existsSync(path.join(createdLight.task, "expectations.md")), false,
+    "light effort must not receive an expectations file");
+});
+
+test("HG-307 an expectations row needs a known source and a stated coverage", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "high");
+  const created = v3CreateTask(configured, where);
+  let state = v3WritePlan(created.state, where, created.task, "turn-4", "- [ ] example.txt — change a\n").state;
+  state = v3Write(state, where, "turn-4", path.join(created.task, "expectations.md"),
+    v3Expectations(["| named identity | missing | hearsay | BR4 | invented source |"]), "bad-source").state;
+  const result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "digest-bad");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /source|fuente/i);
+});
+
+test("HG-308 a task state persisted before the unmatched field migrates to an empty set", (t) => {
+  const legacy = testing.baseState();
+  delete legacy.rule_basis_unmatched;
+  const where = v2Temp(t);
+  const result = v2Prompt(legacy, where, "turn-1", "continue the earlier task");
+  assert.deepEqual(result.state.rule_basis_unmatched, [], "legacy state must migrate, not fail");
+  const forged = {...testing.baseState(), rule_basis_unmatched: ["not-a-hash"]};
+  assert.throws(() => v2Prompt(forged, where, "turn-1", "continue"), /unmatched rule basis/);
+});
+
+test("HG-309 a plan of only seeded comments cannot reach the Digest", (t) => {
+  // The seeded template satisfies nothing. This documents an existing refusal rather than a new one:
+  // the 2026-09-24 measurement of empty advisory plans was caused by runs that never reached the
+  // Digest at all, not by a missing requirement here.
+  const {where, state: configured} = v2Configured(t, "en", "advisory");
+  const created = v3CreateTask(configured, where);
+  const seeded = fs.readFileSync(path.join(created.task, "plan.md"), "utf8");
+  assert.match(seeded, /<!--/, "the fixture needs the seeded comment template");
+  const result = v2Receipt(created.state, where, "turn-4", "pmnm-guard digest", "digest-seeded");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /empty material objective/);
+});
+
+test("HG-310 a written objective still reaches the Digest in every work type", (t) => {
+  for (const [work, line] of [
+    ["implementation", "- [ ] src/index.js — change it\n"],
+    ["advisory", "- [ ] deliverable: finding — the reachable cause\n- [ ] boundary: finding — the strongest alternative\n"],
+  ]) {
+    const {where, state: configured} = v2Configured(t, "en", work);
+    const created = v3CreateTask(configured, where);
+    const state = v3WritePlan(created.state, where, created.task, "turn-4", line).state;
+    const result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "digest-" + work);
+    assert.equal(isDenied(result), false, work + ": " + visibleText(result));
+  }
+});
+
+test("HG-311 implementation work that compared version control owes the human an exact command", (t) => {
+  // GUARD-PRODUCES-01. The obligation attaches to two things the guard observed rather than deduced:
+  // the declared work type, and a closure that compared version-control state.
+  const {where, task, state: initial} = v3Setup(t);
+  let state = v3WritePlan(initial, where, task, "turn-3", "- [x] example.txt — change a\n").state;
+  state = v3Agree(state, where);
+  state = v3Write(state, where, "turn-4", path.join(where.cwd, "example.txt"), "changed\n", "implement").state;
+  state = v3Verify(state, where, task, {handoff: false}).state;
+  // A snapshot with no bounded flag is what a version-control comparison looks like, and the
+  // closing card reads it the same way, so the gate must fire on it too.
+  state = {...state, workspace_scope_snapshot: {status: "available", entries: []}};
+  let result = v2Receipt(state, where, "turn-4", "pmnm-guard done audit=passed", "request");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /Test Digest/);
+
+  // A Test Digest that says nothing about the version-control step is refused, and the card asks.
+  // The shared message now carries the neutral hand-over, so this case strips it to stay bare.
+  const stripped = v3TestDigestMessage(state.task_id)
+    .split("\n").filter((line) => !/no version-control step applies/i.test(line)).join("\n");
+  const bare = v2Process(result.state, where, "Stop", "turn-4", {last_assistant_message: stripped});
+  assert.notEqual(bare.output, null, "a closure owing a hand-over must not pass silently");
+  assert.match(visibleText(bare), /exact command|no version-control step/i);
+
+  // Either answer satisfies it: the command itself,
+  const withCommand = v2Process(result.state, where, "Stop", "turn-4",
+    {last_assistant_message: stripped + "\ngit commit -m \"fix the example\""});
+  assert.equal(withCommand.output, null, visibleText(withCommand));
+
+  // or an explicit statement that none applies.
+  const withNone = v2Process(result.state, where, "Stop", "turn-4",
+    {last_assistant_message: stripped + "\nNo version-control step applies to this task."});
+  assert.equal(withNone.output, null, visibleText(withNone));
+});
+
+test("HG-313 the hand-over accepts a standalone command and refuses prose that withholds it", (t) => {
+  // The gate used to accept any line containing `git commit -m`, so a sentence telling the
+  // human NOT to run the command satisfied the obligation the sentence was refusing. Quoting is
+  // shell syntax and not evidence that the words after it are not prose, so the whole line is
+  // matched against a bounded form instead.
+  const {where, task, state: initial} = v3Setup(t);
+  let state = v3WritePlan(initial, where, task, "turn-3", "- [x] example.txt — change a\n").state;
+  state = v3Agree(state, where);
+  state = v3Write(state, where, "turn-4", path.join(where.cwd, "example.txt"), "changed\n", "implement").state;
+  state = v3Verify(state, where, task, {handoff: false}).state;
+  state = {...state, workspace_scope_snapshot: {status: "available", entries: []}};
+  const owing = v2Receipt(state, where, "turn-4", "pmnm-guard done audit=passed", "request").state;
+  const stripped = v3TestDigestMessage(state.task_id)
+    .split("\n").filter((line) => !/no version-control step applies/i.test(line)).join("\n");
+
+  const accepted = [
+    ["a standalone command", "git commit -m \"fix the example\""],
+    ["a command with a trailing comment", "git commit -m \"fix the example\" # then push"],
+    ["a quoted hash, which is not a comment", "git commit -m \"fix #3\""],
+    ["a bare push", "git push"],
+    ["a bounded push", "git push origin main"],
+    ["a bounded tag", "git tag v1.0"],
+    ["the canonical statement", "No version-control step applies to this task."],
+    ["the canonical statement without its period", "No version-control step applies to this task"],
+  ];
+  const refused = [
+    ["prose withholding the command", "Do not run git commit -m \"fix\""],
+    ["prose after a complete command", "git commit -m \"fix\" is what you should NOT run"],
+    ["a command only mentioned", "I considered git commit -m but decided against it"],
+    ["prose after a bounded push", "git push origin main and then tell me"],
+    ["an unsupported commit form", "git commit -am \"fix\""],
+    ["unterminated quoting", "git commit -m \"fix"],
+    ["an escaped hash, which is an unexplained argument", "git commit -m \"fix\" \\#note"],
+    ["a remote with no refspec", "git push origin"],
+    ["more than one refspec", "git push origin main other"],
+    ["a tag option", "git tag -d name"],
+    ["a tag with an extra argument", "git tag name extra"],
+    ["a redirection", "git commit -m \"fix\" > out"],
+    ["a redirection before a comment", "git commit -m \"fix\" > out # note"],
+    ["chained commands", "git commit -m \"fix\" && git push"],
+    ["a negated canonical statement", "It is false that No version-control step applies to this task."],
+    ["a qualified canonical statement", "No version-control step applies to this task, probably."],
+  ];
+
+  for (const [why, line] of accepted) {
+    const result = v2Process(owing, where, "Stop", "turn-4", {last_assistant_message: stripped + "\n" + line});
+    assert.equal(result.output, null, why + " must satisfy the hand-over: " + visibleText(result));
+  }
+  for (const [why, line] of refused) {
+    const result = v2Process(owing, where, "Stop", "turn-4", {last_assistant_message: stripped + "\n" + line});
+    assert.notEqual(result.output, null, why + " must not satisfy the hand-over");
+    assert.match(visibleText(result), /exact command|no version-control step/i);
+  }
+});
+
+test("HG-312 advisory work and a task without version-control comparison owe no command", (t) => {
+  const {where, task, state: initial} = v3Setup(t, {work: "advisory"});
+  let state = v3WritePlan(initial, where, task, "turn-3",
+    "- [x] deliverable: finding — the reachable cause\n- [x] boundary: finding — the strongest alternative\n").state;
+  state = v3Agree(state, where);
+  state = v3Verify(state, where, task, {handoff: false}).state;
+  state = {...state, workspace_scope_snapshot: {status: "available", bounded: false, entries: []}};
+  const result = v2Receipt(state, where, "turn-4", "pmnm-guard done audit=passed", "request");
+  const shown = v2Process(result.state, where, "Stop", "turn-4", {last_assistant_message: v3TestDigestMessage(state.task_id)});
+  assert.equal(shown.output, null, "advisory work must not be asked for a command: " + visibleText(shown));
+});
+
+test("HG-314 verification plans preserve scope without authorizing implementation", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "verification", "standard");
+  const created = v3CreateTask(configured, where);
+  let state = created.state;
+  let result;
+  for (const [name, plan] of [
+    ["file target", "- [ ] src/a.js — change a\n"],
+    ["state transition", "- [ ] state: deployment — stopped => running\n"],
+    ["advisory deliverable", "- [ ] deliverable: finding — result\n- [ ] boundary: finding — strongest alternative\n"],
+  ]) {
+    state = v3WritePlan(state, where, created.task, "turn-4", plan).state;
+    result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "verification-" + name.replace(" ", "-"));
+    assert.equal(isDenied(result), true, "verification work must reject a changing " + name + ": " + visibleText(result));
+    assert.match(fs.readFileSync(path.join(created.task, "preflight.md"), "utf8"), /verification-work-shape/);
+    state = result.state;
+  }
+
+  state = v3WritePlan(
+    state,
+    where,
+    created.task,
+    "turn-4",
+    "- [ ] unchanged-state: public-contract — current behavior remains unchanged\n",
+  ).state;
+  result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "verification-invariant-digest");
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  state = v2Prompt(result.state, where, "turn-5", "Agreed exactly as shown").state;
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard agreed", "verification-invariant-agreed");
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  assert.match(visibleText(result), /non-mutating verification/i);
+  assert.doesNotMatch(visibleText(result), /Implementation may begin/i);
+});
+
+test("HG-315 verification work refuses project mutation even from legacy agreed state", (t) => {
+  const {where, task, state: initial} = v3Setup(t, {work: "implementation"});
+  let state = v3WritePlan(initial, where, task, "turn-3", "- [ ] src/a.js — change a\n").state;
+  state = v3Agree(state, where);
+  state = {...state, work_type: "verification"};
+  const input = {file_path: path.join(where.cwd, "src", "a.js"), content: "a=2\n"};
+  const result = v2Pre(state, where, "turn-4", "", "verification-project-write", "Write", input);
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /non-mutating verification/i);
+  assert.match(visibleText(result), /work=implementation/);
+});
+
+test("HG-316 exact non-mutating verification closes without an implementation Digest", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "verification", "standard");
+  const created = v3CreateTask(configured, where);
+  let result = v2Receipt(created.state, where, "turn-4", "pmnm-guard status", "verification-status");
+  assert.match(visibleText(result), /non-mutating verification/i);
+  assert.doesNotMatch(visibleText(result), /plan Digest.*not agreed/i);
+
+  let state = v3WriteClaims(result.state, where, created.task, "turn-4").state;
+  result = v2Pre(state, where, "turn-4", "npm test", "verification-only-current");
+  assert.equal(isDenied(result), false, visibleText(result));
+  result = v2Post(result.state, where, "turn-4", "npm test", "verification-only-current", "Bash", "passed");
+  result = v2Receipt(
+    result.state,
+    where,
+    "turn-4",
+    "pmnm-guard verified result=passed how=command",
+    "verification-only-recorded",
+    {fingerprintProvider: () => null},
+  );
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  result.state = v3AcknowledgeTestDigest(result.state, where);
+  result = v2Receipt(result.state, where, "turn-5", "pmnm-guard done audit=passed", "verification-only-done", {
+    workspaceSnapshotProvider: () => ({status: "unavailable", entries: []}),
+  });
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  assert.match(visibleText(result), /No project-file comparison/);
+});
+
+test("HG-317 High expectations join aggregate preflight and bind agreement", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "high");
+  const created = v3CreateTask(configured, where);
+  let state = v3WritePlan(created.state, where, created.task, "turn-4", "- [ ] src/a.js — change a\n").state;
+  const verificationPath = path.join(created.task, "verification.md");
+  state = v3Write(
+    state,
+    where,
+    "turn-4",
+    verificationPath,
+    fs.readFileSync(verificationPath, "utf8") + "- contract: duplicate contract\n",
+    "duplicate-verification-contract",
+  ).state;
+  state = v3Write(
+    state,
+    where,
+    "turn-4",
+    path.join(created.task, "expectations.md"),
+    v3Expectations(["| named identity | missing | hearsay | BR9 | |"]),
+    "malformed-expectations",
+  ).state;
+  let result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "aggregate-preflight");
+  assert.equal(isDenied(result), true, visibleText(result));
+  const preflight = fs.readFileSync(path.join(created.task, "preflight.md"), "utf8");
+  assert.match(preflight, /verification\.md/);
+  assert.match(preflight, /expectations\.md/);
+
+  state = v3WritePlan(result.state, where, created.task, "turn-4", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(
+    state,
+    where,
+    "turn-4",
+    path.join(created.task, "expectations.md"),
+    v3Expectations(),
+    "valid-expectations",
+  ).state;
+  result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "bound-expectations-digest");
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  assert.match(result.state.expectations_plan_hash || "", /^[a-f0-9]{64}$/);
+  result = v3Write(
+    result.state,
+    where,
+    "turn-4",
+    path.join(created.task, "expectations.md"),
+    v3Expectations(["| named identity | covered | requirement | BR4 | later evidence changed the contract |"]),
+    "drift-before-agreement",
+  );
+  state = v2Prompt(result.state, where, "turn-5", "Agreed exactly as shown").state;
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard agreed", "expectations-drift-agreed");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /expectations\.md.*changed|expectations changed/i);
+});
+
+test("HG-318 High expectations survive reload and drift withdraws authority", (t) => {
+  const first = v2Configured(t, "en", "implementation", "high");
+  const firstTask = v3CreateTask(first.state, first.where);
+  let state = v3WritePlan(firstTask.state, first.where, firstTask.task, "turn-3", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(state, first.where, "turn-3", path.join(firstTask.task, "expectations.md"), v3Expectations(), "reload-expectations").state;
+  state = v3Agree(state, first.where);
+  let result = v2Process(state, first.where, "SessionStart", "turn-4", {source: "compact"});
+  assert.ok(result.state.rule_basis_paths.includes(fs.realpathSync(path.join(firstTask.task, "expectations.md"))));
+  state = v3ReloadRuleBasis(result.state, first.where);
+  const unchangedInput = {file_path: path.join(first.where.cwd, "src", "a.js"), content: "a=2\n"};
+  result = v2Pre(state, first.where, "turn-4", "", "write-after-expectations-reload", "Write", unchangedInput);
+  assert.equal(isDenied(result), false, visibleText(result));
+
+  const second = v2Configured(t, "en", "implementation", "high");
+  const secondTask = v3CreateTask(second.state, second.where);
+  state = v3WritePlan(secondTask.state, second.where, secondTask.task, "turn-3", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(state, second.where, "turn-3", path.join(secondTask.task, "expectations.md"), v3Expectations(), "bound-expectations").state;
+  state = v3Agree(state, second.where);
+  state = v3Write(
+    state,
+    second.where,
+    "turn-4",
+    path.join(secondTask.task, "expectations.md"),
+    v3Expectations(["| named identity | covered | requirement | BR4 | post-agreement evidence changed |"]),
+    "post-agreement-expectations-drift",
+  ).state;
+  const driftInput = {file_path: path.join(second.where.cwd, "src", "a.js"), content: "a=2\n"};
+  result = v2Pre(state, second.where, "turn-4", "", "write-after-expectations-drift", "Write", driftInput);
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /expectations\.md.*changed|expectations changed/i);
+
+  const third = v2Configured(t, "en", "implementation", "high");
+  const thirdTask = v3CreateTask(third.state, third.where);
+  state = v3WritePlan(thirdTask.state, third.where, thirdTask.task, "turn-3", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(state, third.where, "turn-3", path.join(thirdTask.task, "expectations.md"), v3Expectations(), "closing-expectations").state;
+  state = v3Agree(state, third.where);
+  state = v3Write(state, third.where, "turn-4", path.join(third.where.cwd, "src", "a.js"), "a=2\n", "closing-write").state;
+  state = v3WritePlan(state, third.where, thirdTask.task, "turn-4", "- [x] src/a.js — change a\n").state;
+  state = v3WriteClaims(state, third.where, thirdTask.task, "turn-4").state;
+  result = v2Pre(state, third.where, "turn-4", "npm test", "closing-check");
+  if (isDenied(result)) {
+    result = v2Receipt(
+      result.state,
+      third.where,
+      "turn-4",
+      "pmnm-guard declare effect=verification boundary=project persistence=none certainty=certain capability=none",
+      "closing-check-declare",
+    );
+    result = v2Pre(result.state, third.where, "turn-4", "npm test", "closing-check");
+  }
+  result = v2Post(result.state, third.where, "turn-4", "npm test", "closing-check", "Bash", "passed");
+  result = v2Receipt(result.state, third.where, "turn-4", "pmnm-guard verified result=passed how=command", "closing-verified");
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  const review = [
+    "# Independent review",
+    "- contract: requested behavior changes while preserved behavior remains",
+    "- plan-digest: " + result.state.plan_file_hash,
+    "- fingerprint: " + result.state.last_verification.fingerprint.hash,
+    "- changed-surface: src/a.js",
+    "- evidence: focused check passed after the change",
+    "- strongest-counterexample: identity transform would also pass a non-discriminating assertion",
+    "- independent-check: inspected a negative branch not used by the author",
+    "- disagreement: none",
+    "- residual-limit: synthetic fixture does not prove production wiring",
+    "- impact-roots: challenged the request root against the final changed surface",
+    "- impact-omission-check: inspected one branch outside the author's plan",
+    "- non-functional-dispositions: checked all six dimensions and their evidence",
+    "",
+  ].join("\n");
+  state = v3Write(result.state, third.where, "turn-5", path.join(thirdTask.task, "review.md"), review, "closing-review").state;
+  result = v2Receipt(state, third.where, "turn-5", "pmnm-guard done audit=passed", "done-before-expectations-drift");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /Test Digest/);
+  state = v3Write(
+    result.state,
+    third.where,
+    "turn-5",
+    path.join(thirdTask.task, "expectations.md"),
+    v3Expectations(["| named identity | covered | requirement | BR4 | drift after verification |"]),
+    "drift-after-verified",
+  ).state;
+  result = v2Receipt(state, third.where, "turn-5", "pmnm-guard done audit=passed", "done-with-drifted-expectations");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /expectations\.md.*changed|expectations changed/i);
+});
+
+test("HG-319 the seeded and documented transitive impact heading is exactly Ledger", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "standard");
+  const created = v3CreateTask(configured, where);
+  assert.match(fs.readFileSync(path.join(created.task, "impact.md"), "utf8"), /## Ledger/);
+  const reference = fs.readFileSync(new URL("../skills/please-make-no-mistakes/references/impact-analysis.md", import.meta.url), "utf8");
+  assert.match(reference, /^## Ledger$/m);
+  assert.doesNotMatch(reference, /^## Transitive ledger$/m);
+
+  let state = v3WritePlan(created.state, where, created.task, "turn-4", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(state, where, "turn-4", path.join(created.task, "impact.md"), v3Impact({mode: "transitive"}), "canonical-ledger").state;
+  let result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "canonical-ledger-digest");
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+
+  const other = v2Configured(t, "en", "implementation", "standard");
+  const otherTask = v3CreateTask(other.state, other.where);
+  state = v3WritePlan(otherTask.state, other.where, otherTask.task, "turn-4", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(
+    state,
+    other.where,
+    "turn-4",
+    path.join(otherTask.task, "impact.md"),
+    v3Impact({mode: "transitive"}).replace("## Ledger", "## Transitive ledger"),
+    "wrong-ledger-heading",
+  ).state;
+  result = v2Receipt(state, other.where, "turn-4", "pmnm-guard digest", "wrong-ledger-digest");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(fs.readFileSync(path.join(otherTask.task, "preflight.md"), "utf8"), /impact-ledger/);
+});
+
+test("HG-320 High verification without a Digest validates expectations and can close with review", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "verification", "high");
+  const created = v3CreateTask(configured, where);
+  let state = v3WriteClaims(created.state, where, created.task, "turn-4").state;
+  let result = v2Pre(state, where, "turn-4", "npm test", "high-verification-check");
+  result = v2Post(result.state, where, "turn-4", "npm test", "high-verification-check", "Bash", "passed");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard verified result=passed how=command", "high-verification-invalid-expectations");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /expectations\.md/);
+  assert.doesNotMatch(visibleText(result), /pmnm-guard digest/);
+
+  state = v3Write(result.state, where, "turn-4", path.join(created.task, "expectations.md"), v3Expectations(), "high-verification-expectations").state;
+  result = v2Receipt(state, where, "turn-4", "pmnm-guard verified result=passed how=command", "high-verification-valid-expectations");
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  const review = [
+    "# Independent review",
+    "- contract: the exact check passes without a project mutation",
+    "- plan-digest: none",
+    "- fingerprint: " + result.state.last_verification.fingerprint.hash,
+    "- changed-surface: none, read-only verification",
+    "- evidence: npm test returned passed",
+    "- strongest-counterexample: an unrelated check could pass while the requested check fails",
+    "- independent-check: inspected the requested assertion separately",
+    "- disagreement: none",
+    "- residual-limit: this synthetic fixture does not prove the live project",
+    "",
+  ].join("\n");
+  state = v3Write(result.state, where, "turn-5", path.join(created.task, "review.md"), review, "high-verification-review").state;
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard done audit=passed", "high-verification-done");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /Test Digest/);
+
+  const readyToClose = v3AcknowledgeTestDigest(result.state, where);
+  const closed = v2Receipt(readyToClose, where, "turn-6", "pmnm-guard done audit=passed", "high-verification-closed", {
+    workspaceSnapshotProvider: () => ({status: "unavailable", entries: []}),
+  });
+  assert.equal(isControlRecorded(closed), true, visibleText(closed));
+
+  state = v3Write(result.state, where, "turn-5", path.join(created.task, "expectations.md"),
+    v3Expectations(["| named identity | covered | requirement | BR4 | changed after verification |"]), "high-verification-drift").state;
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard done audit=passed", "high-verification-stale-done");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /expectations\.md/);
+  assert.match(visibleText(result), /verified|verify/i);
+});
+
+test("HG-321 an agreed High task with missing expectations names redo first", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "high");
+  const created = v3CreateTask(configured, where);
+  let state = v3WritePlan(created.state, where, created.task, "turn-3", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(state, where, "turn-3", path.join(created.task, "expectations.md"), v3Expectations(), "present-expectations").state;
+  state = v3Agree(state, where);
+  fs.rmSync(path.join(created.task, "expectations.md"));
+  const result = v2Pre(state, where, "turn-4", "", "missing-expectations-write", "Write",
+    {file_path: path.join(where.cwd, "src", "a.js"), content: "a=2\n"});
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /pmnm-guard redo first/);
+});
+
+test("HG-322 the public impact skeleton and the root card match the parser", (t) => {
+  const reference = fs.readFileSync(new URL("../skills/please-make-no-mistakes/references/impact-analysis.md", import.meta.url), "utf8");
+  const skeleton = reference.match(/```text\n(# Impact\n[\s\S]*?)\n```/)?.[1];
+  assert.ok(skeleton, "the reference has no literal impact.md skeleton");
+  assert.match(skeleton, /^# Impact\nMode: transitive\nReason: <reason>\n\n## Roots$/m);
+  for (const heading of ["## Ledger", "## Dynamic boundaries", "## Non-functional dispositions", "## Omission audit"]) {
+    assert.ok(skeleton.includes(heading), "missing parser heading: " + heading);
+  }
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "standard");
+  const created = v3CreateTask(configured, where);
+  let state = v3WritePlan(created.state, where, created.task, "turn-4", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(state, where, "turn-4", path.join(created.task, "impact.md"),
+    v3Impact({mode: "transitive"}).replace("## Roots", "## Derive roots before reading the plan"), "wrong-roots-heading").state;
+  const result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "wrong-roots-digest");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(fs.readFileSync(path.join(created.task, "preflight.md"), "utf8"), /## Roots/);
+});
+
+test("HG-323 both published impact skeletons reach Digest in their named mode", (t) => {
+  const reference = fs.readFileSync(new URL("../skills/please-make-no-mistakes/references/impact-analysis.md", import.meta.url), "utf8");
+  for (const mode of ["local", "transitive"]) {
+    const template = [...reference.matchAll(/```text\n(# Impact\n[\s\S]*?)\n```/g)]
+      .map((match) => match[1]).find((block) => block.includes("Mode: " + mode));
+    assert.ok(template, "missing " + mode + " skeleton");
+    const impact = template.replace("<disposition>", "changed-and-covered")
+      .replace(/<[^>]+>/g, "concrete evidence from the request") + "\n";
+    const {where, state: configured} = v2Configured(t, "en", "implementation", "standard");
+    const created = v3CreateTask(configured, where);
+    let state = v3WritePlan(created.state, where, created.task, "turn-4", "- [ ] src/a.js — change a\n").state;
+    state = v3Write(state, where, "turn-4", path.join(created.task, "impact.md"), impact, "published-" + mode).state;
+    const result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "published-" + mode + "-digest");
+    assert.equal(isControlRecorded(result), true, visibleText(result));
+  }
+});
+
+test("HG-324 changed expectations permit a revised Digest after redo without a fake plan edit", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "high");
+  const created = v3CreateTask(configured, where);
+  let state = v3WritePlan(created.state, where, created.task, "turn-3", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(state, where, "turn-3", path.join(created.task, "expectations.md"), v3Expectations(), "initial-expectations").state;
+  state = v3Agree(state, where);
+  let result = v2Receipt(state, where, "turn-4", "pmnm-guard redo", "expectations-redo");
+  assert.match(result.state.redo_contract_hash, /^[0-9a-f]{64}$/);
+  assert.throws(() => testing.validateState({...result.state, redo_contract_hash: "not-a-hash"}), /redo contract hash/);
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard digest", "unchanged-redigest");
+  assert.equal(isDenied(result), true, visibleText(result));
+  state = v3Write(result.state, where, "turn-4", path.join(created.task, "expectations.md"),
+    v3Expectations(["| new request | covered | requirement | BR2 | new observed evidence |"]), "revised-expectations").state;
+  result = v2Receipt(state, where, "turn-4", "pmnm-guard digest", "expectations-revised-digest");
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+});
+
+test("a changed-contract redo hash survives task-runtime adoption", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "high");
+  const created = v3CreateTask(configured, where);
+  let state = v3WritePlan(created.state, where, created.task, "turn-3", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(state, where, "turn-3", path.join(created.task, "expectations.md"), v3Expectations(), "durable-expectations").state;
+  state = v3Agree(state, where);
+  const seedEvent = {...v2Event(where, "UserPromptSubmit", "turn-4", {prompt: "Continue"}), session_id: "durable-first"};
+  const options = {dataRoot: where.dataRoot, environment: {CODEX_HOME: where.codexHome, PLUGIN_DATA: where.dataRoot}, now: 100};
+  const paths = testing.statePaths(where.dataRoot, seedEvent);
+  fs.mkdirSync(paths.directory, {recursive: true});
+  fs.writeFileSync(paths.state, JSON.stringify(state));
+  processPersistedEvent(seedEvent, options);
+  processPersistedEvent({...v2Event(where, "PreToolUse", "turn-4", {
+    tool_name: "Bash", tool_use_id: "durable-redo", tool_input: {command: "pmnm-guard redo"},
+  }), session_id: "durable-first"}, options);
+  const taskRuntimeFile = fs.readdirSync(paths.directory).find((name) => name.startsWith("task-") && name.endsWith(".json"));
+  assert.ok(taskRuntimeFile);
+  const runtime = JSON.parse(fs.readFileSync(path.join(paths.directory, taskRuntimeFile), "utf8"));
+  assert.match(runtime.fields.redo_contract_hash, /^[0-9a-f]{64}$/);
+  const resumedEvent = {...v2Event(where, "PreToolUse", "turn-5", {
+    tool_name: "Bash", tool_use_id: "durable-resume", tool_input: {command: "pmnm-guard start task=TASK-101 effort=high work=implementation"},
+  }), session_id: "durable-second"};
+  processPersistedEvent(resumedEvent, options);
+  const resumedPath = testing.statePaths(where.dataRoot, resumedEvent).state;
+  const resumed = JSON.parse(fs.readFileSync(resumedPath, "utf8"));
+  assert.equal(resumed.redo_contract_hash, runtime.fields.redo_contract_hash);
+});
+
+test("HG-325 stale review cards name the exact planless and planned bindings", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "verification", "high");
+  const created = v3CreateTask(configured, where);
+  let state = v3WriteClaims(created.state, where, created.task, "turn-4").state;
+  state = v3Write(state, where, "turn-4", path.join(created.task, "expectations.md"), v3Expectations(), "review-expectations").state;
+  let result = v2Pre(state, where, "turn-4", "npm test", "review-binding-check");
+  result = v2Post(result.state, where, "turn-4", "npm test", "review-binding-check", "Bash", "passed");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard verified result=passed how=command", "review-binding-verified");
+  const review = "# Review\n- contract: requested check\n- plan-digest: none.\n- fingerprint: " + result.state.last_verification.fingerprint.hash + "\n- changed-surface: none\n- evidence: check passed\n- strongest-counterexample: wrong check could pass\n- independent-check: separately inspected assertion\n- disagreement: none\n- residual-limit: synthetic only\n";
+  state = v3Write(result.state, where, "turn-5", path.join(created.task, "review.md"), review, "bad-review-binding").state;
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard done audit=passed", "bad-binding-done");
+  assert.match(visibleText(result), /plan-digest: none/);
+
+  const planned = v2Configured(t, "en", "verification", "high");
+  const plannedTask = v3CreateTask(planned.state, planned.where);
+  let plannedState = v3WritePlan(plannedTask.state, planned.where, plannedTask.task, "turn-3",
+    "- [x] excluded: src/a.js — preserve this file\n").state;
+  plannedState = v3Write(plannedState, planned.where, "turn-3", path.join(plannedTask.task, "expectations.md"),
+    v3Expectations(), "planned-review-expectations").state;
+  plannedState = v3Agree(plannedState, planned.where);
+  plannedState = v3WriteClaims(plannedState, planned.where, plannedTask.task, "turn-4").state;
+  let plannedResult = v2Pre(plannedState, planned.where, "turn-4", "npm test", "planned-review-check");
+  plannedResult = v2Post(plannedResult.state, planned.where, "turn-4", "npm test", "planned-review-check", "Bash", "passed");
+  plannedResult = v2Receipt(plannedResult.state, planned.where, "turn-4", "pmnm-guard verified result=passed how=command", "planned-review-verified");
+  assert.equal(isControlRecorded(plannedResult), true, visibleText(plannedResult));
+  const plannedReview = review.replace("- plan-digest: none.", "- plan-digest: none")
+    .replace(result.state.last_verification.fingerprint.hash, plannedResult.state.last_verification.fingerprint.hash);
+  plannedState = v3Write(plannedResult.state, planned.where, "turn-5", path.join(plannedTask.task, "review.md"),
+    plannedReview, "bad-planned-binding").state;
+  plannedResult = v2Receipt(plannedState, planned.where, "turn-5", "pmnm-guard done audit=passed", "bad-planned-binding-done");
+  assert.match(visibleText(plannedResult), new RegExp("plan-digest: " + plannedState.plan_file_hash));
+});
+
+test("HG-326 High implementation without a Digest has a named route rather than a planless review", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "high");
+  const created = v3CreateTask(configured, where);
+  let state = v3WriteClaims(created.state, where, created.task, "turn-4").state;
+  let result = v2Pre(state, where, "turn-4", "npm test", "high-planless-check");
+  result = v2Post(result.state, where, "turn-4", "npm test", "high-planless-check", "Bash", "passed");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard verified result=passed how=command", "high-planless-verified");
+  const review = "# Review\n- contract: requested check\n- plan-digest: none\n- fingerprint: " + result.state.last_verification.fingerprint.hash + "\n- changed-surface: none\n- evidence: check passed\n- strongest-counterexample: wrong check could pass\n- independent-check: separately inspected assertion\n- disagreement: none\n- residual-limit: synthetic only\n";
+  state = v3Write(result.state, where, "turn-5", path.join(created.task, "review.md"), review, "implementation-planless-review").state;
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard done audit=passed", "implementation-planless-done");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /work=verification/);
+  assert.match(visibleText(result), /Digest/);
 });
 
 test("HG-183 a non-mutating project check can close without an implementation Digest", (t) => {
@@ -1915,8 +2968,7 @@ test("HG-192 external-only deletion asks for exact human authority without inven
   assert.match(visibleText(result), /^Ask: This command deletes files/m);
   assert.match(visibleText(result), /pmnm-guard allow effect=deletion/);
   assert.doesNotMatch(visibleText(result), /Digest/);
-  result = v2Prompt(result.state, where, "turn-5", "Yes, delete that exact file");
-  result = v2Receipt(result.state, where, "turn-5", "pmnm-guard allow effect=deletion", "allow-delete");
+  result = v2ApproveSensitive(result, where, "turn-5", "deletion", "allow-delete");
   assert.equal(isControlRecorded(result), true, visibleText(result));
   assert.equal(isDenied(v2Pre(result.state, where, "turn-5", command, "external-delete-retry")), false);
 
@@ -2098,7 +3150,7 @@ test("HG-204 an existing empty PMNM folder is seeded before its pointer is writt
   const where = v2Temp(t);
   fs.mkdirSync(where.notes);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Use that existing empty folder").state;
   const result = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(where.notes), "folder");
   assert.equal(isControlRecorded(result), true, visibleText(result));
@@ -2112,7 +3164,7 @@ test("HG-205 corrupt folder state is preserved and repaired only after a later h
   fs.mkdirSync(where.notes);
   fs.writeFileSync(path.join(where.notes, "index.json"), "not-json\n");
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Use that existing folder").state;
   let result = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(where.notes), "folder-corrupt");
   assert.equal(isDenied(result), true);
@@ -2129,7 +3181,7 @@ test("HG-206 an unreadable host pointer has an exact human-directed recovery pat
   const where = v2Temp(t);
   fs.writeFileSync(path.join(where.codexHome, "pmnm.path"), "relative/not-safe\n");
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  let result = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start");
+  let result = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start");
   assert.match(visibleText(result), /^Ask: /m);
   assert.match(visibleText(result), /pmnm-guard folder path=/);
   state = v2Prompt(result.state, where, "turn-2", "Replace the invalid pointer and use this folder").state;
@@ -2144,7 +3196,7 @@ test("HG-207 a candidate task folder presents executable yes and no paths", (t) 
   const tasks = path.join(where.notes, "projects", "example", "tasks");
   const candidate = path.join(tasks, "DEMO-6-coupons");
   fs.mkdirSync(candidate, {recursive: true});
-  let result = v2Receipt(state, where, "turn-3", "pmnm-guard start task=DEMO-6 effort=standard", "start-candidate");
+  let result = v2Receipt(state, where, "turn-3", "pmnm-guard start task=DEMO-6 effort=standard work=implementation", "start-candidate");
   assert.match(visibleText(result), /^Ask: /m);
   assert.match(visibleText(result), new RegExp("mv " + escapeRegExp(JSON.stringify(fs.realpathSync(candidate)))));
   assert.match(visibleText(result), new RegExp("mkdir -p " + escapeRegExp(JSON.stringify(result.state.task_path))));
@@ -2208,12 +3260,12 @@ test("HG-211 persisted authority is session-local while project and task identit
   processPersistedEvent({...v2Event(where, "SessionStart", "turn-1", {source: "startup"}), session_id: "first"}, options);
   processPersistedEvent({...v2Event(where, "UserPromptSubmit", "turn-1", {prompt: "Work on task A"}), session_id: "first"}, options);
   processPersistedEvent({...v2Event(where, "PreToolUse", "turn-1", {
-    tool_name: "Bash", tool_use_id: "start-a", tool_input: {command: "pmnm-guard start task=TASK-A effort=standard"},
+    tool_name: "Bash", tool_use_id: "start-a", tool_input: {command: "pmnm-guard start task=TASK-A effort=standard work=implementation"},
   }), session_id: "first"}, options);
   processPersistedEvent({...v2Event(where, "SessionStart", "turn-2", {source: "startup"}), session_id: "second"}, options);
   processPersistedEvent({...v2Event(where, "UserPromptSubmit", "turn-2", {prompt: "Work on task B"}), session_id: "second"}, options);
   processPersistedEvent({...v2Event(where, "PreToolUse", "turn-2", {
-    tool_name: "Bash", tool_use_id: "start-b", tool_input: {command: "pmnm-guard start task=TASK-B effort=standard"},
+    tool_name: "Bash", tool_use_id: "start-b", tool_input: {command: "pmnm-guard start task=TASK-B effort=standard work=implementation"},
   }), session_id: "second"}, options);
 
   const statusA = processPersistedEvent({...v2Event(where, "PreToolUse", "turn-3", {
@@ -2266,8 +3318,7 @@ test("HG-214 a successful external effect cannot end without current verificatio
   const created = v3CreateTask(configured, where);
   const command = "codex plugin marketplace add ./source";
   let result = v2Pre(created.state, where, "turn-4", command, "external-effect");
-  result = v2Prompt(result.state, where, "turn-5", "Yes, make that exact environment change");
-  result = v2Receipt(result.state, where, "turn-5", "pmnm-guard allow effect=environment", "allow-external-effect");
+  result = v2ApproveSensitive(result, where, "turn-5", "environment", "allow-external-effect");
   result = v2Pre(result.state, where, "turn-5", command, "external-effect-retry");
   assert.equal(isDenied(result), false, visibleText(result));
   result = v2Post(result.state, where, "turn-5", command, "external-effect-retry");
@@ -2282,11 +3333,10 @@ test("HG-215 an unverified external effect blocks transition to another task", (
   const created = v3CreateTask(configured, where);
   const command = "codex plugin marketplace add ./source";
   let result = v2Pre(created.state, where, "turn-4", command, "external-before-transition");
-  result = v2Prompt(result.state, where, "turn-5", "Yes, make that exact environment change");
-  result = v2Receipt(result.state, where, "turn-5", "pmnm-guard allow effect=environment", "allow-before-transition");
+  result = v2ApproveSensitive(result, where, "turn-5", "environment", "allow-before-transition");
   result = v2Pre(result.state, where, "turn-5", command, "external-before-transition-retry");
   result = v2Post(result.state, where, "turn-5", command, "external-before-transition-retry");
-  result = v2Receipt(result.state, where, "turn-5", "pmnm-guard start task=TASK-OTHER effort=standard", "change-task");
+  result = v2Receipt(result.state, where, "turn-5", "pmnm-guard start task=TASK-OTHER effort=standard work=implementation", "change-task");
   assert.equal(isDenied(result), true);
   assert.equal(result.state.task_id, "TASK-101");
   assert.match(visibleText(result), /unverified|sin verificar/i);
@@ -2296,7 +3346,7 @@ test("HG-216 task-folder actions quote every literal path for the shell", (t) =>
   const where = v2Temp(t);
   where.notes = path.join(where.root, "PMNM $notes' space");
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Use that folder").state;
   state = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(where.notes), "folder").state;
   state = v2Prompt(state, where, "turn-3", "Call it example").state;
@@ -2318,7 +3368,7 @@ test("HG-216 task-folder actions quote every literal path for the shell", (t) =>
     observed.state,
     where,
     "turn-4",
-    "pmnm-guard start task=DEMO-6 effort=standard",
+    "pmnm-guard start task=DEMO-6 effort=standard work=implementation",
     "start-quoted-candidate",
   );
   const adoptionMatch = visibleText(adoption).match(/after yes, run exactly: (mv .+); after no/m);
@@ -2336,7 +3386,7 @@ test("HG-216 task-folder actions quote every literal path for the shell", (t) =>
 test("HG-217 a new project name requires the human turn requested by the guard", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Use that PMNM folder").state;
   const folder = v2Receipt(
     state,
@@ -2371,7 +3421,7 @@ test("HG-218 a revised no-VCS plan compares every path retained from the origina
 test("HG-219 an unindexed project directory is never adopted for a new repository", (t) => {
   const where = v2Temp(t);
   let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate TASK-101").state;
-  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard", "start").state;
+  state = v2Receipt(state, where, "turn-1", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "start").state;
   state = v2Prompt(state, where, "turn-2", "Use that PMNM folder").state;
   state = v2Receipt(
     state,
@@ -2450,6 +3500,32 @@ test("HG-185 the closing card reports distinct rules files written during the ta
   assert.match(visibleText(result), /Rules files written: 1\./);
 });
 
+test("four canonical rule files remain counted through closure", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  const {task, state: opened} = v3CreateTask(configured, where);
+  const files = [
+    [path.join(where.notes, "general-rules.md"), "- G-001 · keep evidence current. (from TASK-101, 2026-10-16 · basis: agent-worded)\n"],
+    [path.join(where.notes, "projects", "example", "project-rules.md"), "- P-001 · keep project evidence current. (from TASK-101, 2026-10-16 · basis: agent-worded)\n"],
+    [path.join(where.notes, "projects", "example", "project-knowledge.md"), "# Project knowledge\n\n## Evidence\n- current: observed in this task\n"],
+    [path.join(task, "task-rules.md"), "- T-001 · keep this task bounded. (from TASK-101, 2026-10-16 · basis: agent-worded)\n"],
+  ];
+  let state = opened;
+  for (const [index, [target, content]] of files.entries()) {
+    const result = v3Write(state, where, "turn-4", target, content, "rule-four-" + index);
+    assert.equal(isDenied(result), false, visibleText(result));
+    state = v3ReloadRuleBasis(result.state, where, "turn-4", "rule-four-reload-" + index);
+  }
+  assert.equal(state.rules_file_hashes_written.length, 4);
+  let result = v3WriteClaims(state, where, task, "turn-4");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard verified result=passed how=inspection", "rule-four-verified");
+  result.state = v3AcknowledgeTestDigest(result.state, where);
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard done audit=passed", "rule-four-done", {
+    workspaceSnapshotProvider: () => ({status: "unavailable", entries: []}),
+  });
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  assert.match(visibleText(result), /Rules files written: 4\./);
+});
+
 test("HG-186 one unrelated task folder does not trigger an identity question", (t) => {
   const {where, state} = v2Configured(t);
   const tasks = path.join(where.notes, "projects", "example", "tasks");
@@ -2459,7 +3535,7 @@ test("HG-186 one unrelated task folder does not trigger an identity question", (
     state,
     where,
     "turn-3",
-    "pmnm-guard start task=DEMO-11 effort=standard",
+    "pmnm-guard start task=DEMO-11 effort=standard work=implementation",
     "start-unrelated",
   );
   const text = visibleText(result);
@@ -2477,7 +3553,7 @@ test("HG-187 an exact task folder resumes without an identity question", (t) => 
     state,
     where,
     "turn-3",
-    "pmnm-guard start task=DEMO-6 effort=standard",
+    "pmnm-guard start task=DEMO-6 effort=standard work=implementation",
     "start-exact",
   );
   const text = visibleText(result);
@@ -2501,7 +3577,7 @@ test("HG-188 only bounded or normalized task-folder candidates trigger the ident
     state,
     where,
     "turn-3",
-    "pmnm-guard start task=DEMO-6 effort=standard",
+    "pmnm-guard start task=DEMO-6 effort=standard work=implementation",
     "start-candidates",
   );
   const text = visibleText(result);
@@ -2526,15 +3602,15 @@ test("HG-189 several unrelated task folders still produce the exact mkdir action
     state,
     where,
     "turn-3",
-    "pmnm-guard start task=DEMO-11 effort=standard",
+    "pmnm-guard start task=DEMO-11 effort=standard work=implementation",
     "start-many-unrelated",
   );
   const text = visibleText(result);
-  assert.doesNotMatch(text, /pregunta al humano/i);
+  assert.doesNotMatch(text, /ask the human/i);
   assert.doesNotMatch(text, /ALPHA-1|DEMO-3|DEMO-60|OMEGA/);
   assert.match(
     text,
-    new RegExp("NEXT: ejecuta exactamente: mkdir -p " + escapeRegExp(JSON.stringify(result.state.task_path))),
+    new RegExp("NEXT: run exactly: mkdir -p " + escapeRegExp(JSON.stringify(result.state.task_path))),
   );
 });
 
@@ -2546,21 +3622,15 @@ test("HG-190 investigation Stop cards state only the missing Digest they can obs
     let result = v2Process(created.state, where, "Stop", "turn-3");
     assert.equal(
       visibleText(result),
-      language === "es"
-        ? "Nota: La investigación se pausa sin Digest registrado en este turno.\n" +
-            "NEXT: muestra el Digest; si tu último mensaje ya hace una pregunta al humano, detente aquí"
-        : "Note: Investigation is pausing with no Digest recorded this turn.\n" +
-            "NEXT: show the Digest; if your last message already asks the human one question, stop here",
+      "Note: Investigation is pausing with no Digest recorded this turn.\n" +
+        "NEXT: show the Digest; if your last message already asks the human one question, stop here",
     );
 
     result = v2Process(result.state, where, "Stop", "turn-3");
     assert.equal(
       visibleText(result),
-      language === "es"
-        ? "Pregunta: La investigación se pausa sin Digest registrado en este turno.\n" +
-            "NEXT: muestra el Digest ahora; si una pregunta lo bloquea, hazla y detente aquí"
-        : "Ask: Investigation is pausing with no Digest recorded this turn.\n" +
-            "NEXT: show the Digest now; if one question blocks it, ask that question and stop here",
+      "Ask: Investigation is pausing with no Digest recorded this turn.\n" +
+        "NEXT: show the Digest now; if one question blocks it, ask that question and stop here",
     );
   }
 });
@@ -2610,11 +3680,7 @@ test("HG-191 stale command evidence is distinct from an invalid verification met
     "stale-command-es",
   );
   assert.equal(isDenied(staleSpanish), true);
-  assert.equal(
-    visibleText(staleSpanish),
-    "Bloqueado: No hay una comprobación exitosa registrada después del último cambio.\n" +
-      "NEXT: corre de nuevo la comprobación que prueba el cambio y luego pmnm-guard verified result=<passed|failed|partial|blocked> how=command",
-  );
+  assert.equal(visibleText(staleSpanish), visibleText(staleEnglish));
 });
 
 test("HG-221 byte-identical rewrites above two megabytes remain no-ops", (t) => {
@@ -2717,7 +3783,7 @@ test("HG-225 related suffixes for one bounded work id cannot silently open sibli
     state,
     where,
     "turn-3",
-    "pmnm-guard start task=CASE-42-local-app effort=standard",
+    "pmnm-guard start task=CASE-42-local-app effort=standard work=implementation",
     "related-task-start",
   );
   const text = visibleText(result);
@@ -3083,9 +4149,47 @@ test("HG-240 state-only closure reports its evidence boundary without inventing 
   state = v3AcknowledgeTestDigest(result.state, where);
   result = v2Receipt(state, where, "turn-5", "pmnm-guard done audit=passed", "no-vcs-state-done");
   assert.equal(isControlRecorded(result), true, visibleText(result));
-  assert.match(visibleText(result), /no project-file comparison|sin comparación de archivos/i);
-  assert.match(visibleText(result), /state objectives: 1|objetivos de estado: 1/i);
+  assert.match(visibleText(result), /no project-file comparison/i);
+  assert.match(visibleText(result), /state objectives: 1/i);
   assert.doesNotMatch(visibleText(result), /Git|version-control state/i);
+});
+
+test("CEL-01 a state-only closure with a persisted Spanish value emits only English", (t) => {
+  const {where, task, state: initial} = v3Setup(t);
+  const input = {operation: "set", resource: "fixture-record", field: "status", value: "approved"};
+  let state = v3WritePlan(initial, where, task, "turn-3", "- [ ] state: approval-status — pending => approved\n").state;
+  state = v3WritePermissions(state, where, task, "turn-3", v3StatePermission("approval-status", input)).state;
+  state = v3Agree(state, where);
+  state = v3RunStateTool(state, where, "turn-4", input, "cel-state");
+  state = v3Write(
+    state,
+    where,
+    "turn-4",
+    path.join(task, "plan.md"),
+    "- [x] state: approval-status — pending => approved\n",
+    "cel-state-plan",
+  ).state;
+  state = v3WriteStateClaims(state, where, task, "turn-4", ["- state: approval-status — pending => approved"]).state;
+  let result = v2Pre(state, where, "turn-4", "npm test", "cel-state-check");
+  result = v2Post(result.state, where, "turn-4", "npm test", "cel-state-check");
+  result = v2Receipt(
+    result.state,
+    where,
+    "turn-4",
+    "pmnm-guard verified result=passed how=command",
+    "cel-state-verified",
+    {fingerprintProvider: () => null},
+  );
+  state = v3AcknowledgeTestDigest(result.state, where);
+
+  // The historical compatibility value must load and must change nothing.
+  state.language = "es";
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard done audit=passed", "cel-state-done");
+  const text = visibleText(result);
+  assert.equal(isControlRecorded(result), true, text);
+  assert.match(text, /State objectives: 1/);
+  assert.doesNotMatch(text, /Objetivos de estado/);
+  assert.equal(/[áéíóúñü¿¡]/.test(text), false, text);
 });
 
 test("HG-241 state objective grammar and exact generic operation identity fail closed", (t) => {
@@ -3186,7 +4290,7 @@ test("HG-230 task permissions expire at task transition while project permission
     project: [{effect: "environment", tool: "Bash", input: {command: projectCommand}, reason: "reusable project installation check"}],
   }).state;
   state = v3Agree(state, where);
-  state = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard", "switch-after-forecast").state;
+  state = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard work=implementation", "switch-after-forecast").state;
   fs.mkdirSync(v2TaskDirectory(where, "TASK-202"), {recursive: true});
 
   let result = v2Pre(state, where, "turn-5", projectCommand, "project-permission");
@@ -3284,14 +4388,14 @@ test("HG-242 switching unfinished tasks takes one bounded human reconciliation a
   state = v3Agree(state, where);
   state = v3Write(state, where, "turn-4", path.join(where.cwd, "src", "a.js"), "a=2\n", "unfinished-a").state;
 
-  let result = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard", "ask-switch");
+  let result = v2Receipt(state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard work=implementation", "ask-switch");
   assert.equal(isDenied(result), true);
   assert.equal(result.state.task_id, "TASK-101");
   assert.equal(result.state.pending_question?.kind, "task-transition");
   assert.match(visibleText(result), /pause.*TASK-101.*TASK-202|paus.*TASK-101.*TASK-202/i);
 
   state = v2Prompt(result.state, where, "turn-5", "Pause TASK-101 and switch to TASK-202").state;
-  result = v2Receipt(state, where, "turn-5", "pmnm-guard start task=TASK-202 effort=standard", "confirm-switch");
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard start task=TASK-202 effort=standard work=implementation", "confirm-switch");
   assert.equal(isControlRecorded(result), true, visibleText(result));
   assert.equal(result.state.task_id, "TASK-202");
   assert.equal(result.state.mutation_count, 0);
@@ -3484,23 +4588,98 @@ test("HG-249 a safe absolute plan path canonicalizes without changing authority"
   assert.equal(isDenied(result), false, visibleText(result));
 });
 
-test("HG-250 clear natural-language approval authorizes only the exact sensitive operation", (t) => {
+test("HG-250 vague trust cannot authorize a sensitive operation", (t) => {
   const {where, state: agreed} = v3AgreedFor(t, "- [x] obsolete.txt — remove obsolete output\n");
   const command = "rm obsolete.txt";
-  let result = v2Pre(agreed, where, "turn-4", command, "ask-procede");
+  let result = v2Pre(agreed, where, "turn-4", command, "ask-vague");
   assert.equal(isDenied(result), true);
-  assert.doesNotMatch(visibleText(result), /yes or no|sí o no/i);
-  let state = v2Prompt(result.state, where, "turn-5", "Procede con la operación descrita").state;
-  state = v2Receipt(state, where, "turn-5", "pmnm-guard allow effect=deletion", "allow-procede").state;
-  result = v2Pre(state, where, "turn-5", command, "exact-after-procede");
+  assert.match(visibleText(result), /PMNM-ALLOW-[A-F0-9]{12}/);
+  let state = v2Prompt(result.state, where, "turn-5", "Como veas, confío en ti").state;
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard allow effect=deletion", "allow-vague");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /PMNM-ALLOW-[A-F0-9]{12}/);
+  result = v2Pre(result.state, where, "turn-5", command, "still-denied-after-vague");
+  assert.equal(isDenied(result), true, visibleText(result));
+});
+
+test("HG-297 the exact later human token authorizes only its bound operation", (t) => {
+  const {where, state: agreed} = v3AgreedFor(t, "- [x] obsolete.txt — remove obsolete output\n");
+  const command = "rm obsolete.txt";
+  let result = v2Pre(agreed, where, "turn-4", command, "ask-token");
+  assert.equal(isDenied(result), true, visibleText(result));
+  const token = visibleText(result).match(/PMNM-ALLOW-[A-F0-9]{12}/)?.[0];
+  assert.ok(token, visibleText(result));
+
+  let state = v2Prompt(result.state, where, "turn-5", token).state;
+  result = v2Receipt(state, where, "turn-5", "pmnm-guard allow effect=deletion", "allow-token");
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  result = v2Pre(result.state, where, "turn-5", command, "exact-after-token");
   assert.equal(isDenied(result), false, visibleText(result));
 
   const changed = v3AgreedFor(t, "- [x] obsolete.txt — remove obsolete output\n");
-  result = v2Pre(changed.state, changed.where, "turn-4", command, "ask-changed-range");
-  state = v2Prompt(result.state, changed.where, "turn-5", "Apruebo esa operación").state;
+  result = v2Pre(changed.state, changed.where, "turn-4", command, "ask-other-token");
+  const otherToken = visibleText(result).match(/PMNM-ALLOW-[A-F0-9]{12}/)?.[0];
+  assert.ok(otherToken, visibleText(result));
+  state = v2Prompt(result.state, changed.where, "turn-5", otherToken).state;
   state = v2Receipt(state, changed.where, "turn-5", "pmnm-guard allow effect=deletion", "allow-original").state;
   result = v2Pre(state, changed.where, "turn-5", "rm other.txt", "changed-after-approval");
   assert.equal(isDenied(result), true);
+});
+
+test("HG-298 advisory work rejects file and changing-state objectives before Digest agreement", (t) => {
+  const where = v2Temp(t);
+  let state = v2Prompt(testing.baseState(), where, "turn-1", "Investigate and report without changing code").state;
+  let result = v2Receipt(
+    state,
+    where,
+    "turn-1",
+    "pmnm-guard start task=TASK-101 effort=standard work=advisory",
+    "start-advisory",
+  );
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  assert.equal(result.state.work_type, "advisory");
+  state = v2Prompt(result.state, where, "turn-2", "Keep it here").state;
+  state = v2Receipt(state, where, "turn-2", "pmnm-guard folder path=" + encodePathField(where.notes), "folder").state;
+  state = v2Prompt(state, where, "turn-3", "Call it example").state;
+  state = v2Receipt(state, where, "turn-3", "pmnm-guard project name=example", "project").state;
+  state = v3CreateTask(state, where).state;
+  state = v3WritePlan(
+    state,
+    where,
+    v2TaskDirectory(where),
+    "turn-3",
+    "- [ ] src/a.js — change implementation\n" +
+      "- [ ] state: remote-mode — disabled => enabled\n",
+  ).state;
+  result = v2Receipt(state, where, "turn-3", "pmnm-guard digest", "advisory-digest");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /advisory/i);
+  const preflight = fs.readFileSync(path.join(v2TaskDirectory(where), "preflight.md"), "utf8");
+  assert.match(preflight, /advisory-work-shape/);
+  assert.match(preflight, /deliverable.*boundary/i);
+});
+
+test("HG-299 legacy task state can adopt one explicit work type and then preserves it", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  configured.work_type = null;
+  let result = v2Receipt(
+    configured,
+    where,
+    "turn-3",
+    "pmnm-guard start task=TASK-101 effort=standard work=implementation",
+    "adopt-work-type",
+  );
+  assert.equal(isControlRecorded(result), true, visibleText(result));
+  assert.equal(result.state.work_type, "implementation");
+  result = v2Receipt(
+    result.state,
+    where,
+    "turn-3",
+    "pmnm-guard start task=TASK-101 effort=standard work=advisory",
+    "conflicting-work-type",
+  );
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /work type|work=/i);
 });
 
 test("HG-251 an investigation check cannot become final verification while plan objectives remain open", (t) => {
@@ -3554,8 +4733,7 @@ test("HG-253 a dynamic declaration is observable, exact and explicit about its b
   assert.match(visibleText(result), /^Ask: /m);
   assert.match(visibleText(result), /allow effect=environment/);
 
-  let state = v2Prompt(result.state, where, "turn-4", "Allow this exact local runtime inspection").state;
-  state = v2Receipt(state, where, "turn-4", "pmnm-guard allow effect=environment", "allow-runtime-read").state;
+  let state = v2ApproveSensitive(result, where, "turn-4", "environment", "allow-runtime-read").state;
   result = v2Pre(state, where, "turn-4", command, "dynamic-retry");
   assert.equal(isDenied(result), false, visibleText(result));
   result = v2Pre(result.state, where, "turn-4", "docker ps --all", "dynamic-different");
@@ -3663,16 +4841,17 @@ test("HG-256 a capability declaration never creates its own authority", (t) => {
 
 test("HG-257 High completion requires a current semantic adjudication packet without inheriting its verdict", (t) => {
   const seed = v2Configured(t);
-  const high = v2Receipt(seed.state, seed.where, "turn-3", "pmnm-guard start task=TASK-101 effort=high", "high-start").state;
+  const high = v2Receipt(seed.state, seed.where, "turn-3", "pmnm-guard start task=TASK-101 effort=high work=implementation", "high-start").state;
   const highTask = v3CreateTask(high, seed.where).task;
   const seededReview = fs.readFileSync(path.join(highTask, "review.md"), "utf8");
   for (const field of ["impact-roots", "impact-omission-check", "non-functional-dispositions"]) {
     assert.match(seededReview, new RegExp("- " + field + ":"));
   }
 
-  const {where, state: configured} = v2Configured(t);
+  const {where, state: configured} = v2Configured(t, "en", "implementation", "high");
   const created = v3CreateTask(configured, where);
   let state = v3WritePlan(created.state, where, created.task, "turn-3", "- [ ] src/a.js — change a\n").state;
+  state = v3Write(state, where, "turn-3", path.join(created.task, "expectations.md"), v3Expectations(), "high-expectations").state;
   state = v3Agree(state, where);
   state = v3Write(state, where, "turn-4", path.join(where.cwd, "src", "a.js"), "a=2\n", "high-write").state;
   state = v3WritePlan(state, where, created.task, "turn-4", "- [x] src/a.js — change a\n").state;
@@ -3690,9 +4869,7 @@ test("HG-257 High completion requires a current semantic adjudication packet wit
   }
   result = v2Post(result.state, where, "turn-4", "npm test", "high-check", "Bash", "passed");
   result = v2Receipt(result.state, where, "turn-4", "pmnm-guard verified result=passed how=command", "high-verified");
-  state = v3AcknowledgeTestDigest(result.state, where);
-  state.effort = "high";
-  result = v2Receipt(state, where, "turn-5", "pmnm-guard done audit=passed", "high-done-no-review");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard done audit=passed", "high-done-no-review");
   assert.equal(isDenied(result), true);
   assert.match(visibleText(result), /review\.md|counterexample|contraejemplo/i);
 
@@ -3763,6 +4940,12 @@ test("HG-257 High completion requires a current semantic adjudication packet wit
 
   state = v3Write(result.state, where, "turn-5", path.join(created.task, "review.md"), review(), "high-review").state;
   result = v2Receipt(state, where, "turn-5", "pmnm-guard done audit=passed", "high-done-reviewed");
+  assert.equal(isDenied(result), true, visibleText(result));
+  assert.match(visibleText(result), /Test Digest/);
+  result = v2Process(result.state, where, "Stop", "turn-5", {last_assistant_message: v3TestDigestMessage(state.task_id)});
+  assert.equal(result.output, null, visibleText(result));
+  state = v2Prompt(result.state, where, "turn-6", "The Test Digest is clear; continue to the final audit").state;
+  result = v2Receipt(state, where, "turn-6", "pmnm-guard done audit=passed", "high-done-after-test-digest");
   assert.equal(isControlRecorded(result), true, visibleText(result));
 });
 
@@ -3799,7 +4982,7 @@ test("HG-258 task capabilities expire and uncertain or mismatched declarations c
   );
   assert.match(visibleText(result), /^Ask: /m);
 
-  state = v2Receipt(state, where, "turn-5", "pmnm-guard start task=TASK-202 effort=standard", "switch-task-capability").state;
+  state = v2Receipt(state, where, "turn-5", "pmnm-guard start task=TASK-202 effort=standard work=implementation", "switch-task-capability").state;
   fs.mkdirSync(v2TaskDirectory(where, "TASK-202"), {recursive: true});
   result = v2Pre(state, where, "turn-5", "runtime-query status=active", "expired-task-cap-first");
   result = v2Receipt(
@@ -3923,7 +5106,7 @@ test("HG-264 concurrent sessions on the same task must reload a newer durable re
   for (const session of ["session-a", "session-b"]) {
     send(session, v2Event(where, "UserPromptSubmit", "turn-1", {prompt: "Resume TASK-101"}));
     send(session, v2Event(where, "PreToolUse", "turn-1", {
-      tool_name: "Bash", tool_use_id: "start-" + session, tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard"},
+      tool_name: "Bash", tool_use_id: "start-" + session, tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard work=implementation"},
     }));
   }
   send("session-a", v2Event(where, "PreToolUse", "turn-2", {
@@ -3952,7 +5135,7 @@ test("HG-265 restarting the same task cannot erase an in-flight operation", (t) 
   assert.notEqual(allowed?.hookSpecificOutput?.permissionDecision, "deny");
 
   const restart = {...v2Event(where, "PreToolUse", "turn-4", {
-    tool_name: "Bash", tool_use_id: "restart", tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard"},
+    tool_name: "Bash", tool_use_id: "restart", tool_input: {command: "pmnm-guard start task=TASK-101 effort=standard work=implementation"},
   }), session_id: "same-task-session"};
   const blocked = processPersistedEvent(restart, options);
   assert.equal(blocked?.hookSpecificOutput?.permissionDecision, "deny");
@@ -4561,7 +5744,7 @@ test("HG-284 a plain proactive declaration is same-turn and next-operation only"
     ["session-start", (state, where) => v2Process(state, where, "SessionStart", "turn-3", {source: "compact"})],
     ["stop", (state, where) => v2Process(state, where, "Stop", "turn-3", {last_assistant_message: "Pausing"})],
     ["interrupt", (state, where) => v2Process(state, where, "Interrupt", "turn-3")],
-    ["task-start", (state, where) => v2Receipt(state, where, "turn-3", "pmnm-guard start task=TASK-101 effort=standard", "same-task-start")],
+    ["task-start", (state, where) => v2Receipt(state, where, "turn-3", "pmnm-guard start task=TASK-101 effort=standard work=implementation", "same-task-start")],
     ["redo", (state, where) => v2Receipt(state, where, "turn-3", "pmnm-guard redo", "redo")],
     ["completion", (state, where) => v2Receipt(state, where, "turn-3", "pmnm-guard done audit=partial", "done")],
   ];
@@ -4705,7 +5888,7 @@ test("HG-289 task-transition cards preserve current verification truth", (t) => 
   assert.equal(result.state.last_verification?.result, "passed");
 
   const verification = structuredClone(result.state.last_verification);
-  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard", "verified-transition-start");
+  result = v2Receipt(result.state, where, "turn-4", "pmnm-guard start task=TASK-202 effort=standard work=implementation", "verified-transition-start");
   assert.equal(isDenied(result), true, visibleText(result));
   assert.match(visibleText(result), /unfinished work remains|a[uú]n queda trabajo pendiente/i);
   assert.doesNotMatch(visibleText(result), /unverified|sin verificar/i);
@@ -4794,12 +5977,11 @@ test("HG-292 proactive classification survives a separate exact authority decisi
   assert.match(visibleText(result), /allow effect=environment/);
   assert.equal(result.state.declared_retry?.command_hash, result.state.pending_denied?.command_hash);
 
-  let state = v2Prompt(result.state, where, "turn-4", "Allow that exact local environment inspection").state;
-  state = v2Receipt(
-    state,
+  let state = v2ApproveSensitive(
+    result,
     where,
     "turn-4",
-    "pmnm-guard allow effect=environment",
+    "environment",
     "proactive-environment-allow",
   ).state;
   result = v2RawPre(state, where, "turn-4", command, "proactive-environment-retry");
@@ -4832,8 +6014,7 @@ test("HG-293 exact classification and authority cannot cross operation identity"
     "identity-declare",
   );
   result = v2RawPre(result.state, where, "turn-3", command, "identity-operation");
-  let state = v2Prompt(result.state, where, "turn-4", "Allow only the command that was shown").state;
-  state = v2Receipt(state, where, "turn-4", "pmnm-guard allow effect=environment", "identity-allow").state;
+  let state = v2ApproveSensitive(result, where, "turn-4", "environment", "identity-allow").state;
 
   result = v2RawPre(state, where, "turn-4", command + " --all", "identity-changed-operation");
   assert.equal(isDenied(result), true, visibleText(result));
@@ -4861,8 +6042,7 @@ test("HG-294 a pre-fix allowance recovers without asking the human twice", (t) =
     "pmnm-guard declare effect=investigation boundary=local-environment persistence=none certainty=certain capability=none",
     "legacy-stuck-declare",
   );
-  let state = v2Prompt(result.state, where, "turn-4", "Allow that exact local environment command").state;
-  state = v2Receipt(state, where, "turn-4", "pmnm-guard allow effect=environment", "legacy-stuck-allow").state;
+  let state = v2ApproveSensitive(result, where, "turn-4", "environment", "legacy-stuck-allow").state;
   state.declared_retry = null;
   result = v2Pre(state, where, "turn-4", command, "legacy-stuck-unknown-again");
   assert.equal(isDenied(result), true, visibleText(result));
@@ -4879,4 +6059,416 @@ test("HG-294 a pre-fix allowance recovers without asking the human twice", (t) =
   assert.doesNotMatch(visibleText(result), /^Ask: /m);
   result = v2Pre(result.state, where, "turn-4", command, "legacy-stuck-retry");
   assert.equal(isDenied(result), false, visibleText(result));
+});
+
+test("the unreadable-pointer card names the configured host root", () => {
+  const state = testing.baseState();
+  state.folder_status = "unreadable";
+  const event = {hook_event_name: "PreToolUse", cwd: process.cwd()};
+
+  // Codex default: no configured root and no CODEX_HOME.
+  const fallback = testing.stateCard(state, event, {environment: {}});
+  assert.match(fallback, new RegExp(escapeRegExp(path.join(os.homedir(), ".codex", "pmnm.path"))));
+
+  // Codex with its own home. The card must follow it, not the default.
+  const codexHome = path.join(os.tmpdir(), "pmnm-codex-home");
+  const codex = testing.stateCard(state, event, {environment: {CODEX_HOME: codexHome}});
+  assert.match(codex, new RegExp(escapeRegExp(path.join(codexHome, "pmnm.path"))));
+
+  // Another host supplying its own configuration root.
+  const otherRoot = path.join(os.tmpdir(), "pmnm-other-root");
+  const other = testing.stateCard(state, event, {hostConfigRoot: otherRoot, environment: {}});
+  assert.match(other, new RegExp(escapeRegExp(path.join(otherRoot, "pmnm.path"))));
+  assert.equal(other.includes(path.join(os.homedir(), ".codex")), false);
+});
+
+test("the shared receipt card names the active host adapter, not one host", (t) => {
+  // The declaration card is reachable only once a task is open, so the fixture opens one.
+  const {where, state: configured} = v2Configured(t);
+  const state = v3CreateTask(configured, where).state;
+  const result = v2RawPre(state, where, "turn-3", "ls", "unknown-op");
+  const card = JSON.stringify(result.output);
+  assert.ok(
+    card.includes("is a PMNM receipt handled by the active host adapter, not a program on PATH."),
+    "card: " + card,
+  );
+  assert.equal(/Codex/i.test(card), false, "card names a single host: " + card);
+});
+
+test("PMNM renders one language: English, whatever the state says", () => {
+  const spanish = testing.baseState();
+  spanish.language = "es";
+  const english = testing.baseState();
+  const event = {
+    hook_event_name: "PreToolUse",
+    session_id: "s-1",
+    cwd: process.cwd(),
+    tool_name: "Bash",
+    tool_input: {command: "ls"},
+    tool_use_id: "t",
+  };
+  const fromSpanish = JSON.stringify(guardProcessEvent(spanish, event, {}).output);
+  const fromEnglish = JSON.stringify(guardProcessEvent(english, event, {}).output);
+  assert.equal(fromSpanish, fromEnglish, "a persisted language still changed the output");
+  assert.match(fromSpanish, /^\{.*Blocked: /);
+  assert.equal(/Bloqueado|Pregunta:|Nota:/.test(fromSpanish), false, fromSpanish);
+});
+
+test("a Spanish prompt does not switch the language", () => {
+  const state = testing.baseState();
+  const prompt = {
+    hook_event_name: "UserPromptSubmit",
+    session_id: "s-1",
+    cwd: process.cwd(),
+    prompt: "Investiga esta tarea, por favor revisa el código y corrige",
+  };
+  const after = guardProcessEvent(state, prompt, {}).state;
+  assert.equal(after.language, "en");
+});
+
+test("CEL-04 a historical language value loads safely and is never rendered", () => {
+  // Compatibility boundary: persisted states from the bilingual period must
+  // still load. They must not be able to produce Spanish output.
+  const loaded = testing.validateState({...testing.baseState(), language: "es"});
+  assert.equal(loaded.language, "es", "a historical value must still load");
+
+  const rejected = testing.validateState({...testing.baseState(), language: "en"});
+  assert.equal(rejected.language, "en");
+
+  const event = {
+    hook_event_name: "PreToolUse",
+    session_id: "s-1",
+    cwd: process.cwd(),
+    tool_name: "Bash",
+    tool_input: {command: "ls"},
+    tool_use_id: "t",
+  };
+  const card = JSON.stringify(guardProcessEvent(loaded, event, {}).output);
+  assert.equal(/[áéíóúñü¿¡]/.test(card), false, card);
+  assert.equal(card, JSON.stringify(guardProcessEvent(testing.baseState(), event, {}).output));
+});
+
+// --- CEL-03: the retired card vocabulary must not come back -----------------
+
+// Tokens PMNM itself used to emit. The contract is not "detect any possible
+// Spanish word"; it is that the retired headers, fragments and output branches
+// cannot return.
+const RETIRED_CARD_TEXT =
+  /[áéíóúñü¿¡]|\b(?:Bloqueado|Pregunta|Nota|Objetivos de estado|detente|ejecuta|ejecútala|muestra|escribe|corrige|reintenta|reinténtalo|sepáralo|separa|carpeta|tarea|humano|archivo|recibo|comprobación|ninguna|falta|que|para|pero|hasta|luego|desde|sin|del|los|las|una|esta|este|por|con)\b/i;
+
+// The Spanish Test Digest input grammar is tolerated input, not localized
+// output. It is named explicitly so the detector can never be read as banning it.
+const DIGEST_INPUT_GRAMMAR = new Set([
+  "Prueba", "Dónde", "Donde", "Entorno", "Como", "Datos", "Pasos",
+  "Esperado", "Espera", "Evidencia", "Limpieza", "Puedo ejecutar", "Se puede ejecutar",
+]);
+
+function isDigestInputGrammar(value) {
+  const bare = value.replace(/[:—-]/g, " ").trim();
+  return DIGEST_INPUT_GRAMMAR.has(bare);
+}
+
+function retiredCardText(value) {
+  if (isDigestInputGrammar(value)) return false;
+  return RETIRED_CARD_TEXT.test(value);
+}
+
+test("CEL-03a the detector recognizes the retired card vocabulary", () => {
+  // Four texts that really belonged to the withdrawn cards.
+  for (const sample of [
+    "Bloqueado: No hay una comprobación exitosa registrada.",
+    "Bloqueado",
+    "Pregunta:",
+    "Nota:",
+    " Objetivos de estado: ",
+  ]) {
+    assert.equal(retiredCardText(sample), true, "not detected: " + sample);
+  }
+
+  // The tolerated input grammar must never be flagged as output.
+  for (const label of DIGEST_INPUT_GRAMMAR) {
+    assert.equal(retiredCardText(label), false, "digest grammar flagged: " + label);
+    assert.equal(retiredCardText(label + ":"), false, "digest grammar flagged: " + label);
+  }
+  assert.equal(retiredCardText("Prueba — TASK-101"), false);
+
+  // Ordinary English output must not be flagged.
+  for (const sample of [
+    "Blocked: No successful check is recorded after the latest change.",
+    "NEXT: show the Digest now; if one question blocks it, ask that question and stop here",
+    " State objectives: 1.",
+  ]) {
+    assert.equal(retiredCardText(sample), false, "false positive: " + sample);
+  }
+});
+
+test("CEL-03b the guard carries no retired Spanish card text", () => {
+  // Quoted segments, bounded to one line so a stray quote cannot swallow the
+  // file. Regex literals are skipped, which is where the tolerated Spanish
+  // Test Digest input grammar lives.
+  const source = fs.readFileSync(testing.modulePath, "utf8");
+  const segment = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\\n]|\\.)*`/g;
+  const found = [];
+  for (const line of source.split("\n")) {
+    for (const quoted of line.match(segment) || []) {
+      const value = quoted.slice(1, -1);
+      if (value.length > 3 && retiredCardText(value)) found.push(value);
+    }
+  }
+  assert.deepEqual(found, [], "retired Spanish card text is still present");
+});
+
+// --- CEL-05: the rendering API keeps its collapsed shape --------------------
+
+test("CEL-05 rCard cannot regain the dead parameter or the bilingual API", () => {
+  const source = fs.readFileSync(testing.modulePath, "utf8");
+
+  const definition = source.match(/function rCard\(([^)]*)\)/);
+  assert.notEqual(definition, null, "rCard is not defined");
+  const parameters = definition[1].split(",").map((value) => value.trim()).filter(Boolean);
+  assert.deepEqual(parameters, ["level", "english", "next"], "rCard regained a parameter");
+
+  assert.equal(/second slot|multi-language pass/.test(source), false, "a retired-API comment survives");
+
+  const calls = [];
+  const pattern = /(?<![A-Za-z0-9_$])rCard\(/g;
+  let match;
+  while ((match = pattern.exec(source))) {
+    if (source.slice(0, match.index).trimEnd().endsWith("function")) continue;
+    let depth = 1;
+    let index = pattern.lastIndex;
+    let quote = null;
+    const args = [];
+    let start = index;
+    while (index < source.length && depth) {
+      const c = source[index];
+      if (quote) {
+        if (c === "\\") { index += 2; continue; }
+        if (c === quote) quote = null;
+      } else if (c === "\"" || c === "'" || c === "`") quote = c;
+      else if ("([{".includes(c)) depth += 1;
+      else if (")]}".includes(c)) { depth -= 1; if (!depth) args.push(source.slice(start, index)); }
+      else if (c === "," && depth === 1) { args.push(source.slice(start, index)); start = index + 1; }
+      index += 1;
+    }
+    calls.push(args.map((a) => a.trim()).filter(Boolean));
+  }
+  assert.equal(calls.length, 67, "the verified call set changed: " + calls.length);
+  for (const args of calls) {
+    if (args.some((a) => a.startsWith("..."))) continue;
+    assert.equal(args.length, 3, "a call did not collapse: " + JSON.stringify(args).slice(0, 120));
+    assert.notEqual(args[0], "state", "a call still passes the dead parameter");
+  }
+});
+
+// --- RB-01: a tool-shaped read is a read, whatever host emits it -------------
+
+test("RB-01 the classifier recognizes a tool-shaped read", () => {
+  for (const [tool, input] of [
+    ["Read", {file_path: "/tmp/x.js"}],
+    ["Glob", {pattern: "**/*.ts"}],
+    ["Grep", {pattern: "foo", path: "/tmp"}],
+  ]) {
+    const classification = classifyToolEvent({tool_name: tool, tool_input: input}, null);
+    assert.equal(classification.kind, "read", tool);
+    assert.equal(classification.effect, "investigation", tool);
+    assert.equal(classification.reason, "file-tool-read", tool);
+  }
+});
+
+test("RB-01 a tool-shaped read carries no fabricated boundary", () => {
+  // The pure classifier does not know where the project lives. The guard
+  // decides that, exactly as it already does for writes.
+  const classification = classifyToolEvent({tool_name: "Read", tool_input: {file_path: "/tmp/x.js"}}, null);
+  assert.equal("boundary" in classification, false);
+});
+
+test("RB-01 the write and unknown shapes are untouched", () => {
+  assert.equal(classifyToolEvent({tool_name: "Edit", tool_input: {file_path: "/tmp/x"}}, null).kind, "write");
+  assert.equal(classifyToolEvent({tool_name: "Write", tool_input: {file_path: "/tmp/x"}}, null).kind, "write");
+  assert.equal(classifyToolEvent({tool_name: "NotebookEdit", tool_input: {}}, null).kind, "unknown");
+  assert.equal(classifyToolEvent({tool_name: "AskUserQuestion", tool_input: {}}, null).kind, "unknown");
+});
+
+test("RB-02 a project read before any task is denied on its first attempt", (t) => {
+  const where = v2Temp(t);
+  const state = testing.baseState();
+  const source = path.join(where.cwd, "src", "index.js");
+  fs.mkdirSync(path.dirname(source), {recursive: true});
+  fs.writeFileSync(source, "export const x = 1;\n", "utf8");
+  const read = () => ({
+    hook_event_name: "PreToolUse",
+    session_id: "s-1",
+    cwd: where.cwd,
+    tool_name: "Read",
+    tool_input: {file_path: source},
+    tool_use_id: "read-1",
+  });
+
+  const first = guardProcessEvent(state, read(), {});
+  assert.equal(isDenied(first), true, "the first project read must be denied: " + visibleText(first));
+  assert.match(visibleText(first), /pmnm-guard start task=<ticket-or-id>/);
+
+  const second = guardProcessEvent(first.state, read(), {});
+  assert.equal(isDenied(second), true);
+  assert.match(visibleText(second), /pmnm-guard start task=<ticket-or-id>/);
+});
+
+test("RB-03 a tool read never registers rule-basis evidence it cannot confirm", (t) => {
+  // The engine proves a rule read by finding the file's current bytes in the
+  // result. A file tool renders its output, so it can never satisfy that and
+  // must not leave a pending entry behind.
+  const where = v2Temp(t);
+  const state = testing.baseState();
+  state.task_id = "T-1";
+  state.rule_basis_required = true;
+  state.rule_basis_paths = [path.join(where.notes, "general-rules.md")];
+  const before = state.pending_rule_reads.length;
+  const result = guardProcessEvent(state, {
+    hook_event_name: "PreToolUse",
+    session_id: "s-1",
+    cwd: where.cwd,
+    tool_name: "Read",
+    tool_input: {file_path: state.rule_basis_paths[0]},
+    tool_use_id: "rule-read-1",
+  }, {});
+  assert.equal(result.state.pending_rule_reads.length, before, "a tool read left an unconfirmable pending entry");
+});
+
+test("a pending sensitive denial does not consume a Digest answer", (t) => {
+  const where = v2Temp(t);
+  const state = testing.baseState();
+  state.task_id = "T-1";
+  state.phase = "AWAITING_HUMAN";
+  state.digest_shown_epoch = state.epoch;
+  state.pending_question = {kind: "digest", asked_prompt_epoch: 0};
+  state.pending_denied = {
+    kind: "sensitive", effect: "network", minimum_effect: null, reason: "network-tool",
+    command_hash: "a".repeat(64), asked_prompt_epoch: 0,
+    approved_prompt_epoch: null, denied_turn_hash: null,
+  };
+  const result = v2Prompt(state, where, "digest-answer", "I agree with the Digest");
+  assert.equal(result.state.human_response_epoch, result.state.prompt_epoch);
+  assert.match(visibleText(result), /human answered the Digest/i);
+});
+
+test("ancestor pattern searches take the project read route", (t) => {
+  const where = v2Temp(t);
+  const state = testing.baseState();
+  for (const tool_name of ["Glob", "Grep"]) {
+    const result = guardProcessEvent(structuredClone(state), {
+      hook_event_name: "PreToolUse", session_id: "s-1", cwd: where.cwd,
+      tool_name, tool_input: {path: where.root, pattern: "*.md"}, tool_use_id: tool_name,
+    }, {});
+    assert.equal(isDenied(result), true, tool_name + " escaped the project read route");
+  }
+});
+
+test("a higher epoch alone cannot authorize a work-type change", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  const state = structuredClone(configured);
+  state.epoch += 1;
+  const command = "pmnm-guard start task=TASK-101 effort=standard work=verification";
+  const refused = v2Receipt(state, where, "turn-4", command, "work-change");
+  assert.equal(refused.state.work_type, "implementation");
+  assert.match(visibleText(refused), /redo/);
+  const redone = v2Receipt(refused.state, where, "turn-4", "pmnm-guard redo", "redo-work");
+  const changed = v2Receipt(redone.state, where, "turn-4", command, "work-after-redo");
+  assert.equal(changed.state.work_type, "verification");
+});
+
+test("task rules enter the guarded reload basis", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  const {task, state} = v3CreateTask(configured, where);
+  const taskRules = path.join(task, "task-rules.md");
+  fs.writeFileSync(taskRules, "- T-001 · keep this task bounded. (from TASK-101, 2026-10-16 · basis: agent-worded)\n");
+  const result = v2Process(state, where, "SessionStart", "turn-4", {source: "resume"});
+  assert.ok(result.state.rule_basis_paths.includes(fs.realpathSync(taskRules)));
+  assert.match(visibleText(result), /shell read that returns the complete bytes/);
+});
+
+test("verification refuses a declared network effect before requesting approval", (t) => {
+  const {where, state: configured} = v2Configured(t, "en", "verification");
+  const {state: taskState} = v3CreateTask(configured, where);
+  let state = v2Prompt(taskState, where, "turn-4", "Check the remote status").state;
+  state = v2Receipt(state, where, "turn-4",
+    "pmnm-guard declare effect=investigation boundary=network persistence=none certainty=certain capability=none",
+    "declare-network-read").state;
+  const result = v2Pre(state, where, "turn-4", "remote-status --read", "network-read");
+  assert.equal(isDenied(result), true);
+  assert.match(visibleText(result), /non-mutating verification/i);
+  assert.equal(result.state.pending_denied?.kind, undefined);
+});
+
+// The durable-rule reload must be reachable, not only demanded.
+
+test("a declared shell read that returns the file bytes satisfies the reload", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  const created = v3CreateTask(configured, where);
+  let state = created.state;
+
+  // Put the session where the maintainer's two reproductions put it: a task is
+  // open and the durable basis must be reloaded before material work.
+  state = structuredClone(state);
+  state.rule_basis_required = true;
+  const rules = path.join(where.notes, "general-rules.md");
+  assert.equal(fs.existsSync(rules), true, "the fixture has no general-rules.md");
+  state.rule_basis_paths = [rules];
+  const content = fs.readFileSync(rules, "utf8");
+  assert.ok(content.length, "the rules file is empty");
+
+  const command = "sed -n 1,10000p " + JSON.stringify(rules);
+  const declaration =
+    "pmnm-guard declare effect=investigation boundary=pmnm persistence=none certainty=certain capability=none";
+
+  let result = v2Receipt(state, where, "turn-4", declaration, "reload-declare");
+  assert.equal(isDenied(result), false, "the declaration was refused: " + visibleText(result));
+
+  result = v2Pre(result.state, where, "turn-4", command, "reload-read");
+  assert.equal(isDenied(result), false, "the declared rule read was denied: " + visibleText(result));
+  assert.equal(result.state.pending_rule_reads.length, 1, "the read registered no reload evidence");
+
+  result = v2Post(result.state, where, "turn-4", command, "reload-read", "Bash", content);
+  assert.equal(
+    result.state.rule_basis_required,
+    false,
+    "a successful read returning the file's current bytes did not satisfy the reload",
+  );
+});
+
+test("re-running start must not discard the reload evidence already earned", (t) => {
+  const {where, state: configured} = v2Configured(t);
+  const created = v3CreateTask(configured, where);
+  let state = structuredClone(created.state);
+  state.rule_basis_required = true;
+  const rules = path.join(where.notes, "general-rules.md");
+  state.rule_basis_paths = [rules];
+  const content = fs.readFileSync(rules, "utf8");
+
+  const command = "sed -n 1,10000p " + JSON.stringify(rules);
+  const declaration =
+    "pmnm-guard declare effect=investigation boundary=pmnm persistence=none certainty=certain capability=none";
+
+  let result = v2Receipt(state, where, "turn-4", declaration, "reload-b-declare");
+  result = v2Pre(result.state, where, "turn-4", command, "reload-b-read");
+  result = v2Post(result.state, where, "turn-4", command, "reload-b-read", "Bash", content);
+  assert.equal(result.state.rule_basis_required, false, "the read did not satisfy the reload");
+  const earned = result.state.rule_basis_observed_hashes.length;
+  assert.ok(earned > 0, "no evidence was recorded");
+
+  // The operator re-runs start to confirm the task is ready. This is step 9 of
+  // the maintainer's own reproduction, and it must not destroy what was proven.
+  const restarted = v2Receipt(
+    result.state,
+    where,
+    "turn-5",
+    "pmnm-guard start task=" + created.task + " effort=standard work=implementation",
+    "reload-b-restart",
+  );
+  assert.equal(
+    restarted.state.rule_basis_observed_hashes.length >= earned,
+    true,
+    "re-running start discarded the reload evidence: " + earned + " observed before, " +
+      restarted.state.rule_basis_observed_hashes.length + " after",
+  );
 });

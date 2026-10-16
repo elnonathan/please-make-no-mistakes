@@ -17,12 +17,13 @@
     "epistemic-integrity"
   ],
   "author": {
-    "name": "Jonathan Muñoz Lucas",
+    "name": "Jonathan Mu\u00f1oz Lucas",
     "email": "git@jonathanmunoz.dev",
     "url": "https://github.com/elnonathan"
   },
   "files": [
     ".codex-plugin",
+    ".claude-plugin/plugin.json",
     "assets",
     "hooks",
     "skills/please-make-no-mistakes",
@@ -48,11 +49,13 @@
     "scripts/test_agent_evaluation.py",
     "scripts/release_verify.py",
     "scripts/test_release_verify.py",
-    "scripts/test_host_guard.mjs"
+    "scripts/test_host_guard.mjs",
+    "scripts/test_claude_adapter.mjs",
+    "scripts/test_claude_discovery.mjs"
   ],
   "scripts": {
     "validate": "python3 scripts/validate_skill.py",
-    "test": "python3 scripts/test_validate_skill.py && node --test scripts/test_host_guard.mjs && python3 scripts/test_documentation_gate.py && python3 scripts/test_agent_evaluation.py && python3 scripts/test_release_verify.py && python3 scripts/test_install_smoke.py && python3 scripts/test_distribution_smoke.py",
+    "test": "python3 scripts/test_validate_skill.py && node --test scripts/test_host_guard.mjs && node --test scripts/test_claude_adapter.mjs && node --test scripts/test_claude_discovery.mjs && python3 scripts/test_documentation_gate.py && python3 scripts/test_agent_evaluation.py && python3 scripts/test_release_verify.py && python3 scripts/test_install_smoke.py && python3 scripts/test_distribution_smoke.py",
     "test:host-guard": "node --test scripts/test_host_guard.mjs",
     "check:documentation": "python3 scripts/documentation_gate.py",
     "test:documentation": "python3 scripts/test_documentation_gate.py",
@@ -63,7 +66,9 @@
     "smoke:install": "python3 scripts/install_smoke.py",
     "smoke:distribution": "python3 scripts/distribution_smoke.py",
     "release:verify": "python3 scripts/release_verify.py",
-    "verify:published": "python3 scripts/postpublication_smoke.py"
+    "verify:published": "python3 scripts/postpublication_smoke.py",
+    "test:claude-adapter": "node --test scripts/test_claude_adapter.mjs",
+    "test:claude-discovery": "node --test scripts/test_claude_discovery.mjs"
   },
   "repository": {
     "type": "git",

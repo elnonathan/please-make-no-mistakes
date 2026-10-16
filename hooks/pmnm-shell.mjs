@@ -215,12 +215,17 @@ function rOperationIdentity(e, payload) {
 function rClassifyToolEvent(e, payload) {
   if (e.tool_name === "apply_patch") return rWrite(rPatchEffect(payload), "apply-patch");
   if (["Edit", "Write"].includes(e.tool_name)) return rWrite("implementation", "file-tool");
+  if (R_FILE_READ_TOOLS.includes(e.tool_name)) return R_FILE_READ;
   if (e.tool_name === "Bash") return classifyShell(payload);
   return R_UNKNOWN;
 }
 
 const R_UNKNOWN = Object.freeze(rUnknown());
 const R_READ = Object.freeze({kind: "read", effect: "investigation", reason: "shell-structure-only"});
+// A file tool states its own target, so the read needs no shell parsing.
+// Where that target lives is the guard's decision, not this module's.
+const R_FILE_READ = Object.freeze({kind: "read", effect: "investigation", reason: "file-tool-read"});
+const R_FILE_READ_TOOLS = Object.freeze(["Read", "Glob", "Grep"]);
 const R_UNRESOLVED = Object.freeze({resolvable: false, targets: [], sources: []});
 
 function rSkipAssignments(tokens) {
@@ -576,6 +581,7 @@ export {
   rOperationIdentity as operationIdentity,
   rToolPayload as toolPayload,
   rToolResult as toolResult,
+  R_FILE_READ as fileToolRead,
   R_READ as shellRead,
   R_SENSITIVE_EFFECTS as sensitiveEffects,
   R_UNKNOWN as shellUnknown,

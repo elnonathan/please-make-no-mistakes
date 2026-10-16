@@ -117,6 +117,17 @@ class InstallSmokeTests(unittest.TestCase):
         self.assertGreater(payload["shape"]["reference_count"], 0)
         self.assertEqual(before, after)
 
+    def test_a_passing_install_never_claims_the_current_session_loaded_it(self) -> None:
+        """a successful comparison is evidence about bytes, never about this session."""
+        returncode, payload = self.run_tool()
+        self.assertEqual(returncode, 0)
+        self.assertEqual(payload["status"], "passed")
+        self.assertEqual(payload["client_session"]["status"], "unverified")
+        self.assertIn(
+            "does not prove that the current client session loaded this revision",
+            " ".join(payload["limitations"]),
+        )
+
     def test_matching_host_reported_digest_passes(self) -> None:
         first_code, first = self.run_tool()
         self.assertEqual(first_code, 0)

@@ -7,7 +7,9 @@ import json
 import os
 import re
 import stat
+import subprocess
 import sys
+import tempfile
 import zlib
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -15,7 +17,9 @@ from urllib.parse import unquote, urlsplit
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_FILE = PACKAGE_ROOT / "package.json"
 PLUGIN_FILE = PACKAGE_ROOT / ".codex-plugin" / "plugin.json"
+CLAUDE_PLUGIN_FILE = PACKAGE_ROOT / ".claude-plugin" / "plugin.json"
 MARKETPLACE_FILE = PACKAGE_ROOT / ".agents" / "plugins" / "marketplace.json"
+CLAUDE_MARKETPLACE_FILE = PACKAGE_ROOT / ".claude-plugin" / "marketplace.json"
 CI_FILE = PACKAGE_ROOT / ".github" / "workflows" / "ci.yml"
 PUBLISH_FILE = PACKAGE_ROOT / ".github" / "workflows" / "publish.yml"
 SETUP_FILE = PACKAGE_ROOT / "SETUP.md"
@@ -48,7 +52,11 @@ HOST_GUARD_ORACLE_CLASSES = {
     "recovery",
     "compatibility-alias",
 }
-HOOK_CONFIG_FILE = PACKAGE_ROOT / "hooks" / "hooks.json"
+HOOK_CONFIG_FILE = PACKAGE_ROOT / "hooks" / "codex" / "hooks.json"
+CODEX_HOOK_MANIFEST_PATH = "./hooks/codex/hooks.json"
+# Claude Code merges a conventional hooks/hooks.json into any plugin root that carries one,
+# so the shared package root must not have that file.
+CONVENTIONAL_HOOK_FILE = PACKAGE_ROOT / "hooks" / "hooks.json"
 HOOK_RUNTIME_FILE = PACKAGE_ROOT / "hooks" / "pmnm-guard.mjs"
 HOOK_SHELL_FILE = PACKAGE_ROOT / "hooks" / "pmnm-shell.mjs"
 HOOK_RUNTIME_FILES = (HOOK_RUNTIME_FILE, HOOK_SHELL_FILE)
@@ -245,6 +253,7 @@ def validate_manifest(manifest: object | None, errors: list[str]) -> dict[str, o
 
     required_files = {
         ".codex-plugin",
+        ".claude-plugin/plugin.json",
         "hooks",
         "skills/please-make-no-mistakes",
         "ARCHITECTURE.md",
@@ -275,6 +284,7 @@ def validate_manifest(manifest: object | None, errors: list[str]) -> dict[str, o
         if entry == "AGENTS.md"
         or entry.startswith(".ai")
         or entry.startswith(".agents")
+        or entry in (".claude-plugin", ".claude-plugin/marketplace.json")
         or entry.startswith(".github")
         or entry.startswith("public/")
     )
@@ -355,6 +365,7 @@ def validate_plugin_manifest(
         "license",
         "keywords",
         "skills",
+        "hooks",
         "interface",
     }
     unknown = sorted(set(plugin) - allowed)
@@ -368,8 +379,10 @@ def validate_plugin_manifest(
         fail(errors, "plugin.json name must match SKILL.md frontmatter.")
     if plugin.get("skills") != "./skills/":
         fail(errors, "plugin.json skills must be './skills/'.")
-    if "hooks" in plugin:
-        fail(errors, "plugin.json must use default hooks/hooks.json discovery for validator compatibility.")
+    if plugin.get("hooks") != CODEX_HOOK_MANIFEST_PATH:
+        fail(errors, f"plugin.json hooks must be '{CODEX_HOOK_MANIFEST_PATH}'.")
+    if CONVENTIONAL_HOOK_FILE.exists():
+        fail(errors, "hooks/hooks.json must not exist: Claude Code would load it into the Claude plugin.")
     for unsupported in ("apps", "mcpServers"):
         if unsupported in plugin:
             fail(errors, f"Plugin must not declare unsupported runtime surface {unsupported}.")
@@ -439,7 +452,7 @@ def validate_host_hooks(errors: list[str]) -> None:
     if not isinstance(config, dict):
         return
     if set(config) != {"description", "hooks"}:
-        fail(errors, "hooks/hooks.json must contain exactly description and hooks.")
+        fail(errors, "hooks/codex/hooks.json must contain exactly description and hooks.")
         return
     hooks = config.get("hooks")
     expected_events = {
@@ -451,7 +464,7 @@ def validate_host_hooks(errors: list[str]) -> None:
         "Interrupt",
     }
     if not isinstance(hooks, dict) or set(hooks) != expected_events:
-        fail(errors, "hooks/hooks.json must declare exactly the supported PMNM lifecycle events.")
+        fail(errors, "hooks/codex/hooks.json must declare exactly the supported PMNM lifecycle events.")
         return
 
     expected_matchers = {
@@ -464,34 +477,34 @@ def validate_host_hooks(errors: list[str]) -> None:
     for event_name in sorted(expected_events):
         groups = hooks.get(event_name)
         if not isinstance(groups, list) or len(groups) != 1 or not isinstance(groups[0], dict):
-            fail(errors, f"hooks/hooks.json {event_name} must contain exactly one matcher group.")
+            fail(errors, f"hooks/codex/hooks.json {event_name} must contain exactly one matcher group.")
             continue
         group = groups[0]
         expected_matcher = expected_matchers.get(event_name)
         if expected_matcher is None:
             if "matcher" in group:
-                fail(errors, f"hooks/hooks.json {event_name} must not declare an ignored matcher.")
+                fail(errors, f"hooks/codex/hooks.json {event_name} must not declare an ignored matcher.")
         elif group.get("matcher") != expected_matcher:
-            fail(errors, f"hooks/hooks.json {event_name} matcher is not the expected bounded matcher.")
+            fail(errors, f"hooks/codex/hooks.json {event_name} matcher is not the expected bounded matcher.")
         handlers = group.get("hooks")
         if not isinstance(handlers, list) or len(handlers) != 1 or not isinstance(handlers[0], dict):
-            fail(errors, f"hooks/hooks.json {event_name} must contain exactly one command handler.")
+            fail(errors, f"hooks/codex/hooks.json {event_name} must contain exactly one command handler.")
             continue
         handler = handlers[0]
         if handler.get("type") != "command":
-            fail(errors, f"hooks/hooks.json {event_name} handler must be a command.")
+            fail(errors, f"hooks/codex/hooks.json {event_name} handler must be a command.")
         if handler.get("command") != expected_command:
-            fail(errors, f"hooks/hooks.json {event_name} must resolve the bundled runtime through PLUGIN_ROOT.")
+            fail(errors, f"hooks/codex/hooks.json {event_name} must resolve the bundled runtime through PLUGIN_ROOT.")
         if handler.get("commandWindows") != expected_windows:
-            fail(errors, f"hooks/hooks.json {event_name} Windows command must resolve through PLUGIN_ROOT.")
+            fail(errors, f"hooks/codex/hooks.json {event_name} Windows command must resolve through PLUGIN_ROOT.")
         timeout = handler.get("timeout")
         if not isinstance(timeout, int) or timeout < 1 or timeout > 5:
-            fail(errors, f"hooks/hooks.json {event_name} timeout must be an integer from 1 through 5.")
+            fail(errors, f"hooks/codex/hooks.json {event_name} timeout must be an integer from 1 through 5.")
         limit = handler.get("additionalContextLimit")
         if limit is not None and (not isinstance(limit, int) or limit < 1 or limit > 600):
-            fail(errors, f"hooks/hooks.json {event_name} additional context must remain bounded to 600.")
+            fail(errors, f"hooks/codex/hooks.json {event_name} additional context must remain bounded to 600.")
         if event_name == "Stop" and limit is not None:
-            fail(errors, "hooks/hooks.json Stop must not declare unsupported additional context.")
+            fail(errors, "hooks/codex/hooks.json Stop must not declare unsupported additional context.")
 
     hook_root = HOOK_RUNTIME_FILE.parent
     try:
@@ -514,9 +527,12 @@ def validate_host_hooks(errors: list[str]) -> None:
             fail(errors, f"Cannot read bundled host guard module {runtime_file.name}: {exc}")
             continue
         runtime_sizes.append(runtime_file.stat().st_size)
-        # Keep in step with distribution_smoke.py. The reviewed 0.1.0 ceiling is
-        # a packaging bound, not security evidence or an automatic future ratchet.
-        if runtime_file.stat().st_size > 230_000:
+        # Keep in step with distribution_smoke.py. Ratified 2026-09-17: 235,000
+        # bytes per shared runtime module, aggregate held at 260,000. Both are
+        # inspectability triggers bounding what a human can review in one
+        # sitting. Neither is security evidence and neither escalates
+        # automatically; the next response to growth is a reviewed module split.
+        if runtime_file.stat().st_size > 235_000:
             fail(errors, f"Bundled host guard module {runtime_file.name} exceeds its inspectable size budget.")
     if set(runtime_texts) != {path.name for path in HOOK_RUNTIME_FILES}:
         return
@@ -577,6 +593,43 @@ def validate_host_hooks(errors: list[str]) -> None:
         fail(errors, "scripts/test_host_guard.mjs must be a regular packaged test.")
 
 
+def pinned_npm_source(package_manifest: dict[str, object]) -> dict[str, object]:
+    """The one immutable artifact both host marketplaces must offer."""
+    return {
+        "source": "npm",
+        "package": package_manifest.get("name"),
+        "version": package_manifest.get("version"),
+        "registry": "https://registry.npmjs.org",
+    }
+
+
+def validate_claude_marketplace(package_manifest: dict[str, object], errors: list[str]) -> None:
+    marketplace = load_json(CLAUDE_MARKETPLACE_FILE, errors)
+    if not isinstance(marketplace, dict):
+        return
+    if set(marketplace) != {"name", "owner", "metadata", "plugins"}:
+        fail(errors, "Claude marketplace must contain exactly name, owner, metadata, and plugins.")
+    if marketplace.get("name") != "please-make-no-mistakes":
+        fail(errors, "Claude marketplace name must match the Codex marketplace identity.")
+    if marketplace.get("owner") != {"name": PUBLIC_AUTHOR_NAME}:
+        fail(errors, "Claude marketplace owner must match its public attribution.")
+    if marketplace.get("metadata") != {"description": package_manifest.get("description")}:
+        fail(errors, "Claude marketplace description must match package.json.")
+    plugins = marketplace.get("plugins")
+    if not isinstance(plugins, list) or len(plugins) != 1 or not isinstance(plugins[0], dict):
+        fail(errors, "Claude marketplace must contain exactly one plugin entry.")
+        return
+    entry = plugins[0]
+    if set(entry) != {"name", "description", "source"}:
+        fail(errors, "Claude marketplace plugin entry must contain exactly name, description, and source.")
+    if entry.get("name") != package_manifest.get("name"):
+        fail(errors, "Claude marketplace plugin name must match package.json.")
+    if entry.get("description") != package_manifest.get("description"):
+        fail(errors, "Claude marketplace plugin description must match package.json.")
+    if entry.get("source") != pinned_npm_source(package_manifest):
+        fail(errors, "Claude marketplace must pin the same exact npm artifact as the Codex marketplace.")
+
+
 def validate_repository_marketplace(package_manifest: dict[str, object], errors: list[str]) -> None:
     marketplace = load_json(MARKETPLACE_FILE, errors)
     if not isinstance(marketplace, dict):
@@ -597,13 +650,7 @@ def validate_repository_marketplace(package_manifest: dict[str, object], errors:
     entry = plugins[0]
     if entry.get("name") != package_manifest.get("name"):
         fail(errors, "Marketplace plugin name must match package.json.")
-    expected_source = {
-        "source": "npm",
-        "package": package_manifest.get("name"),
-        "version": package_manifest.get("version"),
-        "registry": "https://registry.npmjs.org",
-    }
-    if entry.get("source") != expected_source:
+    if entry.get("source") != pinned_npm_source(package_manifest):
         fail(errors, "Repository marketplace must pin the exact package.json version from npmjs.org.")
     if entry.get("policy") != {"installation": "AVAILABLE", "authentication": "ON_INSTALL"}:
         fail(errors, "Repository marketplace policy must be AVAILABLE with ON_INSTALL.")
@@ -692,6 +739,172 @@ def validate_publish_workflow(errors: list[str]) -> None:
         fail(errors, f"Cannot inspect publish workflow: {exc}")
         return
     validate_publish_workflow_text(text, errors)
+
+
+# Files that customise our own work in this repository rather than ship with PMNM. They exist only
+# in a maintainer's working tree, so they are ignored locally and never in the tracked .gitignore,
+# which would publish their names.
+PRIVATE_LOCAL_PATHS = (".ai/", "AGENTS.md", "CLAUDE.md")
+
+
+class GitOracleError(RuntimeError):
+    """Git could not decide whether a public ignore rule reaches a private path."""
+
+
+GIT_TIMEOUT_SECONDS = 10
+# Probed under every private directory so that a rule reaching the directory's contents is seen, and
+# under a non-private control directory so that a rule matching the fixture name itself is not
+# mistaken for one that targets private coordination.
+PRIVATE_DIRECTORY_SENTINEL = "pmnm-private-sentinel"
+CONTROL_DIRECTORY = "pmnm-control-directory"
+# Case sensitivity belongs to the filesystem, and a clone can land on any. Git sets
+# core.ignorecase=true on macOS and Windows by default, where `!claude.md` exposes a local
+# CLAUDE.md; with core.ignorecase=false it applies `[C]LAUDE.md`, which the other mode misses.
+# Every rule is judged under both.
+IGNORECASE_MODES = ("false", "true")
+
+
+def _run_git(args: list[str], cwd: Path, stdin: str | None = None) -> subprocess.CompletedProcess:
+    """Run Git isolated from every configuration and repository the caller may carry."""
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    environment.update(
+        {
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "HOME": str(cwd),
+            "XDG_CONFIG_HOME": str(cwd),
+            "LC_ALL": "C",
+        }
+    )
+    return subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        input=stdin,
+        capture_output=True,
+        text=True,
+        env=environment,
+        timeout=GIT_TIMEOUT_SECONDS,
+        check=False,
+    )
+
+
+def _check_ignore_hits(result: subprocess.CompletedProcess, probes: list[str], mode: str) -> set[str]:
+    """Probe paths matched or negated by the rule under test, or an error if the answer is unclear."""
+    if result.returncode not in (0, 1):
+        raise GitOracleError(
+            f"git check-ignore exited {result.returncode} with core.ignorecase={mode}: {result.stderr.strip()}"
+        )
+    fields = result.stdout.split("\0")
+    if fields[-1] != "" or (len(fields) - 1) % 4:
+        raise GitOracleError(f"git check-ignore output could not be read with core.ignorecase={mode}")
+    records = [fields[index : index + 4] for index in range(0, len(fields) - 1, 4)]
+    if sorted(record[3] for record in records) != sorted(probes):
+        raise GitOracleError(f"git check-ignore did not answer for exactly the probed paths with core.ignorecase={mode}")
+    hits: set[str] = set()
+    for source, _line, pattern, path in records:
+        if not pattern and not source:
+            continue
+        if source != ".gitignore" or not pattern:
+            raise GitOracleError(f"a match for {path} came from {source!r}, not from the rule under test")
+        hits.add(path)
+    return hits
+
+
+def public_ignore_rule_hits(line: str) -> list[str]:
+    """The private probe paths one public `.gitignore` line matches or negates, as Git decides.
+
+    Git owns its pattern grammar, so nothing here reads the rule. The line is placed alone in a
+    temporary repository, isolated from system, global and user configuration, beside every private
+    file, each private directory with a sentinel inside it, and a control directory holding the same
+    sentinel. A later negation cannot hide an earlier match, because no other rule is present. A
+    negated match counts, because `.gitignore` outranks `.git/info/exclude`: `!CLAUDE.md` in the
+    public file un-ignores the local one.
+
+    Within each case mode, a hit on a private file or a private directory itself always counts. A hit
+    on a private directory's sentinel counts only when the same rule in the same mode misses the
+    control sentinel, because otherwise the rule matched the fixture name and not the directory.
+    """
+    with tempfile.TemporaryDirectory(prefix="pmnm-ignore-oracle-") as raw:
+        repository = Path(raw)
+        try:
+            initialised = _run_git(["init", "-q", "."], repository)
+            if initialised.returncode != 0:
+                raise GitOracleError(f"git init failed: {initialised.stderr.strip() or initialised.returncode}")
+            probes: list[str] = []
+            descendants: set[str] = set()
+            control = f"{CONTROL_DIRECTORY}/{PRIVATE_DIRECTORY_SENTINEL}"
+            (repository / CONTROL_DIRECTORY).mkdir()
+            (repository / control).write_text("", encoding="utf-8")
+            for private in PRIVATE_LOCAL_PATHS:
+                name = private.rstrip("/")
+                if private.endswith("/"):
+                    (repository / name).mkdir()
+                    (repository / name / PRIVATE_DIRECTORY_SENTINEL).write_text("", encoding="utf-8")
+                    probes += [name, f"{name}/{PRIVATE_DIRECTORY_SENTINEL}"]
+                    descendants.add(f"{name}/{PRIVATE_DIRECTORY_SENTINEL}")
+                else:
+                    (repository / name).write_text("", encoding="utf-8")
+                    probes.append(name)
+            probes.append(control)
+            (repository / ".gitignore").write_text(line + "\n", encoding="utf-8")
+            hits: set[str] = set()
+            for mode in IGNORECASE_MODES:
+                answer = _run_git(
+                    ["-c", f"core.ignorecase={mode}", "-c", f"core.excludesFile={os.devnull}",
+                     "check-ignore", "-v", "-n", "-z", "--no-index", "--stdin"],
+                    repository,
+                    "\0".join(probes) + "\0",
+                )
+                reached = _check_ignore_hits(answer, probes, mode)
+                generic = control in reached
+                hits |= {path for path in reached - {control} if not (path in descendants and generic)}
+        except FileNotFoundError as exc:
+            raise GitOracleError("Git is not available") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise GitOracleError(f"Git did not answer within {GIT_TIMEOUT_SECONDS} seconds") from exc
+    return sorted(hits)
+
+
+def validate_private_boundary(root: Path, payload: set[Path], errors: list[str]) -> None:
+    private_paths = {rule: root / rule.rstrip("/") for rule in PRIVATE_LOCAL_PATHS}
+    present_private_paths = {
+        rule: path for rule, path in private_paths.items() if os.path.lexists(path)
+    }
+    if present_private_paths:
+        exclude_file = root / ".git" / "info" / "exclude"
+        try:
+            exclude_lines = {
+                line.strip()
+                for line in exclude_file.read_text(encoding="utf-8").splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            }
+        except (OSError, UnicodeError) as exc:
+            fail(errors, f"Local private coordination exists but .git/info/exclude is unavailable: {exc}")
+        else:
+            for required in present_private_paths:
+                if required not in exclude_lines:
+                    fail(errors, f".git/info/exclude must contain {required!r} while that local path exists.")
+
+    # Only a repository checkout has a tracked .gitignore that can be committed. There Git is required,
+    # whether or not private paths exist, because a contributor clone has none and still publishes
+    # its .gitignore. An installed or packed tree has no .git, nothing to protect and no Git dependency.
+    if (root / ".git").exists():
+        try:
+            public_ignore = (root / ".gitignore").read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeError) as exc:
+            fail(errors, f"Cannot inspect .gitignore: {exc}")
+        else:
+            try:
+                touching = [line for line in public_ignore if line.strip() and public_ignore_rule_hits(line)]
+            except GitOracleError as exc:
+                fail(errors, f"Cannot decide whether .gitignore reaches private coordination: {exc}.")
+            else:
+                if touching:
+                    fail(errors, "Private maintainer coordination belongs in .git/info/exclude, not .gitignore.")
+
+    for private in present_private_paths.values():
+        if payload_contains(private, payload):
+            fail(errors, f"Private coordination must not be packaged: {private.relative_to(root).as_posix()}")
 
 
 def validate_documentation_and_repository_contract(payload: set[Path], errors: list[str]) -> None:
@@ -802,39 +1015,7 @@ def validate_documentation_and_repository_contract(payload: set[Path], errors: l
             if forbidden in ci:
                 fail(errors, f"CI must validate without external publication action: {forbidden}")
 
-    private_paths = {
-        ".ai/": PACKAGE_ROOT / ".ai",
-        "AGENTS.md": PACKAGE_ROOT / "AGENTS.md",
-    }
-    present_private_paths = {
-        rule: path for rule, path in private_paths.items() if os.path.lexists(path)
-    }
-    if present_private_paths:
-        exclude_file = PACKAGE_ROOT / ".git" / "info" / "exclude"
-        try:
-            exclude_lines = {
-                line.strip()
-                for line in exclude_file.read_text(encoding="utf-8").splitlines()
-                if line.strip() and not line.lstrip().startswith("#")
-            }
-        except (OSError, UnicodeError) as exc:
-            fail(errors, f"Local private coordination exists but .git/info/exclude is unavailable: {exc}")
-        else:
-            for required in present_private_paths:
-                if required not in exclude_lines:
-                    fail(errors, f".git/info/exclude must contain {required!r} while that local path exists.")
-
-    try:
-        public_ignore = (PACKAGE_ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeError) as exc:
-        fail(errors, f"Cannot inspect .gitignore: {exc}")
-    else:
-        if any(line.strip() in {".ai/", "AGENTS.md"} for line in public_ignore):
-            fail(errors, "Private maintainer coordination belongs in .git/info/exclude, not .gitignore.")
-
-    for private in present_private_paths.values():
-        if payload_contains(private, payload):
-            fail(errors, f"Private coordination must not be packaged: {relative(private)}")
+    validate_private_boundary(PACKAGE_ROOT, payload, errors)
     if (PACKAGE_ROOT / "IMPROVEMENT-BACKLOG.md").exists():
         fail(errors, "Root IMPROVEMENT-BACKLOG.md must be relocated to private project state.")
     if (PACKAGE_ROOT / ".ai").exists() and not (PACKAGE_ROOT / ".ai" / "project" / "BACKLOG.md").is_file():
@@ -1134,7 +1315,7 @@ def png_metadata_text(raw: bytes, path_label: str, errors: list[str]) -> list[st
 
 
 def report_public_email_addresses(path: Path, text: str, errors: list[str]) -> None:
-    approved_metadata_files = {PACKAGE_FILE, PLUGIN_FILE}
+    approved_metadata_files = {PACKAGE_FILE, PLUGIN_FILE, CLAUDE_PLUGIN_FILE}
     for match in EMAIL_ADDRESS_RE.finditer(text):
         if match.group(0).casefold() != PUBLIC_AUTHOR_EMAIL.casefold():
             fail(errors, f"Public file {relative(path)} contains an unapproved email address.")
@@ -1480,6 +1661,7 @@ def main() -> int:
     validate_plugin_manifest(manifest, frontmatter, errors)
     validate_host_hooks(errors)
     validate_repository_marketplace(manifest, errors)
+    validate_claude_marketplace(manifest, errors)
     validate_publish_workflow(errors)
     validate_payload_types_and_symlinks(payload, errors)
     validate_repository_metadata(payload, errors)

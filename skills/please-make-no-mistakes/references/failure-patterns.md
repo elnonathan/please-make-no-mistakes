@@ -57,6 +57,18 @@ Mistakes with names. Recognize the pattern in the code in front of you; do not l
 | **Announced, not performed** | describing a run, a read or a check that did not happen |
 | **Silent scope widening** | a new file, dependency or surface added without a new Digest |
 | **Rule from a decision** | a one-time answer written as an always/never rule |
+| **Authority inflation** | an agent's proposal, a relayed message, a hedged answer, an approval of a whole Digest read as approval of each line, or a one-round permission recorded later as the human's decision or rule |
+| **Pending resurrection** | a settled decision presented again as pending because nobody checked the decision record |
+| **Self-certified condition** | the agent declares that the human's condition for an approval is met |
+| **Guessed identifier** | a path, type, enum, collection or name written from memory instead of a listing or a read |
+| **Instrument as subject** | a broken checker, harness, sandbox or environment read as a product or model result |
+| **Test weakening** | an assertion, case or fixture relaxed after it failed, so the test stops covering what it found |
+| **Characterization creep** | tests written to pin current behavior, then used to justify repairing defects the request never asked for |
+| **Defensive inflation** | retries, guards, fallbacks or abstractions added "to be safe" with no requirement behind them |
+| **Process leakage** | working vocabulary, agent names, task ids or diagnostic scaffolding left in code, tests, comments or public text |
+| **State stacking** | a new "current" section written above the old one until the current truth cannot be found |
+| **Template saturation** | a record with many fixed fields filled by rote; the judgment that matters is missing from all of them |
+| **Rule without a lever** | a failure recurs while a rule already covers it, and the response is to reword the rule again |
 
 ## Ask before coding
 

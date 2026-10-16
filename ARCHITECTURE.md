@@ -2,7 +2,7 @@
 
 ## Goal
 
-Please, Make No Mistakes is one portable Agent Skill packaged with an optional Codex procedural adapter. The skill has four parts: the PMNM folder, the flow, rules born from an always or a never, and guards. The adapter enforces a small set of observable ordering rules for the lifecycle events Codex actually sends it.
+Please, Make No Mistakes is one portable Agent Skill packaged with an optional Codex procedural adapter and an optional Claude Code procedural adapter. The skill has four parts: the PMNM folder, the flow, rules born from an always or a never, and guards. Each adapter enforces a small set of observable ordering rules for the lifecycle events its host actually sends it.
 
 The architecture keeps four claims separate:
 
@@ -18,9 +18,12 @@ None proves semantic truth or guarantees an error-free result. `SKILL.md` states
 ```text
 please-make-no-mistakes/
 ├── .codex-plugin/plugin.json         public Codex plugin manifest
-├── .agents/plugins/marketplace.json repository marketplace catalog
+├── .agents/plugins/marketplace.json repository marketplace catalog for Codex
+├── .claude-plugin/plugin.json        public Claude Code plugin manifest
+├── .claude-plugin/marketplace.json   repository marketplace catalog for Claude Code
 ├── hooks/
-│   ├── hooks.json                    Codex lifecycle registration
+│   ├── codex/hooks.json              Codex lifecycle registration
+│   ├── claude/                       Claude Code lifecycle registration and adapter
 │   ├── pmnm-guard.mjs                optional Codex state and lifecycle guard
 │   └── pmnm-shell.mjs                bounded shell envelope and hard-stop classifier
 ├── skills/please-make-no-mistakes/
@@ -76,7 +79,7 @@ The installed plugin is replaceable. User knowledge is not. PMNM stores task kno
 
 The host configuration contains only a pointer to this folder. Codex uses its config location. Another host must use its own supported configuration surface. Both can point to the same folder.
 
-Startup has two explicit routes. With an active host guard, the agent starts the task and follows the guard's folder and project cards. In advisory mode, the portable skill reads only the host's documented literal pointer, stops for the missing folder or project answer, and performs the equivalent setup without emitting guard receipts. The two routes share the folder contract and never compete for ownership in one session.
+Startup has two explicit routes. With an active host guard, the agent starts the task with an effort and a work type, then follows the guard's folder and project cards. The durable work type is `implementation`, `advisory` or `verification`. In advisory mode, the portable skill reads only the host's documented literal pointer, stops for the missing folder or project answer, and performs the equivalent setup without emitting guard receipts. The two routes share the folder contract and never compete for ownership in one session.
 
 Task selection belongs to a session, not to the repository. A fresh session starts task-neutral. Several sessions may work on different task folders in the same project; task-scoped Digests, permissions, counters and completion remain isolated. Shared project authority is serialized separately. If sessions intentionally share a task, its monotonic revision exposes stale state before another material write and requires explicit reload and reconciliation.
 
@@ -90,7 +93,7 @@ External evidence is reference-first. Copying or moving an artifact is a custody
 
 ## Plan authority
 
-The plan Digest is the human checkpoint before material work. Before showing it, the agent writes `plan.md`: one line per repository file the implementation will write, one per file that must stay as it is, one per material non-file state transition or preserved state invariant, or a paired advisory `deliverable` and `boundary`. The boundary records the strongest relevant alternative, exclusion or uncertainty and its disposition. File lines name paths and reasons. State lines name stable ids and explicit before and after values. Standard or High implementation with file targets also writes `impact.md`: either a bounded local rationale or a transitive ledger whose roots were derived independently of the proposed plan. A persistent local-environment operation gets an `environment.md` preflight covering command indirection, current resources, ownership, health, conflicts, the reuse-or-start-only-missing decision and cleanup. One preflight validates the complete plan, verification contract, applicable impact contract, required environment preflight and permission forecast before agreement; the Codex adapter writes every issue and safe canonicalization to guard-owned `preflight.md`. The Digest text repeats that promise for the human: understanding, current state, change, impact, verification with the wrong result each check can expose, ambiguities, trade-offs and one question. Then the agent stops; no more actions until the human answers.
+The plan Digest is the human checkpoint before material work. Before showing it, the agent writes `plan.md`: one line per repository file the implementation will write, one per file that must stay as it is, one per material non-file state transition or preserved state invariant, or a paired advisory `deliverable` and `boundary`. The boundary records the strongest relevant alternative, exclusion or uncertainty and its disposition. File lines name paths and reasons. State lines name stable ids and explicit before and after values. Advisory work accepts only paired deliverables and boundaries. Standard or High implementation with file targets also writes `impact.md`: either a bounded local rationale or a transitive ledger whose roots were derived independently of the proposed plan. A persistent local-environment operation gets an `environment.md` preflight covering command indirection, current resources, ownership, health, conflicts, the reuse-or-start-only-missing decision and cleanup. One preflight validates the work type, complete plan, verification contract, applicable impact contract, required environment preflight and permission forecast before agreement. The Codex adapter writes every issue and safe canonicalization to guard-owned `preflight.md`. The Digest text repeats that promise for the human: understanding, current state, change, impact, verification with the wrong result each check can expose, ambiguities, trade-offs and one question. Then the agent stops. No more actions until the human answers.
 
 Agreement binds the canonical set of file, state and deliverable objectives, in any order, with the actionable verification plan and permission forecast. Checking a box is progress, not a change of agreement. Safe absolute and relative spellings of the same repository path share one identity. A state already complete when its Digest is shown is historical: current evidence remains necessary, but the old operation is not replayed. A material reframe is recorded immediately; unrelated read-only investigation may continue, but dependent effects and final delivery wait for renewed agreement. The first write to an absent or excluded file, the first state-changing operation not bound to its objective, or stale deliverable closure is refused before it runs.
 
@@ -110,12 +113,12 @@ The Test Digest follows current verification, required review and the agent's fi
 
 ## Codex adapter
 
-`hooks/hooks.json` registers the supported Codex lifecycle events. `hooks/pmnm-guard.mjs` owns bounded host-provided state and imports one local pure module, `hooks/pmnm-shell.mjs`, for shell structure, target evidence and narrow hard stops. The module contains no positive executable catalog. Operation admission keeps classification evidence, human authority and host execution or result as independent stages. Ordinary operations use a structured model declaration, then a separate human-agreed capability or exact authority when needed; satisfying one stage does not erase or manufacture another. Neither module has a registry dependency. Distribution validation accepts exactly this two-file local graph, rejects links and escaping or unlisted modules, and enforces explicit per-file and aggregate inspectability budgets. Its cards have two lines: `Blocked`, `Ask` or `Note` with what happened, and one exact `NEXT:` action. A NEXT line is an order: one verb, its limit, and who acts next.
+`hooks/codex/hooks.json`, declared by `.codex-plugin/plugin.json`, registers the supported Codex lifecycle events. The package carries no conventional `hooks/hooks.json`, because Claude Code would merge that file into the Claude plugin. `hooks/pmnm-guard.mjs` owns bounded host-provided state and imports one local pure module, `hooks/pmnm-shell.mjs`, for shell structure, target evidence and narrow hard stops. The module contains no positive executable catalog. Operation admission keeps classification evidence, human authority and host execution or result as independent stages. Ordinary operations use a structured model declaration, then a separate human-agreed capability or exact authority when needed; satisfying one stage does not erase or manufacture another. Neither module has a registry dependency. Distribution validation accepts exactly this two-file local graph, rejects links and escaping or unlisted modules, and enforces explicit per-file and aggregate inspectability budgets. Its cards have two lines: `Blocked`, `Ask` or `Note` with what happened, and one exact `NEXT:` action. A NEXT line is an order: one verb, its limit, and who acts next.
 
 The adapter may:
 
 - establish a PMNM folder pointer and project mapping
-- note the first project read without a task and block the second
+- block the first project read without an open task
 - require a task before a covered write and a fresh `plan.md` before a Digest
 - aggregate plan, verification, impact and permission defects before asking for agreement
 - block a project write until the Digest is agreed, a write outside the plan before it runs, and an unbound state-changing operation
@@ -157,11 +160,11 @@ A host adapter must preserve:
 - one PMNM folder and a host-local pointer
 - free contained task-folder writes without per-file approval
 - `plan.md` agreement before file or state implementation and refusal of out-of-plan effects
-- the human's yes for each sensitive effect
+- the human's exact operation-bound approval token for each unforecast sensitive effect
 - current verification claims, a passed verification and a complete audit before closure
 - disclosure of uncovered paths
 
-The Codex implementation is not a shared hook library for another host. Portable behavior lives in the skill and the PMNM folder. Host enforcement stays isolated.
+The Codex and Claude adapters call one shared transition engine. Each adapter owns host event parsing, output shape and its own conformance tests. Portable behavior lives in the skill and the PMNM folder.
 
 ## Evidence and evaluation
 

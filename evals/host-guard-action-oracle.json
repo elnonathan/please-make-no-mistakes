@@ -15,7 +15,7 @@
       "setup": "clean",
       "events": [
         {"event": "prompt", "turn": "t1", "text": "Investigate TASK-101"},
-        {"event": "receipt", "turn": "t1", "command": "pmnm-guard start task=TASK-101 effort=standard"}
+        {"event": "receipt", "turn": "t1", "command": "pmnm-guard start task=TASK-101 effort=standard work=implementation"}
       ],
       "expect": {"decision": "control", "phase": "INVESTIGATE", "contains": "PMNM needs one folder"}
     },
@@ -26,7 +26,7 @@
       "setup": "clean",
       "events": [
         {"event": "prompt", "turn": "t1", "text": "Investigate TASK-101"},
-        {"event": "receipt", "turn": "t1", "command": "pmnm-guard start task=TASK-101 effort=standard"},
+        {"event": "receipt", "turn": "t1", "command": "pmnm-guard start task=TASK-101 effort=standard work=implementation"},
         {"event": "prompt", "turn": "t2", "text": "Use that folder"},
         {"event": "receipt", "turn": "t2", "command": "pmnm-guard folder path=$FOLDER"}
       ],
@@ -38,7 +38,7 @@
       "claim": "Registering a project creates its stable mapping and points to the task-folder action.",
       "setup": "configured",
       "events": [
-        {"event": "receipt", "turn": "t3", "command": "pmnm-guard start task=TASK-101 effort=standard"}
+        {"event": "receipt", "turn": "t3", "command": "pmnm-guard start task=TASK-101 effort=standard work=implementation"}
       ],
       "expect": {"decision": "control", "phase": "INVESTIGATE", "contains": "has no folder yet"}
     },
@@ -194,7 +194,7 @@
       "events": [
         {"event": "mkdir-task"},
         {"event": "pre", "turn": "t4", "tool": "Bash", "command": "codex plugin marketplace add ./source", "id": "external-effect"},
-        {"event": "prompt", "turn": "t5", "text": "Yes, make that exact environment change"},
+        {"event": "prompt", "turn": "t5", "text": "$APPROVAL_TOKEN"},
         {"event": "receipt", "turn": "t5", "command": "pmnm-guard allow effect=environment", "id": "allow-external-effect"},
         {"event": "pre", "turn": "t5", "tool": "Bash", "command": "codex plugin marketplace add ./source", "id": "external-effect-retry"},
         {"event": "post", "turn": "t5", "tool": "Bash", "command": "codex plugin marketplace add ./source", "id": "external-effect-retry"},
@@ -283,7 +283,7 @@
       "setup": "agreed",
       "events": [
         {"event": "pre", "turn": "t4", "tool": "apply_patch", "command": "$PATCH", "id": "in-flight"},
-        {"event": "receipt", "turn": "t4", "command": "pmnm-guard start task=TASK-101 effort=standard", "id": "restart-in-flight"}
+        {"event": "receipt", "turn": "t4", "command": "pmnm-guard start task=TASK-101 effort=standard work=implementation", "id": "restart-in-flight"}
       ],
       "expect": {"decision": "deny", "phase": "READY", "contains": "host reported no result"}
     },
@@ -307,7 +307,7 @@
       "id": "AO-124",
       "class": "advisory-deliverable",
       "claim": "A paired advisory deliverable and boundary can reach human agreement without a fictitious file or state objective.",
-      "setup": "configured",
+      "setup": "configured-advisory",
       "events": [
         {"event": "mkdir-task"},
         {"event": "write-plan", "turn": "t3", "text": "- [ ] deliverable: review — evidence-backed review of the requested contract\n- [ ] boundary: review — strongest plausible alternative tested and dispositioned\n"},
@@ -412,7 +412,7 @@
         {"event": "mkdir-task"},
         {"event": "receipt", "turn": "t3", "command": "pmnm-guard declare effect=investigation boundary=local-environment persistence=none certainty=certain capability=none", "id": "proactive-sensitive-declare"},
         {"event": "pre", "turn": "t3", "tool": "Bash", "command": "opaque-runtime inspect", "id": "proactive-sensitive-operation"},
-        {"event": "prompt", "turn": "t4", "text": "Allow that exact local environment inspection"},
+        {"event": "prompt", "turn": "t4", "text": "$APPROVAL_TOKEN"},
         {"event": "receipt", "turn": "t4", "command": "pmnm-guard allow effect=environment", "id": "proactive-sensitive-allow"},
         {"event": "pre", "turn": "t4", "tool": "Bash", "command": "opaque-runtime inspect", "id": "proactive-sensitive-retry"},
         {"event": "post", "turn": "t4", "tool": "Bash", "command": "opaque-runtime inspect", "id": "proactive-sensitive-retry"}

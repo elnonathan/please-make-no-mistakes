@@ -61,7 +61,7 @@ Two weak lanes do not automatically become one strong lane. Combine them when ea
 
 ## Delegated execution
 
-When one actor designs an operation and another executes it, keep executor and observer separate. The execution package names the intended effect and boundary, exact scope, prerequisites, expected cost or load, stop signal, cleanup and the evidence the executor must return. It also distinguishes evidence already available, evidence visible only during execution and evidence that can be checked afterward. An executor's successful response proves only the operation they report; a later observer must verify the resulting contract through an independent observable when one exists.
+When one actor designs an operation and another executes it, keep executor and observer separate. The execution package names the intended effect and boundary, exact scope, prerequisites, expected cost or load, stop signal, cleanup and the evidence the executor must return. It also distinguishes evidence already available, evidence visible only during execution and evidence that can be checked afterward. Delegate to another model or agent only mechanical work that can run in parallel; its output is reported evidence until you check each claim against the source. An executor's successful response proves only the operation they report; a later observer must verify the resulting contract through an independent observable when one exists.
 
 “Read-only” means no intended mutation. It does not mean free, fast or safe at arbitrary scope. Bound consequential reads by target, expected work and a stop condition. Use an observable clock, source timestamp or revision for freshness; when none is available, record freshness as unknown rather than deriving a date from memory.
 
@@ -90,15 +90,19 @@ Syntax, metadata, documentation and exploratory checks may support investigation
 
 Inspection is not an executed check. If code changed and project evidence exposes an executable check, do not report passed verification from inspection alone without asking the human to accept that weaker evidence. Human verification is not passed until the human reports the observation in a later turn. When the human declares the check is theirs, no other passing check substitutes for it: record `how=human` after their report, not `how=command` for something else that ran. A failed or unavailable check remains failed, blocked or partial; inspection does not erase it.
 
+Before recommending an option, list each scenario with the instrument that can check it, such as code, history, data, an interface or an HTTP call, and mark each one executed or blocked with the concrete reason; never leave as a limit what only costs effort, and test every alternative under the same reachable inputs. Run checks through the commands the project declares, such as its scripts or task runner, not hand-written equivalents; record the exact command and reuse it. When you fix a defect or a review finding, first run the existing tests unchanged against the change, then add or update coverage. Record a measurement without the change before you measure the change's effect.
+
 When a check is too broad, flaky or expensive, use a focused discriminator first and then the widest proportional check that can still change confidence. Record the cost and limitation rather than silently skipping it.
 
 ## Adjudicate semantic evidence when risk requires it
 
-At High effort, or when the human asks, use a non-author review to challenge what the current evidence can support. Bind `review.md` to the current plan hash, verification fingerprint and changed surface. Record the contract, author evidence, strongest concrete counterexample, one genuinely different independent check, any disagreement and the residual limit. When `impact.md` applies, the reviewer also derives impact roots independently, asks what the plan omitted and checks the six non-functional dispositions.
+At High effort, or when the human asks, use a non-author review to challenge what the current evidence can support. Bind `review.md` to the current plan hash when there is one, the verification fingerprint and changed surface. For a strictly non-mutating verification task without a plan Digest, use `plan-digest: none`. Record the contract, author evidence, strongest concrete counterexample, one genuinely different independent check, any disagreement and the residual limit. When `impact.md` applies, the reviewer also derives impact roots independently, asks what the plan omitted and checks the six non-functional dispositions.
 
 The review is evidence, not a verdict. Its job is to expose a non-discriminating check, a substitute that exercises another contract, stale evidence, a missing precondition or a branch where correct and incorrect behavior look identical. If the independent check repeats the author's evidence, the counterexample is unavailable, or disagreement remains, do not make an unqualified passed claim. Reconcile the evidence with the human or close as partial or blocked.
 
 The Codex guard can verify that the packet is present, current, distinct in text and free of an explicitly unresolved disagreement. It cannot prove that the reviewer is independent, that a counterexample is strongest or that either interpretation is correct. Other hosts apply the same reasoning without claiming this structural enforcement.
+
+When no second agent or human reviewer is available, run the author audit in [review and security](review-and-security.md).
 
 ## Interpret every result literally
 
@@ -107,12 +111,17 @@ For each material check record:
 ```text
 Claim:
 Method or command:
+Ran by: own run | own reading | reported by <who>
+Tree: <commit and a hash that includes untracked files, or the recorded baseline when there is no version control>
 Environment and relevant fixture:
+Executed: <distinct cases that ran, and the exit status of each step>
 Literal result:
 What it proves:
 What it does not prove:
 Status: passed | failed | partial | blocked
 ```
+
+Count distinct cases that ran. Reruns, overlapping suites and a script that runs nothing add nothing. A result reported by another agent or an earlier session stays `reported` until you rerun it or read its source. Any edit to the tree after the run makes the result stale.
 
 For a planned state transition, also retain its stable objective id, agreed before and after values, exact operation identity, literal operation result and the observation that tests the resulting state. For preserved state, retain the invariant and how it was checked. Never turn a successful command into a claim that external state changed when no result observation supports it.
 
@@ -124,6 +133,10 @@ Separate:
 - environment failure: setup, resources or tooling prevented a valid result
 
 A check that never started is not a failed product test. A clean diagnostic is not a user-visible pass. A manual handoff is not executed evidence.
+
+Before trusting a checker, script or probe you wrote, run it once on a known break and see it report the break. A zero, a timeout or a bounded search is not an absence until a method that could have found the thing reports none.
+
+When a check passes, confirm that it distinguishes the right result from the right reason, and say so when it cannot. A check can pass on a condition of its own setup that does not hold outside it, and then it is evidence of nothing.
 
 ## Changed artifacts
 
@@ -157,6 +170,11 @@ A proposed regression check is admissible only when:
 - it does not merely restate the implementation
 - its result is not explained by an unrelated environment failure
 - its fixture makes the relevant incorrect path observably fail
+- it was seen failing: written before the change and red on the old code, or its target was broken once, the test went red for the stated reason, and the bytes were restored
+
+Record that proof next to the result as `Fails when: <the break> → <the red result>`. A test that has only been seen passing proves that it passes, not what it covers.
+
+When a test fails, decide first whether the product or the test is wrong, with evidence. Never relax, skip, cast away or delete an assertion, case or fixture to get green. When a pre-existing expectation must change, write `Changed expectation: <old> → <new> — <why it is not weaker>` and run the old version of the test against the new code first. A test that records current or defective behavior is labelled characterization, never acceptance.
 
 ## Negative and repeated behavior
 
@@ -191,13 +209,15 @@ Can run: <yes with the available capability | no with the exact limitation>
 
 Investigate the real execution surface before asking the human. Supply known URL or entry point, environment, safe fixture characteristics, input values, expected observations, evidence to retain and cleanup. Never invent credentials, names or data. A repository route, runtime query or interface inspection may establish these details; a ticket description alone usually cannot.
 
-When an available interface tool can run the Digest safely, offer to execute it. When it cannot, say which capability or authority is missing and that the check has not run. Show the Digest only after the final audit is current, then wait for a later human response.
+After any live check, list the records it created, changed, restored or left behind. When an available interface tool can run the Digest safely, offer to execute it. When it cannot, say which capability or authority is missing and that the check has not run. Show the Digest only after the final audit is current, then wait for a later human response.
 
 ## Corrections and stale evidence
 
 Evidence is bound to its source, environment, fixture and conditions. Invalidate the affected result when any of those materially changes.
 
 A new consumer, changed contract, corrected assumption, failed required capability, modified fixture or post-check source edit requires the smallest affected verification to run again. Preserve the former result as historical evidence, not current proof.
+
+An unexplained failure stays open and blocks what depends on it. A later green rerun does not explain it; record what was tried and that the cause is unknown.
 
 ## Final disposition
 

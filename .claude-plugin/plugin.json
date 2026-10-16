@@ -1,0 +1,23 @@
+{
+  "name": "please-make-no-mistakes",
+  "displayName": "Please, Make No Mistakes",
+  "version": "0.1.0",
+  "description": "Epistemic integrity for AI-assisted software engineering.",
+  "author": {
+    "name": "Jonathan Muñoz Lucas",
+    "email": "git@jonathanmunoz.dev",
+    "url": "https://github.com/elnonathan"
+  },
+  "homepage": "https://github.com/elnonathan/please-make-no-mistakes#readme",
+  "repository": "https://github.com/elnonathan/please-make-no-mistakes",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "software-engineering",
+    "code-review",
+    "debugging",
+    "verification",
+    "epistemic-integrity"
+  ],
+  "hooks": "./hooks/claude/hooks.json"
+}

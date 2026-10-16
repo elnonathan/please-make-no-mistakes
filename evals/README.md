@@ -76,11 +76,13 @@ Keep a validation set apart from prompts used to tune the description. Add a new
 python3 scripts/agent_evaluation.py
 ```
 
-Grade a captured answer with:
+The model answers with one line per case, in the shape the prompt's `answer_line` field carries. Grade a captured answer with:
 
 ```text
-python3 scripts/agent_evaluation.py --answers <answers.json>
+python3 scripts/agent_evaluation.py --answers <answers-file>
 ```
+
+The file may hold those answer lines or the JSON payload; a file that parses as JSON is graded as JSON. Lines are read one at a time, so surrounding prose and code fences are ignored and a line that cannot be read costs only its own case. The report counts unscorable answers apart from incorrect ones, because a transport failure is not a comprehension failure.
 
 The grader tests activation, next boundary and whether mutation is allowed. It does not launch a model, authenticate who produced the answer or prove live-host behavior.
 

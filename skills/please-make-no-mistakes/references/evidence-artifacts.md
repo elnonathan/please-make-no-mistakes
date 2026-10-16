@@ -12,6 +12,8 @@ Before copying or moving anything, show the human the exact source, destination,
 
 ## Record what the artifact can support
 
+Record it in the same step you review the artifact, not later: a reviewed artifact that was never recorded is evidence nobody can find again.
+
 Keep one entry per artifact or independently identified set:
 
 ```text

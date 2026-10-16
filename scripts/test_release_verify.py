@@ -48,6 +48,11 @@ class ReleaseVerifyTests(unittest.TestCase):
         self.assertIn("host-guard", portable_names)
         self.assertIn("agent-evaluation", portable_names)
         self.assertIn("distribution-artifact", portable_names)
+        self.assertIn("claude-adapter", portable_names)
+        self.assertIn("claude-discovery", portable_names)
+        self.assertIn("claude-adapter", full_names)
+        order = [name for name, _command in FULL_CHECKS]
+        self.assertEqual(order[order.index("host-guard") + 1], "claude-adapter")
 
 
 if __name__ == "__main__":

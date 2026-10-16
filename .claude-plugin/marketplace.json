@@ -1,0 +1,21 @@
+{
+  "name": "please-make-no-mistakes",
+  "owner": {
+    "name": "Jonathan Muñoz Lucas"
+  },
+  "metadata": {
+    "description": "Epistemic integrity for AI-assisted software engineering."
+  },
+  "plugins": [
+    {
+      "name": "please-make-no-mistakes",
+      "description": "Epistemic integrity for AI-assisted software engineering.",
+      "source": {
+        "source": "npm",
+        "package": "please-make-no-mistakes",
+        "version": "0.1.0",
+        "registry": "https://registry.npmjs.org"
+      }
+    }
+  ]
+}

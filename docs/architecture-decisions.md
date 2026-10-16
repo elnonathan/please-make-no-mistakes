@@ -32,7 +32,7 @@ Other questions must concern product intent, priority, risk or authority. A tech
 
 A task decision stays with that task. Reusable project knowledge keeps each claim's scope, basis, source and freshness boundary. A rule expresses a human-owned intention that something should always happen or never happen again. PMNM does not silently promote a correction, broad factual claim or observed convention into a rule. It asks whether a triggered rule belongs to the project or applies generally, then writes one sentence with provenance.
 
-Current human instruction outranks project rules. Project rules outrank general rules when they are more specific and do not conflict with current authority.
+Current human instruction outranks stored rules. General, project and task rules have explicit scopes and stable ids; a narrower rule may specialize a broader one without silently replacing it. A rule is replaced or retired by id with its basis recorded.
 
 ## Provenance is relational and artifact custody is reference first
 
@@ -103,7 +103,7 @@ Containment is not confidentiality. The folder inherits filesystem permissions, 
 
 ## Sensitive effects retain human authority
 
-Outside ordinary contained PMNM maintenance, deletion, movement, direct external writes, version control mutation, dependency changes, publication, environment changes, network effects and planned non-file state changes retain explicit human authority. Predictable exact operations are grouped in the Digest and scoped to the task or project. State operations are task scoped and bound to a stable plan objective; an unlisted one requires a revised Digest instead of one-off authority. Other new or changed operations ask once and receive one matching use after the human says yes. Task authority ends with the task or withdrawn Digest. Project authority survives only for identical operations in the same project and can be replaced or revoked by an explicitly agreed set. Native host approval still controls execution. The guard first splits unknown compound segments and multiple sensitive effects.
+Outside ordinary contained PMNM maintenance, deletion, movement, direct external writes, version control mutation, dependency changes, publication, environment changes, network effects and planned non-file state changes retain explicit human authority. Predictable exact operations are grouped in the Digest and scoped to the task or project. State operations are task scoped and bound to a stable plan objective; an unlisted one requires a revised Digest instead of one-off authority. Other new or changed operations require the human's exact operation-bound approval token and receive one matching use. Task authority ends with the task or withdrawn Digest. Project authority survives only for identical operations in the same project and can be replaced or revoked by an explicitly agreed set. Native host approval still controls execution. The guard first splits unknown compound segments and multiple sensitive effects.
 
 ## Effects are declared without an executable catalog
 

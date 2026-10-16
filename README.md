@@ -6,11 +6,11 @@
 
 <p align="center"><strong>Epistemic integrity for software engineering with AI</strong></p>
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-72e0a8?style=flat-square)](LICENSE) [![OpenAI Codex plugin](https://img.shields.io/badge/OpenAI%20Codex-plugin-111827?style=flat-square)](SETUP.md#install-with-codex)
+[![License: MIT](https://img.shields.io/badge/license-MIT-72e0a8?style=flat-square)](LICENSE) [![OpenAI Codex plugin](https://img.shields.io/badge/OpenAI%20Codex-plugin-111827?style=flat-square)](SETUP.md#install-with-codex) [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-111827?style=flat-square)](SETUP.md#install-with-claude-code)
 
 [Install](#install) · [Getting started](docs/getting-started.md) · [Setup](SETUP.md) · [Security](SECURITY.md)
 
-Please, Make No Mistakes (PMNM) is a portable agent skill for work where context, evidence, and consequences matter. Its Codex plugin also includes an optional lifecycle guard. The guard can block, ask or note when a covered event shows the flow is out of order, then point to one valid next step.
+Please, Make No Mistakes (PMNM) is a portable agent skill for work where context, evidence, and consequences matter. Its Codex and Claude Code plugins also include an optional lifecycle guard. The guard can block, ask or note when a covered event shows the flow is out of order, then point to one valid next step.
 
 > “Please, make no mistakes” is an impossible request. This project does not promise infallibility. It makes avoidable mistakes harder to miss.
 
@@ -18,19 +18,19 @@ Please, Make No Mistakes (PMNM) is a portable agent skill for work where context
 
 Share [this repository](https://github.com/elnonathan/please-make-no-mistakes) with your coding agent and ask it to install PMNM by following [SETUP.md](SETUP.md). The setup guide identifies the host that is actually running, selects a supported registration route, preserves existing configuration, and verifies the installed skill and any host adapter separately.
 
-Codex is currently the host with a complete tested marketplace path in this repository. Another host should use its own documented skill or plugin mechanism. npm can carry the exact artifact, but installing the package alone does not make a host load it.
+This repository is a plugin marketplace for Codex and for Claude Code, and both marketplaces select the same exact npm version. Another host should use its own documented skill or plugin mechanism. npm can carry the exact artifact, but installing the package alone does not make a host load it.
 
-The Agent Skill is the portable part of PMNM. The bundled lifecycle guard is currently implemented and tested only for Codex. Other hosts may discover the portable skill through their own supported mechanisms, but this repository does not yet claim their complete PMNM folder workflow. That workflow needs one documented literal pointer, and any host guard needs its own implementation and verification. Similar hook names do not establish compatibility, and a future host adapter must not replace the Codex hook or weaken its tested behavior.
+The Agent Skill is the portable part of PMNM. The bundled lifecycle guard is implemented and tested for Codex and for Claude Code, each through its own adapter over one shared engine. Other hosts may discover the portable skill through their own supported mechanisms, but this repository does not yet claim their complete PMNM folder workflow. That workflow needs one documented literal pointer, and any host guard needs its own implementation and verification. Similar hook names do not establish compatibility, and a host adapter must not replace another host's hook or weaken its tested behavior.
 
 ## Status by host
 
 | Capability | Codex | Claude Code |
 | --- | --- | --- |
-| Portable skill | Included in the plugin and covered by source and installation checks | Available for manual placement in advisory mode. There is no host enforcement |
-| PMNM folder pointer | `<CODEX_HOME>/pmnm.path` remembers the folder | Not provided in this release. The folder is agreed in conversation |
-| Lifecycle guard | Optional Codex hook with deterministic coverage | Not provided in this release |
-| Evidence in this repository | Release gate and guard suite cover the current revision. Installed-host behavior remains a separate check | The public skill and documentation can be inspected. No current Claude Code behavior or guard compatibility is claimed |
-| Install route | Plugin from this repository's marketplace | Manual placement of the skill where Claude Code loads Agent Skills |
+| Portable skill | Included in the plugin and covered by source and installation checks | Included in the plugin and covered by source, marketplace and plugin validation checks |
+| PMNM folder pointer | `<CODEX_HOME>/pmnm.path` remembers the folder | `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path`, remembers the folder |
+| Lifecycle guard | Optional Codex hook with deterministic coverage | Optional Claude Code hook (`hooks/claude/`) over the same engine, with deterministic coverage |
+| Evidence in this repository | Release gate and guard suite cover the current revision. Installed-host behavior remains a separate check | Release gate, adapter and hook discovery suites cover the current revision. Installed-host behavior remains a separate check |
+| Install route | Plugin from this repository's marketplace | Plugin from this repository's marketplace |
 
 The sections below describe portable PMNM. Codex-specific enforcement is named explicitly.
 
@@ -136,35 +136,39 @@ The skill does not:
 
 ## Repository map
 
-1. [.codex-plugin/plugin.json](.codex-plugin/plugin.json): Plugin identity, skill route, and presentation metadata. Codex discovers the bundled default hook separately at `hooks/hooks.json`.
+1. [.codex-plugin/plugin.json](.codex-plugin/plugin.json): Plugin identity, skill route, presentation metadata, and the declared Codex hook file `hooks/codex/hooks.json`. No conventional `hooks/hooks.json` ships, so a Claude Code root does not merge the Codex hooks.
 
-2. [.agents/plugins/marketplace.json](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.agents/plugins/marketplace.json): GitHub marketplace catalog that pins the exact npm plugin version.
+2. [.agents/plugins/marketplace.json](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.agents/plugins/marketplace.json): GitHub marketplace catalog for Codex that pins the exact npm plugin version.
 
-3. [.github/workflows/publish.yml](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.github/workflows/publish.yml): Tag only npm Trusted Publishing workflow.
+3. [.claude-plugin/plugin.json](.claude-plugin/plugin.json): Claude Code plugin identity; its hooks are `hooks/claude/hooks.json`.
 
-4. [hooks](hooks): The optional Codex guard, a hook, and its declarative configuration.
+4. [.claude-plugin/marketplace.json](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.claude-plugin/marketplace.json): GitHub marketplace catalog for Claude Code that pins the same exact npm plugin version.
 
-5. [skills/please-make-no-mistakes/SKILL.md](skills/please-make-no-mistakes/SKILL.md): The kernel: the four parts of PMNM and the reference table.
+5. [.github/workflows/publish.yml](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.github/workflows/publish.yml): Tag only npm Trusted Publishing workflow.
 
-6. [skills/please-make-no-mistakes/references](skills/please-make-no-mistakes/references): Procedures loaded only when their trigger applies.
+6. [hooks](hooks): The shared guard engine, the Codex hook configuration, and the Claude Code hook configuration and adapter.
 
-7. [evals](evals): Activation cases, behavior cases, host guard cases, an executable action oracle, and evaluation guidance.
+7. [skills/please-make-no-mistakes/SKILL.md](skills/please-make-no-mistakes/SKILL.md): The kernel: the four parts of PMNM and the reference table.
 
-8. [scripts](scripts): Release validation, host guard tests, install comparison, and executable checks.
+8. [skills/please-make-no-mistakes/references](skills/please-make-no-mistakes/references): Procedures loaded only when their trigger applies.
 
-9. [SETUP.md](SETUP.md): Installation, source marketplace testing, hook trust review, updates, removal, and verification.
+9. [evals](evals): Activation cases, behavior cases, host guard cases, an executable action oracle, and evaluation guidance.
 
-10. [ARCHITECTURE.md](ARCHITECTURE.md): Maintainer architecture and trust boundaries.
+10. [scripts](scripts): Release validation, host guard tests, install comparison, and executable checks.
 
-11. [docs/architecture-decisions.md](docs/architecture-decisions.md): Durable public design boundaries and rationale.
+11. [SETUP.md](SETUP.md): Installation, source marketplace testing, hook trust review, updates, removal, and verification.
 
-12. [docs/distribution.md](docs/distribution.md): Release identity, Trusted Publishing, and postpublication verification.
+12. [ARCHITECTURE.md](ARCHITECTURE.md): Maintainer architecture and trust boundaries.
 
-13. [docs/getting-started.md](docs/getting-started.md): Representative prompts and guidance for reading the skill's observable behavior.
+13. [docs/architecture-decisions.md](docs/architecture-decisions.md): Durable public design boundaries and rationale.
 
-14. [CONTRIBUTING.md](CONTRIBUTING.md): Contribution workflow and documentation ownership.
+14. [docs/distribution.md](docs/distribution.md): Release identity, Trusted Publishing, and postpublication verification.
 
-15. [SECURITY.md](SECURITY.md): Trust boundaries, supported claims, and vulnerability reporting.
+15. [docs/getting-started.md](docs/getting-started.md): Representative prompts and guidance for reading the skill's observable behavior.
+
+16. [CONTRIBUTING.md](CONTRIBUTING.md): Contribution workflow and documentation ownership.
+
+17. [SECURITY.md](SECURITY.md): Trust boundaries, supported claims, and vulnerability reporting.
 
 ## Validation
 

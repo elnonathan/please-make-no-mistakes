@@ -34,6 +34,9 @@ def load_tool(name: str, path: Path):
 
 
 SMOKE = load_tool("pmnm_distribution_smoke", TOOL)
+# The one list of files that customise our own work rather than ship. A simulated public checkout
+# omits exactly these, so it cannot drift from the validator that enforces them.
+PRIVATE_LOCAL_PATHS = load_tool("pmnm_validate_skill", PACKAGE_ROOT / "scripts" / "validate_skill.py").PRIVATE_LOCAL_PATHS
 VALIDATOR = load_tool("pmnm_validate_skill", VALIDATOR_TOOL)
 POSTPUBLICATION = load_tool("pmnm_postpublication_smoke", POSTPUBLICATION_TOOL)
 
@@ -243,7 +246,8 @@ class DistributionSmokeTests(unittest.TestCase):
         manifest = SMOKE.load_json(PACKAGE_ROOT / "package.json")
         payload = SMOKE.expected_payload(manifest)
         self.assertIn(".codex-plugin/plugin.json", payload)
-        self.assertIn("hooks/hooks.json", payload)
+        self.assertIn("hooks/codex/hooks.json", payload)
+        self.assertNotIn("hooks/hooks.json", payload)
         self.assertIn("hooks/pmnm-guard.mjs", payload)
         self.assertIn("hooks/pmnm-shell.mjs", payload)
         self.assertIn("skills/please-make-no-mistakes/SKILL.md", payload)
@@ -272,13 +276,16 @@ class DistributionSmokeTests(unittest.TestCase):
                 checkout,
                 ignore=shutil.ignore_patterns(
                     ".git",
-                    ".ai",
-                    "AGENTS.md",
+                    *(name.rstrip("/") for name in PRIVATE_LOCAL_PATHS),
                     "node_modules",
                     "__pycache__",
                     ".DS_Store",
                 ),
             )
+            # A public checkout never contains local work. This list used to be written out by hand
+            # here, and it lacked CLAUDE.md for a month because nobody updated both copies.
+            for name in PRIVATE_LOCAL_PATHS:
+                self.assertFalse(os.path.lexists(checkout / name.rstrip("/")), name)
             completed = subprocess.run(
                 [sys.executable, "scripts/validate_skill.py"],
                 cwd=checkout,
@@ -288,6 +295,19 @@ class DistributionSmokeTests(unittest.TestCase):
                 timeout=30,
             )
             self.assertEqual(completed.returncode, 0, completed.stderr or completed.stdout)
+
+    def test_payload_boundary_rejects_every_private_local_path(self) -> None:
+        # CBR-02. The standalone boundary kept its own list and never learned CLAUDE.md, so it passed
+        # alone and only the separate validator stopped the file. It now reads the one authority.
+        for name in PRIVATE_LOCAL_PATHS:
+            candidate = name + "note.md" if name.endswith("/") else name
+            with self.subTest(name=name), self.assertRaises(SMOKE.SmokeFailure):
+                SMOKE.validate_payload_boundary({candidate})
+        self.assertLessEqual(
+            {name for name in PRIVATE_LOCAL_PATHS if not name.endswith("/")},
+            SMOKE.FORBIDDEN_PACKAGE_FILES,
+            "the distribution boundary must derive its private files from PRIVATE_LOCAL_PATHS",
+        )
 
     def test_payload_boundary_rejects_private_paths(self) -> None:
         for path in (".ai/project/STATUS.md", "AGENTS.md", ".agents/plugins/marketplace.json"):
@@ -339,7 +359,15 @@ class DistributionSmokeTests(unittest.TestCase):
             with self.assertRaises(SMOKE.SmokeFailure):
                 SMOKE.validate_plugin_tree(root, "please-make-no-mistakes", current_version)
 
-    def test_plugin_tree_uses_default_hook_discovery(self) -> None:
+    def test_an_artifact_with_a_conventional_hook_file_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-plugin-hook-conventional-") as raw:
+            root = Path(raw)
+            shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+            shutil.copy2(root / "hooks" / "codex" / "hooks.json", root / "hooks" / "hooks.json")
+            with self.assertRaisesRegex(SMOKE.SmokeFailure, "must not carry a conventional hooks/hooks.json"):
+                SMOKE.validate_codex_hook_tree(root)
+
+    def test_plugin_tree_declares_the_codex_hook_path(self) -> None:
         manifest = SMOKE.load_json(PACKAGE_ROOT / "package.json")
         with tempfile.TemporaryDirectory(prefix="pmnm-plugin-hook-default-") as raw:
             root = Path(raw)
@@ -348,13 +376,286 @@ class DistributionSmokeTests(unittest.TestCase):
             shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
             plugin_file = root / ".codex-plugin" / "plugin.json"
             plugin = SMOKE.load_json(plugin_file)
-            plugin["hooks"] = "./hooks/hooks.json"
-            plugin_file.write_text(json.dumps(plugin), encoding="utf-8")
-            with self.assertRaisesRegex(
-                SMOKE.SmokeFailure,
-                "default hooks/hooks.json discovery",
-            ):
-                SMOKE.validate_plugin_tree(root, manifest["name"], manifest["version"])
+            for declared in (None, "./hooks/hooks.json"):
+                with self.subTest(declared=declared):
+                    if declared is None:
+                        plugin.pop("hooks", None)
+                    else:
+                        plugin["hooks"] = declared
+                    plugin_file.write_text(json.dumps(plugin), encoding="utf-8")
+                    with self.assertRaisesRegex(SMOKE.SmokeFailure, "declare its hooks at ./hooks/codex/hooks.json"):
+                        SMOKE.validate_plugin_tree(root, manifest["name"], manifest["version"])
+
+    # --- Claude host branch -------------------------------------------------
+
+    def _claude_fixture(self, raw: str) -> Path:
+        root = Path(raw)
+        for name in (".codex-plugin", ".claude-plugin", "hooks", "skills"):
+            shutil.copytree(PACKAGE_ROOT / name, root / name)
+        return root
+
+    def test_claude_branch_accepts_the_shipped_tree(self) -> None:
+        package = SMOKE.load_json(PACKAGE_ROOT / "package.json")
+        SMOKE.validate_claude_hook_tree(PACKAGE_ROOT, package["name"], package["version"])
+
+    def test_codex_branch_is_named_and_unaffected_by_the_claude_subtree(self) -> None:
+        self.assertFalse(hasattr(SMOKE, "validate_hook_tree"))
+        SMOKE.validate_codex_hook_tree(PACKAGE_ROOT)
+
+    def test_claude_manifest_identity_and_hook_route(self) -> None:
+        package = SMOKE.load_json(PACKAGE_ROOT / "package.json")
+        manifest = SMOKE.load_json(PACKAGE_ROOT / ".claude-plugin" / "plugin.json")
+        self.assertEqual(manifest["name"], package["name"])
+        self.assertEqual(manifest["version"], package["version"])
+        self.assertEqual(manifest["hooks"], "./hooks/claude/hooks.json")
+
+    def test_manifest_precedence_is_a_standing_invariant(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-precedence-") as raw:
+            root = self._claude_fixture(raw)
+            (root / ".codex-plugin" / "plugin.json").unlink()
+            with self.assertRaisesRegex(SMOKE.SmokeFailure, "precedence"):
+                SMOKE.validate_manifest_precedence(root)
+
+    def test_manifest_precedence_holds_for_the_shipped_tree(self) -> None:
+        SMOKE.validate_manifest_precedence(PACKAGE_ROOT)
+
+    def test_claude_branch_rejects_drift(self) -> None:
+        entry = "hooks/claude/pmnm-claude.mjs"
+        config = "hooks/claude/hooks.json"
+
+        def drop_event(root: Path) -> None:
+            data = SMOKE.load_json(root / config)
+            data["hooks"].pop("PostToolUseFailure")
+            (root / config).write_text(json.dumps(data), encoding="utf-8")
+
+        def drift_command(root: Path) -> None:
+            data = SMOKE.load_json(root / config)
+            data["hooks"]["Stop"][0]["hooks"][0]["command"] = "node /tmp/elsewhere.mjs"
+            (root / config).write_text(json.dumps(data), encoding="utf-8")
+
+        def drop_timeout(root: Path) -> None:
+            data = SMOKE.load_json(root / config)
+            del data["hooks"]["Stop"][0]["hooks"][0]["timeout"]
+            (root / config).write_text(json.dumps(data), encoding="utf-8")
+
+        def second_handler(root: Path) -> None:
+            data = SMOKE.load_json(root / config)
+            data["hooks"]["Stop"][0]["hooks"].append({"type": "command", "command": "node x", "timeout": 30})
+            (root / config).write_text(json.dumps(data), encoding="utf-8")
+
+        def extra_module(root: Path) -> None:
+            (root / "hooks" / "claude" / "extra.mjs").write_text("export {};\n", encoding="utf-8")
+
+        def linked_entry(root: Path) -> None:
+            target = root / entry
+            target.unlink()
+            target.symlink_to(PACKAGE_ROOT / entry)
+
+        def forbidden_capability(root: Path) -> None:
+            target = root / entry
+            target.write_text(target.read_text(encoding="utf-8") + '\nawait fetch("x");\n', encoding="utf-8")
+
+        def escaping_import(root: Path) -> None:
+            target = root / entry
+            target.write_text('import x from "../../outside.mjs";\n' + target.read_text(encoding="utf-8"), encoding="utf-8")
+
+        def transcript_reference(root: Path) -> None:
+            target = root / entry
+            target.write_text(target.read_text(encoding="utf-8") + '\nconst t = "transcript_path";\n', encoding="utf-8")
+
+        def oversize(root: Path) -> None:
+            target = root / entry
+            target.write_text(target.read_text(encoding="utf-8") + "//" + ("x" * 60_000) + "\n", encoding="utf-8")
+
+        for name, mutate in [
+            ("drop_event", drop_event),
+            ("drift_command", drift_command),
+            ("drop_timeout", drop_timeout),
+            ("second_handler", second_handler),
+            ("extra_module", extra_module),
+            ("linked_entry", linked_entry),
+            ("forbidden_capability", forbidden_capability),
+            ("escaping_import", escaping_import),
+            ("transcript_reference", transcript_reference),
+            ("oversize", oversize),
+        ]:
+            with self.subTest(mutation=name):
+                with tempfile.TemporaryDirectory(prefix="pmnm-claude-negative-") as raw:
+                    root = self._claude_fixture(raw)
+                    mutate(root)
+                    with self.assertRaises(SMOKE.SmokeFailure):
+                        SMOKE.validate_claude_hook_tree(root, "please-make-no-mistakes", "0.1.0")
+
+    def test_claude_branch_rejects_every_audited_bypass(self) -> None:
+        entry = "hooks/claude/pmnm-claude.mjs"
+
+        def builtin_import(root: Path) -> None:
+            target = root / entry
+            target.write_text('import "node:net";\n' + target.read_text(encoding="utf-8"), encoding="utf-8")
+
+        def dynamic_import(root: Path) -> None:
+            target = root / entry
+            target.write_text(target.read_text(encoding="utf-8") + '\nawait import("node:net");\n', encoding="utf-8")
+
+        def create_require(root: Path) -> None:
+            target = root / entry
+            target.write_text(target.read_text(encoding="utf-8") + '\nconst r = createRequire(import.meta.url);\n', encoding="utf-8")
+
+        def alternate_extension(root: Path) -> None:
+            (root / "hooks" / "claude" / "extra.js").write_text("export {};\n", encoding="utf-8")
+
+        def nested_module(root: Path) -> None:
+            nested = root / "hooks" / "claude" / "lib"
+            nested.mkdir()
+            (nested / "extra.mjs").write_text("export {};\n", encoding="utf-8")
+
+        def nested_any_file(root: Path) -> None:
+            nested = root / "hooks" / "claude" / "data"
+            nested.mkdir()
+            (nested / "payload.json").write_text("{}\n", encoding="utf-8")
+
+        def linked_config(root: Path) -> None:
+            target = root / "hooks" / "claude" / "hooks.json"
+            target.unlink()
+            target.symlink_to(PACKAGE_ROOT / "hooks" / "claude" / "hooks.json")
+
+        def manifest_name_drift(root: Path) -> None:
+            path = root / ".claude-plugin" / "plugin.json"
+            data = SMOKE.load_json(path)
+            data["name"] = "not-pmnm"
+            path.write_text(json.dumps(data), encoding="utf-8")
+
+        def manifest_version_drift(root: Path) -> None:
+            path = root / ".claude-plugin" / "plugin.json"
+            data = SMOKE.load_json(path)
+            data["version"] = "9.9.9"
+            path.write_text(json.dumps(data), encoding="utf-8")
+
+        package = SMOKE.load_json(PACKAGE_ROOT / "package.json")
+        for name, mutate in [
+            ("builtin_import", builtin_import),
+            ("dynamic_import", dynamic_import),
+            ("create_require", create_require),
+            ("alternate_extension", alternate_extension),
+            ("nested_module", nested_module),
+            ("nested_any_file", nested_any_file),
+            ("linked_config", linked_config),
+            ("manifest_name_drift", manifest_name_drift),
+            ("manifest_version_drift", manifest_version_drift),
+        ]:
+            with self.subTest(bypass=name):
+                with tempfile.TemporaryDirectory(prefix="pmnm-claude-bypass-") as raw:
+                    root = self._claude_fixture(raw)
+                    mutate(root)
+                    with self.assertRaises(SMOKE.SmokeFailure):
+                        SMOKE.validate_claude_hook_tree(root, package["name"], package["version"])
+
+    def test_claude_branch_pins_identity_against_package_metadata(self) -> None:
+        package = SMOKE.load_json(PACKAGE_ROOT / "package.json")
+        SMOKE.validate_claude_hook_tree(PACKAGE_ROOT, package["name"], package["version"])
+
+    def test_claude_branch_rejects_every_static_import_form_outside_the_graph(self) -> None:
+        entry = "hooks/claude/pmnm-claude.mjs"
+        package = SMOKE.load_json(PACKAGE_ROOT / "package.json")
+
+        def side_effect_import(root: Path) -> None:
+            target = root / entry
+            target.write_text('import "node:crypto";\n' + target.read_text(encoding="utf-8"), encoding="utf-8")
+
+        def namespace_import(root: Path) -> None:
+            target = root / entry
+            target.write_text('import * as extra from "node:crypto";\n' + target.read_text(encoding="utf-8"), encoding="utf-8")
+
+        def reexport(root: Path) -> None:
+            target = root / entry
+            target.write_text(target.read_text(encoding="utf-8") + '\nexport * from "node:crypto";\n', encoding="utf-8")
+
+        def unrecognized_import(root: Path) -> None:
+            target = root / entry
+            target.write_text('import\n  weird\n  from\n  "node:crypto";\n' + target.read_text(encoding="utf-8"), encoding="utf-8")
+
+        for name, mutate in [
+            ("side_effect_import", side_effect_import),
+            ("namespace_import", namespace_import),
+            ("reexport", reexport),
+            ("unrecognized_import", unrecognized_import),
+        ]:
+            with self.subTest(form=name):
+                with tempfile.TemporaryDirectory(prefix="pmnm-claude-import-") as raw:
+                    root = self._claude_fixture(raw)
+                    mutate(root)
+                    with self.assertRaises(SMOKE.SmokeFailure):
+                        SMOKE.validate_claude_hook_tree(root, package["name"], package["version"])
+
+    def test_shared_runtime_ceilings_are_the_ratified_contract(self) -> None:
+        distribution = (PACKAGE_ROOT / "scripts" / "distribution_smoke.py").read_text(encoding="utf-8")
+        validator = (PACKAGE_ROOT / "scripts" / "validate_skill.py").read_text(encoding="utf-8")
+        for text, label in ((distribution, "distribution_smoke"), (validator, "validate_skill")):
+            self.assertIn("235_000", text, label)
+            self.assertIn("260_000", text, label)
+            self.assertNotIn("230_000", text, label)
+
+    def test_shared_runtime_ceiling_boundary(self) -> None:
+        # The ratified contract is 235,000 per module with the aggregate held at
+        # 260,000. With the current shell classifier the aggregate is the binding
+        # constraint, so all three boundaries are pinned here.
+        shell_size = (PACKAGE_ROOT / "hooks" / "pmnm-shell.mjs").stat().st_size
+        largest_allowed = 260_000 - shell_size
+        self.assertLess(largest_allowed, 235_000, "the aggregate should still bind before the per-module ceiling")
+
+        def padded(root: Path, size: int) -> None:
+            guard = root / "hooks" / "pmnm-guard.mjs"
+            text = guard.read_text(encoding="utf-8")
+            padding = size - len(text.encode("utf-8"))
+            self.assertGreater(padding, 0, "fixture guard is already larger than the target")
+            guard.write_text(text + "//" + ("x" * (padding - 3)) + "\n", encoding="utf-8")
+            self.assertEqual(guard.stat().st_size, size)
+
+        for size, expected in (
+            (largest_allowed, None),
+            (largest_allowed + 1, "aggregate inspectable size budget"),
+            (235_001, "module pmnm-guard.mjs exceeds its inspectable size budget"),
+        ):
+            with self.subTest(size=size):
+                with tempfile.TemporaryDirectory(prefix="pmnm-ceiling-") as raw:
+                    root = self._claude_fixture(raw)
+                    padded(root, size)
+                    if expected is None:
+                        SMOKE.validate_codex_hook_tree(root)
+                    else:
+                        with self.assertRaisesRegex(SMOKE.SmokeFailure, expected):
+                            SMOKE.validate_codex_hook_tree(root)
+
+    def test_claude_hooks_name_the_acting_capability(self) -> None:
+        codex = SMOKE.load_json(PACKAGE_ROOT / "hooks" / "codex" / "hooks.json")["hooks"]
+        claude = SMOKE.load_json(PACKAGE_ROOT / "hooks" / "claude" / "hooks.json")["hooks"]
+        for event_name in ("SessionStart", "PreToolUse"):
+            expected = codex[event_name][0]["hooks"][0]["statusMessage"]
+            actual = claude[event_name][0]["hooks"][0].get("statusMessage")
+            self.assertEqual(actual, expected, event_name)
+            self.assertTrue(expected.startswith("Please, "), expected)
+
+    def test_declared_test_surface_must_ship(self) -> None:
+        # `release:verify` never runs `npm test`, so until this check existed the installed
+        # package could declare a test whose file no user received and the gate stayed green.
+        manifest = SMOKE.load_json(PACKAGE_ROOT / "package.json")
+        payload = SMOKE.expected_payload(manifest)
+        SMOKE.validate_declared_test_surface(manifest, payload)
+
+        absent = {"scripts": {"test": "python3 scripts/test_absent_from_files.py"}}
+        with self.assertRaisesRegex(SMOKE.SmokeFailure, "does not ship"):
+            SMOKE.validate_declared_test_surface(absent, payload)
+
+        # A chain is only as shippable as its weakest link, so one missing file among many fails.
+        mixed = {"scripts": {"test": "node --test scripts/test_host_guard.mjs && python3 scripts/test_gone.py"}}
+        with self.assertRaisesRegex(SMOKE.SmokeFailure, "scripts/test_gone.py"):
+            SMOKE.validate_declared_test_surface(mixed, payload)
+
+    def test_payload_carries_the_claude_surface(self) -> None:
+        payload = SMOKE.expected_payload(SMOKE.load_json(PACKAGE_ROOT / "package.json"))
+        self.assertIn(".claude-plugin/plugin.json", payload)
+        self.assertIn("hooks/claude/hooks.json", payload)
+        self.assertIn("hooks/claude/pmnm-claude.mjs", payload)
 
     def test_hook_tree_rejects_an_external_runtime_path(self) -> None:
         with tempfile.TemporaryDirectory(prefix="pmnm-hook-negative-") as raw:
@@ -388,19 +689,19 @@ class DistributionSmokeTests(unittest.TestCase):
             }
             (hooks / "hooks.json").write_text(json.dumps(config), encoding="utf-8")
             with self.assertRaises(SMOKE.SmokeFailure):
-                SMOKE.validate_hook_tree(root)
+                SMOKE.validate_codex_hook_tree(root)
 
     def test_hook_tree_accepts_only_the_fixed_local_module_graph(self) -> None:
         with tempfile.TemporaryDirectory(prefix="pmnm-hook-modules-") as raw:
             root = Path(raw)
             shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
-            manifest = SMOKE.validate_hook_tree(root)
+            manifest = SMOKE.validate_codex_hook_tree(root)
             self.assertIn("pmnm-guard.mjs", manifest)
             self.assertIn("pmnm-shell.mjs", manifest)
 
             (root / "hooks" / "unexpected.mjs").write_text("export {};\n", encoding="utf-8")
             with self.assertRaisesRegex(SMOKE.SmokeFailure, "module set"):
-                SMOKE.validate_hook_tree(root)
+                SMOKE.validate_codex_hook_tree(root)
 
     def test_hook_tree_rejects_an_import_outside_the_fixed_graph(self) -> None:
         with tempfile.TemporaryDirectory(prefix="pmnm-hook-import-") as raw:
@@ -416,7 +717,7 @@ class DistributionSmokeTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(SMOKE.SmokeFailure, "fixed local module graph"):
-                SMOKE.validate_hook_tree(root)
+                SMOKE.validate_codex_hook_tree(root)
 
     def test_hook_tree_rejects_a_linked_or_oversized_module_graph(self) -> None:
         with tempfile.TemporaryDirectory(prefix="pmnm-hook-linked-") as raw:
@@ -426,7 +727,7 @@ class DistributionSmokeTests(unittest.TestCase):
             shell.unlink()
             shell.symlink_to(PACKAGE_ROOT / "hooks" / "pmnm-shell.mjs")
             with self.assertRaisesRegex(SMOKE.SmokeFailure, "missing or linked"):
-                SMOKE.validate_hook_tree(root)
+                SMOKE.validate_codex_hook_tree(root)
 
         with tempfile.TemporaryDirectory(prefix="pmnm-hook-budget-") as raw:
             root = Path(raw)
@@ -436,7 +737,7 @@ class DistributionSmokeTests(unittest.TestCase):
             padding = max(1, 260_001 - current_total)
             shell.write_text(shell.read_text(encoding="utf-8") + (" " * padding), encoding="utf-8")
             with self.assertRaisesRegex(SMOKE.SmokeFailure, "aggregate inspectable size budget"):
-                SMOKE.validate_hook_tree(root)
+                SMOKE.validate_codex_hook_tree(root)
 
     def test_source_validator_rejects_runtime_module_graph_drift(self) -> None:
         def validate(root: Path) -> list[str]:
@@ -444,7 +745,7 @@ class DistributionSmokeTests(unittest.TestCase):
             guard = hooks / "pmnm-guard.mjs"
             shell = hooks / "pmnm-shell.mjs"
             with (
-                mock.patch.object(VALIDATOR, "HOOK_CONFIG_FILE", hooks / "hooks.json"),
+                mock.patch.object(VALIDATOR, "HOOK_CONFIG_FILE", hooks / "codex" / "hooks.json"),
                 mock.patch.object(VALIDATOR, "HOOK_RUNTIME_FILE", guard),
                 mock.patch.object(VALIDATOR, "HOOK_SHELL_FILE", shell),
                 mock.patch.object(VALIDATOR, "HOOK_RUNTIME_FILES", (guard, shell)),

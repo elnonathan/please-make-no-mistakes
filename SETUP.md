@@ -1,6 +1,6 @@
 # Setup
 
-This is the single installation, update, rollback, removal, and installation-verification authority for Please, Make No Mistakes. It is written for both people and agents. The supported Codex route uses this GitHub repository as a marketplace whose catalog selects one exact npm package version containing the portable skill and an optional Codex lifecycle guard.
+This is the single installation, update, rollback, removal, and installation-verification authority for Please, Make No Mistakes. It is written for both people and agents. The supported Codex and Claude Code routes both use this GitHub repository as a marketplace whose catalog selects the same exact npm package version, containing the portable skill, an optional Codex lifecycle guard and a Claude Code adapter.
 
 ## Guards
 
@@ -72,6 +72,26 @@ OpenAI's current [Codex hooks documentation](https://learn.chatgpt.com/docs/hook
 
 The public source is `https://github.com/elnonathan/please-make-no-mistakes`. The marketplace identity is `please-make-no-mistakes`, and it must offer an exact package version rather than a mutable selector.
 
+For Claude Code, inspect the installed client the same way:
+
+```bash
+claude --version
+```
+
+```bash
+claude plugin --help
+```
+
+```bash
+claude plugin marketplace add --help
+```
+
+```bash
+claude plugin install --help
+```
+
+Claude Code's current [plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces) and [hooks](https://code.claude.com/docs/en/hooks) documentation are authoritative for marketplace sources, plugin discovery, hook events and their limits. The Claude Code adapter needs the same Node.js runtime as the Codex guard.
+
 For another host, identify its actual skill or plugin discovery mechanism from current official documentation or installed help. If the host has no supported Agent Skill or compatible plugin route, report `blocked`; do not improvise by placing files in a guessed directory.
 
 ## Install With Codex
@@ -130,9 +150,59 @@ $please-make-no-mistakes report the current procedural guard state without modif
 
 The conversation should receive a two-line card: the first word is the level (Blocked, Ask or Note), then what happened, then a `NEXT:` line with the exact receipt. The internal status receipt is intercepted by the hook rather than executed by the shell. `pmnm-guard` is not a `PATH` executable. This proves only that the reviewed hook ran for that session and intercepted that call; it does not prove that the model will follow the flow.
 
+## Install With Claude Code
+
+### 5. Add the marketplace and plugin
+
+Run each command separately and inspect its full result before proceeding.
+
+Add the repository marketplace:
+
+```bash
+claude plugin marketplace add elnonathan/please-make-no-mistakes
+```
+
+Confirm that Claude Code resolves the marketplace:
+
+```bash
+claude plugin marketplace list
+```
+
+Install the plugin. The default scope is `user`, which enables it in every session; `--scope project` or `--scope local` limits it to one repository:
+
+```bash
+claude plugin install please-make-no-mistakes@please-make-no-mistakes
+```
+
+Confirm the installed and enabled state:
+
+```bash
+claude plugin list
+```
+
+No separate clone or npm installation is required. The Claude Code marketplace pins the same npm package and version as the Codex marketplace. If you earlier placed the skill by hand where Claude Code loads Agent Skills, remove that copy so the skill is not loaded twice.
+
+Start a new session after installation. Claude Code runs a plugin's hooks once the plugin is enabled. It has no per-hook hash review like Codex `/hooks`, so enabling the plugin is your consent: inspect `hooks/claude/hooks.json` in the installed plugin before you enable it if you want to review the commands. `/hooks` shows what is registered.
+
+Then use a bounded direct activation check:
+
+```text
+Use the please-make-no-mistakes skill to explain how you would investigate a non-trivial regression; do not modify files
+```
+
+The reply should acknowledge the skill and preserve its investigation-before-mutation boundary. A second read-only check exercises the adapter:
+
+```text
+Use the please-make-no-mistakes skill to report the current procedural guard state without modifying files
+```
+
+The session should receive a two-line card: the level (Blocked, Ask or Note) with what happened, then a `NEXT:` line. As with Codex, this proves only that the hook ran and intercepted that call in that session.
+
+This route follows Claude Code's documented marketplace contract and the repository marketplace passes `claude plugin validate`.
+
 ## Install With Another Host
 
-### 5. Use the host's own discovery contract
+### 6. Use the host's own discovery contract
 
 There is no universal command that registers an Agent Skill in every coding agent. For an identified non-Codex host:
 
@@ -146,13 +216,13 @@ There is no universal command that registers an Agent Skill in every coding agen
 
 When the agent cannot inspect or operate the target host directly, the user remains the command runner. Do not ask the user to choose among speculative integrations; derive the supported route from host evidence and ask only for the missing fact or output.
 
-No complete Claude Code integration is claimed in this release. Claude Code may discover the portable Agent Skill through a host-supported route, but PMNM's complete PMNM folder workflow also requires one documented literal pointer, which this repository has not yet established or verified for Claude Code. No Claude guard exists or is promised here.
+Claude Code is not an "other host": use its route above.
 
 The npm package can transport the exact public files to environments that understand npm artifacts, but it does not register or activate PMNM by itself. A host-specific adapter may be documented later only after its complete install, update, rollback, removal, and clean-session verification path has been tested.
 
 ## Verify The Installation
 
-### 6. Match the claim to the evidence
+### 7. Match the claim to the evidence
 
 Use this proof ladder. Never report a stronger state than the strongest completed step:
 
@@ -162,8 +232,8 @@ Use this proof ladder. Never report a stronger state than the strongest complete
 4. **installed and enabled** — the host reports the exact intended plugin version active;
 5. **fresh-session discovered** — a new conversation exposes the skill;
 6. **activation observed** — a direct prompt uses the skill and a negative prompt avoids unnecessary activation;
-7. **hook discovered** — Codex lists the bundled lifecycle source and its review state;
-8. **hook trusted** — the user reviewed and trusted the exact current definition;
+7. **hook discovered** — the host lists the bundled lifecycle source (Codex or Claude Code `/hooks`) and, in Codex, its review state;
+8. **hook trusted** — in Codex, the user reviewed and trusted the exact current definition; Claude Code has no hash review, so this step is the plugin's enabled state;
 9. **guard behavior observed** — a fresh session receives guard context and a read-only control call is rewritten;
 10. **behavior observed** — representative prompts preserve the material behavioral contract.
 
@@ -179,7 +249,7 @@ Package installation, a successful validator, a saved marketplace entry, a hook 
 
 Skill installation and the PMNM folder are separate outcomes. Installation does not create the folder, its pointer, a project folder or a personal profile.
 
-The first task after installation asks two questions, in this order, before the agent reads your repository: where to create the PMNM folder, suggesting `~/PMNM`; then the project name, suggesting the repository name. With the trusted guard, the guard asks through its cards and records the answers with the `folder` and `project` receipts. Without a guard, the agent inspects only the one literal pointer path declared by the host integration. In Codex that path is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. Another host must document its own single pointer path. Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it.
+The first task after installation asks two questions, in this order, before the agent reads your repository: where to create the PMNM folder, suggesting `~/PMNM`; then the project name, suggesting the repository name. With the trusted guard, the guard asks through its cards and records the answers with the `folder` and `project` receipts. Without a guard, the agent inspects only the one literal pointer path declared by the host integration. In Codex that path is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. In Claude Code it is `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path` when `CLAUDE_CONFIG_DIR` is unset. Another host must document its own single pointer path. Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it.
 
 Choose a location outside your repositories and outside the host's config directory. The host's config directory receives only the pointer, one line with the folder's absolute path, so another host on the same machine can read the same memory once its own pointer is configured. If you later move or delete the folder, the agent asks once more where it is or where it should be. An existing empty folder is seeded before the pointer is written. An invalid pointer or index is preserved under a unique recovery name and rebuilt only after your explicit recovery answer.
 
@@ -199,7 +269,7 @@ A fresh `index.json` holds the schema `pmnm.projects/v1`, `pointer_version` 1 an
 
 ## Troubleshooting
 
-### 7. Diagnose the failed boundary
+### 8. Diagnose the failed boundary
 
 Classify the first unproven boundary before changing anything:
 
@@ -216,7 +286,7 @@ Do not convert a command failure into `pending-restart`. Do not use similarly na
 
 ## Update
 
-### 8. Refresh and verify an existing Codex installation
+### 9. Refresh and verify an existing installation
 
 Resolve current state and exact target version first. Then run each command separately:
 
@@ -236,23 +306,39 @@ Repeat the plugin-add step from section 4 and inspect its complete result.
 codex plugin list --json
 ```
 
+Adding the plugin replaces the installed cache, and that replacement is the session's terminal material operation. The conversation that performed it may still report and verify what it did, and it does no further work. Replacing the cache can also remove the hook path the running conversation loaded, so a control receipt after it may reach the shell instead of the guard; that is the known lifecycle boundary and not evidence about the new revision.
+
 Review `/hooks` after every update. A changed bundled hook requires fresh trust for its new hash. Start a new conversation and repeat both bounded checks. Until then, report `pending-restart`; an existing conversation does not prove that it reloaded an updated skill or hook.
 
-For a non-Codex host, use only its documented update mechanism. Do not assume reinstall, cache replacement, or marketplace refresh semantics are equivalent.
+For Claude Code, refresh the marketplace and update the plugin, each separately:
+
+```bash
+claude plugin marketplace update please-make-no-mistakes
+```
+
+```bash
+claude plugin update please-make-no-mistakes@please-make-no-mistakes
+```
+
+Claude Code applies a plugin update after a restart; report `pending-restart` until a new session repeats both bounded checks.
+
+For any other host, use only its documented update mechanism. Do not assume reinstall, cache replacement, or marketplace refresh semantics are equivalent.
 
 ## Rollback
 
-### 9. Restore an exact known release
+### 10. Restore an exact known release
 
 Rollback is a state-changing operation and requires an explicit target revision. Confirm that the immutable Git tag and matching artifact exist before removing the current installation.
 
 For Codex, inspect the current removal and marketplace-add grammar. Then remove only this plugin and its project-specific marketplace, add the repository pinned to the requested `vX.Y.Z` ref, reinstall the plugin, and verify the exact version. Execute and inspect each step separately; do not use a mutable branch as a rollback target.
 
+For Claude Code, uninstall the plugin, remove the marketplace, add the repository pinned to the requested `vX.Y.Z` ref, install again and verify the exact version, one step at a time.
+
 If the requested artifact or host rollback route cannot be verified, stop with `blocked` and leave the current installation intact.
 
 ## Removal
 
-### 10. Remove only PMNM-owned state
+### 11. Remove only PMNM-owned state
 
 Confirm current identifiers and the removal command grammar, then run separately:
 
@@ -268,13 +354,23 @@ codex plugin marketplace remove please-make-no-mistakes
 
 Removing a marketplace source is distinct from removing an installed plugin. Neither operation authorizes deleting the external PMNM folder. Its pointer, project folders, task folders and user data are deliberately outside the installed plugin.
 
+For Claude Code, run separately:
+
+```bash
+claude plugin uninstall please-make-no-mistakes@please-make-no-mistakes
+```
+
+```bash
+claude plugin marketplace remove please-make-no-mistakes
+```
+
 For another host, use its documented removal mechanism and preserve unrelated configuration and user context.
 
 ## Local Checkout
 
-### 11. Test a source tree without publishing it
+### 12. Test a source tree without publishing it
 
-The repository marketplace at `.agents/plugins/marketplace.json` selects the exact published npm artifact. Adding the checkout directory itself as a marketplace therefore installs nothing from source, and before the first publication it installs nothing at all; that result is expected, not a broken checkout.
+The repository marketplaces at `.agents/plugins/marketplace.json` (Codex) and `.claude-plugin/marketplace.json` (Claude Code) select the exact published npm artifact. Adding the checkout directory itself as a marketplace therefore installs nothing from source, and before the first publication it installs nothing at all; that result is expected, not a broken checkout.
 
 To exercise unpublished source in Codex, choose the `local-checkout` operation explicitly and build a disposable local marketplace outside the repository. Codex local marketplace entries use a `local` source whose `path` starts with `./` and stays inside the marketplace root:
 
@@ -292,6 +388,18 @@ codex plugin add please-make-no-mistakes@please-make-no-mistakes-local --json
 
 4. Review the bundled hook in `/hooks` and start a new conversation before judging behavior.
 
+To exercise the same unpublished artifact in Claude Code, reuse the extracted `plugins/please-make-no-mistakes` directory. Write `<tmp-marketplace>/.claude-plugin/marketplace.json` with the same shape as the repository's Claude Code marketplace, a distinct name such as `pmnm-local`, and a relative source `./plugins/please-make-no-mistakes` instead of the npm source. Then register it and install from it, inspecting each result separately:
+
+```bash
+claude plugin marketplace add /absolute/path/to/tmp-marketplace
+```
+
+```bash
+claude plugin install please-make-no-mistakes@pmnm-local --scope local
+```
+
+For a single session without installing anything, start Claude Code with `claude --plugin-dir /absolute/path/to/tmp-marketplace/plugins/please-make-no-mistakes`. Start a new session before judging behavior either way.
+
 After changing the source, pack again, replace the plugin directory, remove and add the installed copy again, review the changed hook in `/hooks`, then start a new conversation. Local-path marketplaces are an authoring route and cannot be upgraded with Git marketplace semantics. Codex's plugin-creator tooling can generate an equivalent local marketplace; either way, remove the disposable marketplace when the test ends so it cannot shadow the published route.
 
 From the repository root, validate the source candidate with:
@@ -304,7 +412,7 @@ This validates the declared source, documentation, behavior fixtures, host-guard
 
 ## Published Release Verification
 
-### 12. Verify the immutable public artifact
+### 13. Verify the immutable public artifact
 
 After a matching release tag has published its npm version, run:
 
@@ -318,8 +426,8 @@ The release and Trusted Publishing procedure is defined in [docs/distribution.md
 
 ## Background
 
-### 13. Why this procedure is strict
+### 14. Why this procedure is strict
 
 Most setup errors do not come from a missing command. They come from collapsing distinct facts: treating a package as an installation, an installation as activation, an executable as the current host, or a plausible command as supported grammar. The procedure keeps those transitions observable while allowing each host to retain its own installation model.
 
-Please, Make No Mistakes remains one portable Agent Skill. The Codex package also carries a host-specific procedural adapter. Other hosts can use the portable skill without it, and any future adapter must preserve rather than fork or weaken the behavioral contract.
+Please, Make No Mistakes remains one portable Agent Skill. The Codex and Claude Code plugins also carry host-specific procedural adapters. Other hosts can use the portable skill without one, and any future adapter must preserve rather than fork or weaken the behavioral contract.

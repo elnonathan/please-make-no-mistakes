@@ -12,6 +12,7 @@ import {
   classifyShell,
   classifyToolEvent as rClassifyEvent,
   declarationSensitiveEffect as rDeclSensitive,
+  lexShell as rLex,
   operationIdentity as rOpIdentity,
   resolveShellTargets as rShellTargets,
   sensitiveEffects as R_SENSITIVE_EFFECTS,
@@ -34,12 +35,16 @@ const R_NO_OP_COMMAND = 'node -e ""', R_POINTER_FILE = "pmnm.path", R_INDEX_SCHE
 const R_GENERAL_RULES_FILE = "general-rules.md", R_PROJECT_RULES_FILE = "project-rules.md", R_PROJECT_KNOWLEDGE_FILE = "project-knowledge.md";
 const R_PROJECT_KNOWLEDGE_TEMPLATE = "# Project knowledge\n\n<!--\n## <topic>\n- applies: <scope>\n- current: <claim>\n- basis: reported | observed | derived | inferred | assumed | unknown\n- last checked: <date>\n- revisit when: <condition>\n- source: <task>\n-->\n";
 const R_TASK_INDEX_FILE = "index.md", R_TASK_PLAN_FILE = "plan.md", R_TASK_VERIFY_FILE = "verification.md", R_TASK_IMPACT_FILE = "impact.md";
+const R_TASK_EXPECTATIONS_FILE = "expectations.md";
+const R_TASK_RULES_FILE = "task-rules.md";
+const R_EXPECTATION_SOURCES = new Set(["requirement", "later-comment", "observed-code", "conversation-decision"]);
+const R_EXPECTATION_COVERAGE = new Set(["covered", "partial", "missing", "unspecified"]);
 const R_TASK_REVIEW_FILE = "review.md", R_TASK_PERMISSION_FILE = "permissions.json", R_TASK_PREFLIGHT_FILE = "preflight.md", R_TASK_ENVIRONMENT_FILE = "environment.md";
-const R_MAX_TASK_FILE_BYTES = 131_072, R_MAX_PLAN_TARGETS = 128;
+const R_MAX_TASK_FILE_BYTES = 131_072, R_MAX_PLAN_TARGETS = 128, R_MAX_RULE_BASIS_PATHS = 10, R_MAX_RULE_FILES = 4;
 const R_IMPACT_DIMENSIONS = ["security", "privacy", "performance", "compatibility", "maintainability", "observability"];
 const R_IMPACT_DISPOSITIONS = new Set(["verified-unchanged", "changed-and-covered", "excluded-with-evidence", "dynamic-boundary-manually-checked", "unresolved-blocking", "unresolved-accepted-risk"]);
 
-const R_PHASES = new Set(["ORIENT", "INVESTIGATE", "AWAITING_HUMAN", "READY", "IMPLEMENT", "VERIFY", "RECOVERY", "COMPLETE"]), R_EFFORTS = new Set(["light", "standard", "high"]), R_LANGUAGES = new Set(["en", "es"]);
+const R_PHASES = new Set(["ORIENT", "INVESTIGATE", "AWAITING_HUMAN", "READY", "IMPLEMENT", "VERIFY", "RECOVERY", "COMPLETE"]), R_EFFORTS = new Set(["light", "standard", "high"]), R_WORK_TYPES = new Set(["implementation", "advisory", "verification"]), R_LANGUAGES = new Set(["en", "es"]);
 const R_ACTIONS = new Set(["folder", "project", "start", "digest", "agreed", "redo", "allow", "declare", "classify", "result", "verified", "done", "status"]), R_ALIASES = new Set(["route", "checkpoint", "align", "invalidate", "grant", "permit", "reconcile", "verify", "complete"]), R_RETIRED_ACTIONS = new Set(["ready", "exempt", "capture", "created", "loaded"]);
 const R_CLASSIFIABLE_EFFECTS = new Set(["investigation", "implementation", "verification", "state-change"]), R_DECLARATION_BOUNDARIES = new Set(["project", "pmnm", "host", "local-environment", "network", "external", "mixed", "unknown"]), R_DECLARATION_PERSISTENCE = new Set(["none", "transient", "persistent", "unknown"]), R_DECLARATION_CERTAINTY = new Set(["certain", "uncertain"]);
 const R_VERIFICATION_RESULTS = new Set(["passed", "failed", "partial", "blocked"]), R_VERIFICATION_METHODS = new Set(["command", "inspection", "human"]), R_AUDIT_RESULTS = new Set(["passed", "partial", "blocked"]), R_RESULT_OUTCOMES = new Set(["unknown", "no-effect"]);
@@ -65,33 +70,10 @@ function rLimitText(value, maximum = R_MAX_CARD_BYTES) {
 function rOneLine(value, maximum = 120) {
   return rLimitText(value, maximum).replace(/\s+/g, " ").trim();
 }
-function rDetectLanguage(prompt, fallback = "en") {
-  if (typeof prompt !== "string" || prompt.length === 0) {
-    return R_LANGUAGES.has(fallback) ? fallback : "en";
-  }
-  const sample = prompt.toLocaleLowerCase().slice(0, 4_000);
-  const spanish =
-    (sample.match(/\b(?:el|la|los|las|un|una|que|como|para|por|con|sin|quiero|puedes|debe|revisa|haz|gracias|pero|ahora|esto|tengo|sí|si|investiga|corrige|tarea|favor)\b/g) || []).length +
-    (/[áéíóúñü¿¡]/.test(sample) ? 2 : 0);
-  const english = (sample.match(/\b(?:the|a|an|that|how|for|with|without|want|can|could|should|review|please|but|now|this|have|yes)\b/g) || []).length;
-  if (spanish >= 2 && spanish > english) return "es";
-  if (english >= 2 && english > spanish) return "en";
-  return R_LANGUAGES.has(fallback) ? fallback : "en";
-}
-function rText(state, english, spanish) {
-  return state.language === "es" ? spanish : english;
-}
-function rCard(state, level, english, spanish, nextEnglish, nextSpanish = nextEnglish) {
-  const words = state.language === "es"
-    ? {Blocked: "Bloqueado", Ask: "Pregunta", Note: "Nota"}
-    : {Blocked: "Blocked", Ask: "Ask", Note: "Note"};
-  return (
-    words[level] +
-    ": " +
-    rOneLine(state.language === "es" ? spanish : english, 420) +
-    "\nNEXT: " +
-    rOneLine(state.language === "es" ? nextSpanish : nextEnglish, 1_800)
-  );
+// PMNM renders one language. A card is the level and what happened, then one
+// NEXT action; the line break between them is part of the contract.
+function rCard(level, english, next) {
+  return level + ": " + rOneLine(english, 420) + "\nNEXT: " + rOneLine(next, 1_800);
 }
 function rHookContext(eventName, text) {
   return {hookSpecificOutput: {hookEventName: eventName, additionalContext: rLimitText(text)}};
@@ -126,7 +108,7 @@ function rBaseState() {
   return {
     schema_version: R_SCHEMA_VERSION, phase: "ORIENT", language: "en", epoch: 1,
     prompt_epoch: 0, current_turn_hash: null, task_revision: null, project_revision: null,
-    task_id: null, task_hash: null, effort: null,
+    task_id: null, task_hash: null, effort: null, work_type: null,
     folder_path: null, folder_status: "unknown",
     project_name: null, project_slug: null, project_path: null, task_path: null,
     digest_shown_epoch: null, digest_prompt_epoch: null, human_response_epoch: null, digest_agreed_epoch: null,
@@ -137,11 +119,12 @@ function rBaseState() {
     pending_writes: [], reconciled_writes: [],
     mutation_count: 0, effect_count: 0, verification_count: 0, changed_target_hashes: [], observed_state_hashes: [], historical_state_hashes: [],
     source_reads_without_task: 0, plan_write_seq: null, plan_gate_seq: 0,
-    plan_file_hash: null, plan_target_hashes: [], verification_plan_hash: null, impact_plan_hash: null,
+    plan_file_hash: null, plan_target_hashes: [], verification_plan_hash: null, impact_plan_hash: null, expectations_plan_hash: null,
+    redo_contract_hash: null, work_change_authorized: false,
     workspace_scope_snapshot: null, workspace_digest_snapshot: null,
     verification_claim_mutation_count: null, verification_claim_effect_count: null,
     rules_file_hashes_written: [], investigation_stop_count: 0,
-    rule_basis_required: false, rule_basis_paths: [], rule_basis_observed_hashes: [], rule_basis_hash: null,
+    rule_basis_required: false, rule_basis_paths: [], rule_basis_observed_hashes: [], rule_basis_unmatched: [], rule_basis_hash: null,
     digest_rule_basis_hash: null, pending_rule_reads: [],
     last_check: null, last_verification: null,
     test_digest_audit_epoch: null,
@@ -193,13 +176,13 @@ function rValidateState(input) {
   if (!Array.isArray(state.reconciled_writes) || state.reconciled_writes.length > 16) throw new Error("state reconciled writes are invalid");
   const clean = rBaseState();
   for (const field of (
-    "source_reads_without_task task_revision project_revision last_check plan_write_seq plan_gate_seq plan_file_hash plan_target_hashes " +
-    "verification_plan_hash impact_plan_hash workspace_scope_snapshot workspace_digest_snapshot " +
+    "source_reads_without_task task_revision project_revision work_type last_check plan_write_seq plan_gate_seq plan_file_hash plan_target_hashes " +
+    "verification_plan_hash impact_plan_hash expectations_plan_hash redo_contract_hash work_change_authorized workspace_scope_snapshot workspace_digest_snapshot " +
     "permission_manifest_hash environment_plan_hash task_permission_epoch task_permissions project_permission_project_hash project_permissions task_capabilities project_capabilities declared_retry " +
     "verification_claim_mutation_count verification_claim_effect_count test_digest_epoch test_digest_prompt_epoch " +
     "test_digest_response_epoch test_digest_mutation_count test_digest_effect_count test_digest_verification_count " +
     "rules_file_hashes_written investigation_stop_count observed_state_hashes historical_state_hashes " +
-    "rule_basis_required rule_basis_paths rule_basis_observed_hashes rule_basis_hash digest_rule_basis_hash pending_rule_reads test_digest_audit_epoch"
+    "rule_basis_required rule_basis_paths rule_basis_observed_hashes rule_basis_unmatched rule_basis_hash digest_rule_basis_hash pending_rule_reads test_digest_audit_epoch"
   ).split(" ")) if (state[field] === undefined) state[field] = clean[field];
   for (const field of ["source_reads_without_task", "plan_gate_seq", "investigation_stop_count"]) {
     if (!Number.isInteger(state[field]) || state[field] < 0) throw new Error("state " + field + " is invalid");
@@ -214,6 +197,9 @@ function rValidateState(input) {
   if (state.plan_file_hash !== null && !R_HASH.test(state.plan_file_hash)) throw new Error("state plan hash is invalid");
   if (state.verification_plan_hash !== null && !R_HASH.test(state.verification_plan_hash)) throw new Error("state verification plan hash is invalid");
   if (state.impact_plan_hash !== null && !R_HASH.test(state.impact_plan_hash)) throw new Error("state impact plan hash is invalid");
+  if (state.expectations_plan_hash !== null && !R_HASH.test(state.expectations_plan_hash)) throw new Error("state expectations plan hash is invalid");
+  if (state.redo_contract_hash !== null && !R_HASH.test(state.redo_contract_hash)) throw new Error("state redo contract hash is invalid");
+  if (typeof state.work_change_authorized !== "boolean") throw new Error("state work change authority is invalid");
   if (state.permission_manifest_hash !== null && !R_HASH.test(state.permission_manifest_hash)) throw new Error("state permission manifest hash is invalid");
   if (state.environment_plan_hash !== null && !R_HASH.test(state.environment_plan_hash)) throw new Error("state environment plan hash is invalid");
   if (state.project_permission_project_hash !== null && !R_HASH.test(state.project_permission_project_hash)) throw new Error("state project permission binding is invalid");
@@ -250,20 +236,43 @@ function rValidateState(input) {
       throw new Error("bad declared retry");
     }
   }
+  if (state.pending_denied !== null) {
+    const entry = state.pending_denied;
+    if (entry && entry.approved_prompt_epoch === undefined) entry.approved_prompt_epoch = null;
+    if (
+      !entry || typeof entry !== "object" || Array.isArray(entry) ||
+      !["declare", "sensitive"].includes(entry.kind) ||
+      (entry.effect !== null && typeof entry.effect !== "string") ||
+      (entry.kind === "sensitive" && !R_SENSITIVE_EFFECTS.has(entry.effect)) ||
+      ![null, "implementation"].includes(entry.minimum_effect) ||
+      (entry.reason !== null && (typeof entry.reason !== "string" || entry.reason.length > 128)) ||
+      !R_HASH.test(entry.command_hash || "") ||
+      !Number.isInteger(entry.asked_prompt_epoch) || entry.asked_prompt_epoch < 0 ||
+      (entry.approved_prompt_epoch !== null && (
+        !Number.isInteger(entry.approved_prompt_epoch) ||
+        entry.approved_prompt_epoch <= entry.asked_prompt_epoch ||
+        entry.approved_prompt_epoch > state.prompt_epoch
+      )) ||
+      (entry.denied_turn_hash !== null && !R_HASH.test(entry.denied_turn_hash || ""))
+    ) {
+      throw new Error("bad pending denial");
+    }
+  }
   if (!rValidHashes(state.plan_target_hashes, R_MAX_PLAN_TARGETS)) throw new Error("state plan targets are invalid");
-  if (!rValidHashes(state.rules_file_hashes_written, 3)) throw new Error("state rules files are invalid");
+  if (!rValidHashes(state.rules_file_hashes_written, R_MAX_RULE_FILES)) throw new Error("state rules files are invalid");
   if (typeof state.rule_basis_required !== "boolean") throw new Error("state rule basis flag is invalid");
-  if (!Array.isArray(state.rule_basis_paths) || state.rule_basis_paths.length > 8 || state.rule_basis_paths.some((entry) => typeof entry !== "string" || !path.isAbsolute(entry))) {
+  if (!Array.isArray(state.rule_basis_paths) || state.rule_basis_paths.length > R_MAX_RULE_BASIS_PATHS || state.rule_basis_paths.some((entry) => typeof entry !== "string" || !path.isAbsolute(entry))) {
     throw new Error("state rule basis paths are invalid");
   }
-  if (!rValidHashes(state.rule_basis_observed_hashes, 8)) throw new Error("state observed rule basis is invalid");
+  if (!rValidHashes(state.rule_basis_observed_hashes, R_MAX_RULE_BASIS_PATHS)) throw new Error("state observed rule basis is invalid");
+  if (!rValidHashes(state.rule_basis_unmatched, R_MAX_RULE_BASIS_PATHS)) throw new Error("state unmatched rule basis is invalid");
   for (const field of ["rule_basis_hash", "digest_rule_basis_hash"]) {
     if (state[field] !== null && !R_HASH.test(state[field])) throw new Error("state rule basis hash is invalid");
   }
   if (!Array.isArray(state.pending_rule_reads) || state.pending_rule_reads.length > 8 || state.pending_rule_reads.some((entry) =>
     !entry || !R_HASH.test(entry.command_hash || "") ||
     (entry.tool_use_id !== null && entry.tool_use_id !== undefined && (typeof entry.tool_use_id !== "string" || !entry.tool_use_id || entry.tool_use_id.length > 256)) ||
-    !rValidHashes(entry.path_hashes, 8))) {
+    !rValidHashes(entry.path_hashes, R_MAX_RULE_BASIS_PATHS))) {
     throw new Error("state pending rule reads are invalid");
   }
   for (const field of ["workspace_scope_snapshot", "workspace_digest_snapshot"]) {
@@ -274,6 +283,7 @@ function rValidateState(input) {
   if (!rValidHashes(state.historical_state_hashes, R_MAX_PLAN_TARGETS)) throw new Error("state historical objectives are invalid");
   if (state.task_id !== null && (!R_SAFE_NAME.test(state.task_id) || state.task_id.length > 128)) throw new Error("state task id is invalid");
   if (state.effort !== null && !R_EFFORTS.has(state.effort)) throw new Error("state effort is invalid");
+  if (state.work_type !== null && !R_WORK_TYPES.has(state.work_type)) throw new Error("state work type is invalid");
   if (state.folder_path !== null && (!path.isAbsolute(state.folder_path) || R_CONTROL_CHARACTERS.test(state.folder_path))) {
     throw new Error("state folder path is invalid");
   }
@@ -295,7 +305,7 @@ function rAsk(state, kind, details = {}) {
 const R_TASK_FLOW_FIELDS = (
   "digest_shown_epoch digest_prompt_epoch human_response_epoch digest_agreed_epoch pending_denied declared_retry classified_retry " +
   "sensitive_allow pending_writes reconciled_writes mutation_count effect_count verification_count changed_target_hashes observed_state_hashes historical_state_hashes " +
-  "source_reads_without_task plan_write_seq plan_file_hash plan_target_hashes impact_plan_hash workspace_scope_snapshot workspace_digest_snapshot " +
+  "source_reads_without_task work_type work_change_authorized plan_write_seq plan_file_hash plan_target_hashes impact_plan_hash expectations_plan_hash redo_contract_hash workspace_scope_snapshot workspace_digest_snapshot " +
   "permission_manifest_hash environment_plan_hash task_permission_epoch task_permissions task_capabilities " +
   "verification_plan_hash verification_claim_mutation_count verification_claim_effect_count " +
   "rules_file_hashes_written investigation_stop_count last_verification test_digest_epoch test_digest_prompt_epoch " +
@@ -637,16 +647,11 @@ function rRefreshConfig(state, event, options = {}) {
 function rRecoveryCard(state, kind, target = null) {
   const pointer = kind === "pointer";
   const subject = pointer ? "host pointer" : "index.json";
-  const subjectEs = pointer ? "apuntador del host" : "index.json";
   const destination = state.folder_path ? " path=" + state.folder_path : " path=<the path they give>";
-  const destinationEs = state.folder_path ? " path=" + state.folder_path : " path=<la ruta que indique>";
   return rCard(
-    state,
     "Ask",
     "PMNM cannot safely read its " + subject + (target ? " at " + target : "") + ".",
-    "PMNM no puede leer de forma segura su " + subjectEs + (target ? " en " + target : "") + ".",
     "ask the human whether to preserve the invalid file and rebuild this configuration; stop until they answer; after yes: pmnm-guard folder" + destination,
-    "pregunta al humano si debe conservarse el archivo inválido y reconstruir esta configuración; detente hasta que responda; tras el sí: pmnm-guard folder" + destinationEs,
   );
 }
 function rEnterRecovery(state, configuration) {
@@ -663,41 +668,30 @@ function rEnterRecovery(state, configuration) {
 function rFolderCard(state, missing = false) {
   if (missing) {
     return rCard(
-      state,
       "Ask",
       "The PMNM folder is not at " + state.folder_path + " any more.",
-      "La carpeta PMNM ya no está en " + state.folder_path + ".",
       "ask the human whether the PMNM folder moved or was deleted; stop until they answer; then pmnm-guard folder path=<the path they give>",
-      "pregunta al humano si la carpeta PMNM se movió o se borró; detente hasta que responda; luego pmnm-guard folder path=<la ruta que indique>",
     );
   }
   return rCard(
-    state,
     "Ask",
     "PMNM needs one folder for its notes on this machine; none is set yet.",
-    "PMNM necesita una carpeta para sus notas en esta máquina; aún no hay ninguna.",
     "ask the human where to create the PMNM folder, suggest ~/PMNM; stop until they answer; then pmnm-guard folder path=<the path they give>",
-    "pregunta al humano dónde crear la carpeta PMNM, sugiere ~/PMNM; detente hasta que responda; luego pmnm-guard folder path=<la ruta que indique>",
   );
 }
 function rProjectCard(state, event) {
   const suggested = rSafeSlug(path.basename(rResolvePath(".", event)));
   return rCard(
-    state,
     "Ask",
     "This repository has no project folder in PMNM yet.",
-    "Este repositorio aún no tiene carpeta de proyecto en PMNM.",
     "ask the human the project name, suggest " + suggested + "; stop until they answer; then pmnm-guard project name=<the name they give>",
-    "pregunta al humano el nombre del proyecto, sugiere " + suggested + "; detente hasta que responda; luego pmnm-guard project name=<el nombre que indique>",
   );
 }
 function rNoTaskCard(state) {
   return rCard(
-    state,
     "Blocked",
     "No task is open, so PMNM does not write anything yet.",
-    "No hay tarea abierta, así que PMNM no escribe nada todavía.",
-    "pmnm-guard start task=<ticket-or-id> effort=<light|standard|high>",
+    "pmnm-guard start task=<ticket-or-id> effort=<light|standard|high> work=<implementation|advisory|verification>",
   );
 }
 function rTaskIdentityKey(value) {
@@ -744,7 +738,6 @@ function rTaskFolderCard(state) {
   const found = existing.length;
   const names = existing.join(", ");
   const candidates = found ? " Candidate task folders: " + names + "." : "";
-  const candidatesEs = found ? " Carpetas de tarea candidatas: " + names + "." : "";
   const tasks = state.project_path ? path.join(state.project_path, "tasks") : "";
   if (found) {
     rAsk(state, "task-identity", {candidates: existing.map((name) => rHash(path.join(tasks, name)))});
@@ -754,20 +747,12 @@ function rTaskFolderCard(state) {
   const adopt = found === 1
     ? "after yes, run exactly: mv " + rQ(path.join(tasks, existing[0])) + " " + dest + "; "
     : "after the human names one candidate, move that exact folder to " + dest + "; ";
-  const adoptEs = found === 1
-    ? "tras el sí, ejecuta exactamente: mv " + rQ(path.join(tasks, existing[0])) + " " + dest + "; "
-    : "cuando el humano indique una candidata, mueve esa carpeta exacta a " + dest + "; ";
   return rCard(
-    state,
     found ? "Ask" : "Note",
     "Task " + state.task_id + " has no folder yet at " + place + "." + candidates,
-    "La tarea " + state.task_id + " aún no tiene carpeta en " + place + "." + candidatesEs,
     found
       ? "ask the human whether " + names + " is this task; stop until they answer; " + adopt + "after no, run exactly: " + mkdir
       : "run exactly: " + mkdir,
-    found
-      ? "pregunta al humano si " + names + " es esta tarea; detente hasta que responda; " + adoptEs + "tras un no, ejecuta exactamente: " + mkdir
-      : "ejecuta exactamente: " + mkdir,
   );
 }
 function rTaskFile(state, name) {
@@ -791,6 +776,7 @@ function rRulePaths(state, existing = false) {
     state.folder_path && path.join(state.folder_path, R_GENERAL_RULES_FILE),
     state.project_path && path.join(state.project_path, R_PROJECT_RULES_FILE),
     state.project_path && path.join(state.project_path, R_PROJECT_KNOWLEDGE_FILE),
+    rTaskFile(state, R_TASK_RULES_FILE),
   ].filter((target) => target && (!existing || rFsType(target) === "file"));
 }
 function rRuleBasis(state) {
@@ -801,6 +787,7 @@ function rRuleBasis(state) {
     rTaskFile(state, R_TASK_PLAN_FILE),
     rTaskFile(state, R_TASK_VERIFY_FILE),
     rTaskFile(state, R_TASK_IMPACT_FILE),
+    rTaskFile(state, R_TASK_EXPECTATIONS_FILE),
     rTaskFile(state, R_TASK_PERMISSION_FILE),
   ].filter((target) => target && rFsType(target) === "file");
   return {
@@ -813,6 +800,7 @@ function rRequireRuleBasis(state) {
   state.rule_basis_paths = basis.paths;
   state.rule_basis_hash = basis.hash;
   state.rule_basis_observed_hashes = [];
+  state.rule_basis_unmatched = [];
   state.pending_rule_reads = [];
   state.rule_basis_required = basis.paths.length > 0;
   return basis;
@@ -826,14 +814,41 @@ function rRuleBasisCurrent(state) {
   return !state.rule_basis_required && basis.hash === state.rule_basis_hash;
 }
 function rRuleBasisCard(state) {
-  const paths = (state.rule_basis_paths.length ? state.rule_basis_paths : rRuleBasis(state).paths).join("; ");
+  const all = state.rule_basis_paths.length ? state.rule_basis_paths : rRuleBasis(state).paths;
+  const observed = new Set(state.rule_basis_observed_hashes || []);
+  const unmatched = new Set(state.rule_basis_unmatched || []);
+  const awaiting = new Set(
+    (state.pending_rule_reads || []).flatMap((entry) => entry.path_hashes || []),
+  );
+  // Name only what is still missing, and say what was observed for each one.
+  const pending = all.filter((target) => !observed.has(rHash(target)));
+  const described = pending.map((target) => {
+    const hash = rHash(target);
+    const note = rFsType(target) !== "file"
+      ? "absent"
+      : awaiting.has(hash)
+        ? "awaiting its result"
+        : unmatched.has(hash)
+          ? "no result carried its bytes"
+          : "not read";
+    return target + " (" + note + ")";
+  });
+  // Truncate by the card's real budget rather than by a count, and say so when it happens.
+  const shown = [];
+  let budget = 1_500;
+  for (const entry of described) {
+    if (shown.length && budget - entry.length - 2 < 0) break;
+    shown.push(entry);
+    budget -= entry.length + 2;
+  }
+  const rest = described.length - shown.length;
+  const list = shown.join("; ") + (rest > 0 ? "; and " + rest + " more not shown here" : "");
+  const done = all.length - pending.length;
   return rCard(
-    state,
     "Blocked",
-    "The active task's durable rules and context have not been reloaded for this session.",
-    "Las reglas y el contexto duradero de la tarea activa no se han recargado en esta sesión.",
-    "read these exact paths successfully: " + paths + "; then continue; changed rules require a revised Digest",
-    "lee correctamente estas rutas exactas: " + paths + "; continúa después; las reglas modificadas requieren un Digest revisado",
+    "The active task's durable rules and context have not been reloaded for this session; " +
+      done + " of " + all.length + " required paths are satisfied.",
+    "use a shell read that returns the complete bytes of these exact paths: " + list + "; then continue; changed rules require a revised Digest",
   );
 }
 function rRuleReadMatches(state, event, payload) {
@@ -891,6 +906,7 @@ function rSeedTask(state) {
       rCreateFile(
         rTaskFile(state, R_TASK_IMPACT_FILE),
         "# Impact\n\nMode: local\nReason: <why local, or use transitive>\n\n" +
+          "<!-- Transitive mode sections: ## Roots, ## Ledger, ## Dynamic boundaries. -->\n\n" +
           "## Non-functional dispositions\n\n" +
           R_IMPACT_DIMENSIONS.map((name) => "- " + name + ": <evidence/reason>").join("\n") +
           "\n\n## Omission audit\n\n- before-plan: <roots without plan.md>\n" +
@@ -904,6 +920,14 @@ function rSeedTask(state) {
       created,
     );
     if (state.effort === "high") {
+      rCreateFile(
+        rTaskFile(state, R_TASK_EXPECTATIONS_FILE),
+        "# Expectations\n\n| Expectation | Coverage | Source | Blast | Evidence or open boundary |\n|---|---|---|---|---|\n" +
+          "<!-- coverage: covered | partial | missing | unspecified -->\n" +
+          "<!-- source: requirement | later-comment | observed-code | conversation-decision -->\n" +
+          "<!-- blast: BR0 isolated .. BR4 systemic -->\n",
+        created,
+      );
       rCreateFile(
         rTaskFile(state, R_TASK_REVIEW_FILE),
         "# Independent review\n\n" +
@@ -1052,8 +1076,42 @@ function rPlan(state, event) {
   for (const entry of boundaries) if (!seenDeliverables.has(entry.id)) {
     add(1, "malformed", "orphan-boundary", "Add its matching deliverable.", entry.id);
   }
-  if (!targets.length && !states.length && !deliverables.length && !issues.length) {
-    add(1, "empty", "material-objective", "Add at least one file, changing state or deliverable objective.");
+  if (!state.work_type) {
+    add(
+      1,
+      "work-missing",
+      "explicit-work-type",
+      "Resume the task with `work=implementation`, `work=advisory` or `work=verification` before showing the Digest.",
+    );
+  }
+  if (state.work_type === "advisory" && (targets.length || states.length)) {
+    add(
+      1,
+      "work-mismatch",
+      "advisory-work-shape",
+      "Remove file and changing-state objectives. Use one paired `deliverable:` and `boundary:` for advisory work.",
+    );
+  }
+  if (state.work_type === "verification" && (targets.length || states.length || deliverables.length || boundaries.length)) {
+    add(
+      1,
+      "work-mismatch",
+      "verification-work-shape",
+      "Remove changing file, state and deliverable objectives. Verification work may preserve scope with only `excluded:` and `unchanged-state:` entries.",
+    );
+  }
+  const hasObjective = state.work_type === "verification"
+    ? excluded.length || invariants.length
+    : targets.length || states.length || deliverables.length;
+  if (!hasObjective && !issues.length) {
+    add(
+      1,
+      "empty",
+      "material-objective",
+      state.work_type === "verification"
+        ? "Add at least one `excluded:` or `unchanged-state:` objective."
+        : "Add at least one file, changing state or deliverable objective.",
+    );
   }
   if (targets.length + excluded.length + states.length + invariants.length + deliverables.length + boundaries.length > R_MAX_PLAN_TARGETS) {
     add(1, "too-large", "bounded-plan", "Reduce the plan to at most " + R_MAX_PLAN_TARGETS + " material entries.");
@@ -1065,76 +1123,55 @@ function rPlanCard(state, kind, detail = "") {
   const p = rTaskFile(state, R_TASK_PLAN_FILE) || R_TASK_PLAN_FILE;
   const v = rTaskFile(state, R_TASK_VERIFY_FILE) || R_TASK_VERIFY_FILE;
   const messages = {
-    missing: [`${p} is missing.`, `Falta ${p}.`],
-    invalid: [`${p} cannot be read safely.`, `${p} no se puede leer de forma segura.`],
-    empty: [`${p} has no file, state or deliverable objective.`, `${p} no tiene objetivos de archivo, estado ni entregable.`],
-    "missing-boundary": [`${p} is missing a paired boundary: ${detail}.`, `A ${p} le falta un límite emparejado: ${detail}.`],
-    malformed: [
-      `${p} has a malformed or non-local target line${detail ? `: ${detail}` : "."}`,
-      `${p} tiene una línea objetivo mal formada o no local${detail ? `: ${detail}` : "."}`,
-    ],
-    directory: [
-      `${detail || "A directory"} is a directory; ${p} targets individual files.`,
-      `${detail || "Un directorio"} es un directorio; ${p} apunta a archivos individuales.`,
-    ],
-    "state-noop": [
-      `${detail} is a no-op.`,
-      `${detail} es un no-op.`,
-    ],
-    duplicate: [
-      `${p} repeats ${detail}; combine every objective for that path into one line.`,
-      `${p} repite ${detail}; combina todos los objetivos de esa ruta en una línea.`,
-    ],
-    "too-large": [`${p} has too many targets.`, `${p} tiene demasiados objetivos.`],
-    stale: [`${p} was not written since the last Digest or redo.`, `${p} no se escribió desde el último Digest o redo.`],
-    changed: [`${p} changed after the Digest was shown.`, `${p} cambió después de mostrar el Digest.`],
-    scope: [`${detail || "A target"} is not in ${p}.`, `${detail || "Un objetivo"} no está en ${p}.`],
-    excluded: [`An excluded file changed: ${detail}.`, `Cambió un archivo excluido: ${detail}.`],
-    "no-change": [
-      "The agreed implementation plan has no changed target.",
-      "El plan de implementación acordado no tiene ningún objetivo modificado.",
-    ],
-    incomplete: [`The audit still has unchanged plan targets: ${detail}.`, `La auditoría aún tiene objetivos del plan sin cambios: ${detail}.`],
-    "state-unobserved": [
-      `State not observed: ${detail}.`,
-      `Estado no observado: ${detail}.`,
-    ],
-    "state-evidence": [
-      `Stale state evidence: ${detail}.`,
-      `Evidencia de estado obsoleta: ${detail}.`,
-    ],
-    unchecked: [`The audit still has objectives not marked complete: ${detail}.`, `La auditoría aún tiene objetivos sin marcar como completos: ${detail}.`],
-    workspace: [
-      `The workspace changed after the first Digest outside the agreed plan: ${detail}.`,
-      `El espacio de trabajo cambió después del primer Digest fuera del plan acordado: ${detail}.`,
-    ],
+    missing: `${p} is missing.`,
+    invalid: `${p} cannot be read safely.`,
+    empty: `${p} has no file, state or deliverable objective.`,
+    "missing-boundary": `${p} is missing a paired boundary: ${detail}.`,
+    malformed: `${p} has a malformed or non-local target line${detail ? `: ${detail}` : "."}`,
+    directory: `${detail || "A directory"} is a directory; ${p} targets individual files.`,
+    "state-noop": `${detail} is a no-op.`,
+    duplicate: `${p} repeats ${detail}; combine every objective for that path into one line.`,
+    "too-large": `${p} has too many targets.`,
+    "work-missing": "The task has no explicit work type.",
+    "work-mismatch": "The plan contradicts the task work type.",
+    stale: `${p} and the bound impact or expectations contract have not changed since the last Digest or redo.`,
+    changed: `${p} changed after the Digest was shown.`,
+    scope: `${detail || "A target"} is not in ${p}.`,
+    excluded: `An excluded file changed: ${detail}.`,
+    "no-change": "The agreed implementation plan has no changed target.",
+    incomplete: `The audit still has unchanged plan targets: ${detail}.`,
+    "state-unobserved": `State not observed: ${detail}.`,
+    "state-evidence": `Stale state evidence: ${detail}.`,
+    unchecked: `The audit still has objectives not marked complete: ${detail}.`,
+    workspace: `The workspace changed after the first Digest outside the agreed plan: ${detail}.`,
   };
-  const [english, spanish] = messages[kind] || messages.invalid;
+  const english = messages[kind] || messages.invalid;
   const revise = ["workspace", "excluded", "scope", "changed"].includes(kind);
   const missing = ["incomplete", "no-change", "state-unobserved", "state-evidence"].includes(kind);
-  const next = revise
+  const next = kind === "work-missing"
+    ? `run pmnm-guard start task=${state.task_id || "<ticket-or-id>"} effort=${state.effort || "<light|standard|high>"} work=<implementation|advisory|verification>`
+    : kind === "work-mismatch"
+      ? state.work_type === "verification"
+        ? `remove changing objectives from ${p}, then keep only excluded: and unchanged-state: entries`
+        : `remove file and changing-state objectives from ${p}, then use paired deliverable: and boundary: entries`
+      : revise
     ? `run pmnm-guard redo first; then investigate, update ${p}, show the revised Digest, and run pmnm-guard digest`
     : kind === "unchecked"
       ? `confirm the objective's result and evidence, finish anything missing, then mark it [x] in ${p}`
       : missing
         ? `finish the missing work; if it will not be done, run pmnm-guard redo first, then revise ${p}, show the revised Digest, and run pmnm-guard digest`
         : `list files, states or paired deliverables in ${p}; put checks in ${v}; show the Digest; run pmnm-guard digest`;
-  const nextEs = revise
-    ? `ejecuta primero pmnm-guard redo; luego investiga, actualiza ${p}, muestra el Digest revisado y ejecuta pmnm-guard digest`
-    : kind === "unchecked"
-      ? `confirma el resultado y la evidencia del objetivo, termina lo que falte y luego márcalo [x] en ${p}`
-      : missing
-        ? `termina el trabajo faltante; si no se hará, ejecuta primero pmnm-guard redo, luego revisa ${p}, muestra el Digest revisado y ejecuta pmnm-guard digest`
-        : `lista archivos, estados o entregables emparejados en ${p}; pon comprobaciones en ${v}; muestra el Digest; ejecuta pmnm-guard digest`;
   const level = ["incomplete", "unchecked", "workspace", "excluded", "no-change"].includes(kind) ? "Ask" : "Blocked";
-  return rCard(state, level, english, spanish, next, nextEs);
+  return rCard( level, english, next);
 }
 function rVerifyShape(state, plan = null) {
   const file = rReadTask(state, R_TASK_VERIFY_FILE);
-  if (file.status !== "ready") return {status: file.status, example: false, unchanged: false, stateProblem: null, hash: null};
+  if (file.status !== "ready") return {status: file.status, example: false, unchanged: false, stateProblem: null, missingKinds: [], hash: null};
   const example = file.content.match(/^-\s*example:\s*(\S.+)$/im)?.[1].trim() || "";
   const unchanged = file.content.match(/^-\s*unchanged:\s*(\S.+)$/im)?.[1].trim() || "";
   const claims = new Map();
+  // The card has to name the kinds this plan carries, so the missing ones travel with the problem.
+  const missingKinds = new Set();
   let stateProblem = null;
   for (const rawLine of file.content.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -1162,13 +1199,25 @@ function rVerifyShape(state, plan = null) {
     for (const [kind, objective, value] of expected) {
       const key = kind + ":" + objective.id;
       planned.add(key);
-      if (!claims.has(key)) stateProblem ||= "missing " + objective.id;
-      else if (value !== null && claims.get(key) !== value) stateProblem ||= objective.id;
+      if (!claims.has(key)) {
+        stateProblem ||= "missing " + objective.id;
+        missingKinds.add(kind);
+      } else if (value !== null && claims.get(key) !== value) {
+        stateProblem ||= objective.id;
+        missingKinds.add(kind);
+      }
     }
     for (const key of claims.keys()) if (!planned.has(key)) stateProblem ||= "unplanned " + key.split(":").slice(1).join(":");
   }
   const normalized = {example, unchanged, claims: [...claims].sort(([left], [right]) => left.localeCompare(right))};
-  return {status: stateProblem ? "invalid" : "ready", example: Boolean(example), unchanged: Boolean(unchanged), stateProblem, hash: rHash(JSON.stringify(normalized))};
+  return {
+    status: stateProblem ? "invalid" : "ready",
+    example: Boolean(example),
+    unchanged: Boolean(unchanged),
+    stateProblem,
+    missingKinds: [...missingKinds],
+    hash: rHash(JSON.stringify(normalized)),
+  };
 }
 
 const R_VERIFICATION_PLAN_FIELDS = [
@@ -1245,7 +1294,6 @@ function rVerificationPlanCard(state, shape, changed = false) {
   const missing = (shape.missing || []).slice(0, 5).join(", ");
   const invalid = shape.status === "invalid";
   return rCard(
-    state,
     "Blocked",
     changed
       ? "The verification plan changed after the Digest."
@@ -1253,16 +1301,8 @@ function rVerificationPlanCard(state, shape, changed = false) {
         ? "The verification plan contains duplicate fields or cannot be read unambiguously."
         : "The actionable verification plan is incomplete" + (missing ? ": " + missing + "." : "."),
     changed
-      ? "El plan de verificación cambió después del Digest."
-      : invalid
-        ? "El plan de verificación contiene campos duplicados o no puede leerse sin ambigüedad."
-        : "El plan de verificación accionable está incompleto" + (missing ? ": " + missing + "." : "."),
-    changed
       ? "run pmnm-guard redo first; then update " + target + ", show the revised Digest, and run pmnm-guard digest"
       : "write contract, request-case, preserved-case, entry, environment, actor, data, steps, expect, capability, evidence, and cleanup in " + target + "; use not-applicable or unavailable only with a reason; then show the Digest and run pmnm-guard digest",
-    changed
-      ? "ejecuta primero pmnm-guard redo; luego actualiza " + target + ", muestra el Digest revisado y ejecuta pmnm-guard digest"
-      : "escribe contract, request-case, preserved-case, entry, environment, actor, data, steps, expect, capability, evidence y cleanup en " + target + "; usa not-applicable o unavailable sólo con una razón; luego muestra el Digest y ejecuta pmnm-guard digest",
   );
 }
 function rImpactContract(state, plan, {final = false} = {}) {
@@ -1332,7 +1372,7 @@ function rImpactContract(state, plan, {final = false} = {}) {
   const dupe=(a,i)=>new Set(a.map(x=>x[i].toLowerCase())).size!==a.length;
   if (dupe(rs, 1) || dupe(work, 0) || dupe(es, 0)) add(1,I,P+"duplicate","Keep names unique.");
   if (mode === "transitive") {
-    if (!rs.length) add(1,C,P+"roots","Add a root independent of plan.md.");
+    if (!rs.length) add(1,C,P+"roots","Add a root under `## Roots` independent of plan.md.");
     if (!work.length) add(1,C,P+"ledger","Add a ledger row.");
     const nodes = new Set(work.map((row) => row[0].toLowerCase()));
     for (const [line, name] of rs) if (!nodes.has(name.toLowerCase())) add(line,C,P+"root-row","Add its ledger row.",name);
@@ -1344,16 +1384,83 @@ function rImpactContract(state, plan, {final = false} = {}) {
     es, no, R_IMPACT_DIMENSIONS.map((name) => [name, dims.get(name) || null]), before];
   return {status: errs.length ? "incomplete" : "ready", hash: rHash(JSON.stringify(contract)), issues:errs};
 }
+function rExpectations(state) {
+  // Required only at High effort. The unit is the expectation, so a row states what is expected,
+  // what the current implementation covers, where the expectation came from, its blast radius, and
+  // either its evidence or the boundary that is still open.
+  if (state.effort !== "high") return {status: "not-required", hash: null, issues: []};
+  const file = rReadTask(state, R_TASK_EXPECTATIONS_FILE);
+  const issues = [];
+  const add = (...args) => issues.push(rPreflightIssue(R_TASK_EXPECTATIONS_FILE, ...args));
+  if (file.status !== "ready") {
+    add(1, file.status, "expectations.md-readable", "Create expectations.md before the Digest.");
+    return {status: file.status, hash: null, issues};
+  }
+  const rows = [];
+  let line = 0;
+  for (const raw of file.content.split(/\r?\n/)) {
+    line += 1;
+    const text = raw.trim();
+    if (!text.startsWith("|") || /^\|[\s|:-]+\|$/.test(text)) continue;
+    const cells = text.slice(1, text.endsWith("|") ? -1 : undefined).split("|").map((cell) => cell.trim());
+    if (cells.length !== 5) {
+      add(line, "malformed", "expectations.row", "Use five cells: expectation, coverage, source, blast, evidence.");
+      continue;
+    }
+    const [expectation, coverage, source, blast, evidence] = cells;
+    if (/^expectation$/i.test(expectation)) continue;
+    if (!expectation) add(line, "incomplete", "expectations.expectation", "Name the expectation.");
+    if (!R_EXPECTATION_COVERAGE.has(coverage.toLowerCase())) {
+      add(line, "invalid", "expectations.coverage", "Use covered, partial, missing or unspecified.", coverage);
+    }
+    if (!R_EXPECTATION_SOURCES.has(source.toLowerCase())) {
+      add(line, "invalid", "expectations.source", "Use requirement, later-comment, observed-code or conversation-decision.", source);
+    }
+    if (!/^BR[0-4]$/i.test(blast)) add(line, "invalid", "expectations.blast", "Use BR0 through BR4.", blast);
+    if (!evidence) add(line, "incomplete", "expectations.evidence", "State the evidence or the open boundary.");
+    rows.push([expectation, coverage.toLowerCase(), source.toLowerCase(), blast.toUpperCase(), evidence]);
+  }
+  if (!rows.length) add(1, "empty", "expectations.rows", "Add one row per expectation.");
+  if (issues.length) return {status: issues[0].status, hash: null, issues};
+  return {status: "ready", hash: rHash(JSON.stringify(rows)), issues, rows};
+}
+function rExpectationsCard(state, expectations, changed = false) {
+  const target = rTaskFile(state, R_TASK_EXPECTATIONS_FILE) || R_TASK_EXPECTATIONS_FILE;
+  const first = expectations.issues?.[0];
+  if (state.work_type === "verification" && !state.plan_file_hash) {
+    return rCard(
+      "Blocked",
+      changed
+        ? "High verification expectations.md changed after the recorded check."
+        : "High effort needs " + R_TASK_EXPECTATIONS_FILE + (first ? ": " + first.rule + "." : "."),
+      "complete " + target + " with one row per expectation, rerun the requested check, then pmnm-guard verified result=<passed|failed|partial|blocked> how=<command|inspection|human>",
+    );
+  }
+  const redo = Boolean(state.plan_file_hash);
+  return rCard(
+    "Blocked",
+    changed
+      ? "The agreed expectations.md changed."
+      : "High effort needs " + R_TASK_EXPECTATIONS_FILE + (first ? ": " + first.rule + "." : "."),
+    changed
+      ? "restore the exact agreed contents and retry, or run pmnm-guard redo first, revise " + target + ", show the revised Digest, and run pmnm-guard digest"
+      : (redo ? "restore the exact agreed contents and retry, or run pmnm-guard redo first, revise " : "complete ") + target + " with one row per expectation: expectation, coverage, source, blast, evidence, then show the Digest and run pmnm-guard digest",
+  );
+}
 function rImpactCard(state, changed = false) {
   const target = rTaskFile(state, R_TASK_IMPACT_FILE) || R_TASK_IMPACT_FILE;
+  // The receipt needs the current verification fingerprint, so the card carries the exact value
+  // rather than making the agent read private task state to find a required field.
+  const current = state.last_verification?.fingerprint?.hash;
+  const fingerprint = current
+    ? " set '- final-fingerprint: " + current + "'"
+    : " set the final fingerprint after a passed pmnm-guard verified";
   const card = changed
-    ? ["Agreed impact changed.", "Cambió el impacto acordado.",
-      "pmnm-guard redo; update " + target + "; show revised Digest; pmnm-guard digest",
-      "pmnm-guard redo; actualiza " + target + "; muestra Digest revisado; pmnm-guard digest"]
-    : ["Impact incomplete.", "Impacto incompleto.",
-      "complete " + target + " with evidence and current fingerprint; retry pmnm-guard done",
-      "completa " + target + " con evidencia y fingerprint actual; repite pmnm-guard done"];
-  return rCard(state, "Blocked", ...card);
+    ? ["Agreed impact changed.",
+      "pmnm-guard redo; update " + target + "; show revised Digest; pmnm-guard digest"]
+    : ["Impact incomplete.",
+      "complete " + target + " with evidence;" + fingerprint + "; retry pmnm-guard done"];
+  return rCard( "Blocked", ...card);
 }
 
 const R_ENVIRONMENT_PLAN_FIELDS = [
@@ -1415,16 +1522,11 @@ function rEnvironmentPlan(state, required) {
 function rEnvironmentPlanCard(state, changed = false) {
   const target = rTaskFile(state, R_TASK_ENVIRONMENT_FILE) || R_TASK_ENVIRONMENT_FILE;
   return rCard(
-    state,
     "Blocked",
     changed ? "The operational environment preflight changed after the Digest." : "An environment effect has no complete operational preflight.",
-    changed ? "El preflight operativo del entorno cambió después del Digest." : "Un efecto de entorno no tiene un preflight operativo completo.",
     changed
       ? "run pmnm-guard redo; update " + target + ", show the revised Digest, then pmnm-guard digest"
       : "discover configuration and indirection; check resources, ownership and health; choose reuse or start-only-missing; record conflicts and cleanup in " + target + "; then show the Digest",
-    changed
-      ? "ejecuta pmnm-guard redo; actualiza " + target + ", muestra el Digest revisado y luego ejecuta pmnm-guard digest"
-      : "descubre configuración e indirecciones; comprueba recursos, propietario y salud; decide reutilizar o iniciar sólo lo faltante; registra conflictos y limpieza en " + target + "; luego muestra el Digest",
   );
 }
 function rPermissionManifest(state, event, plan = null) {
@@ -1547,31 +1649,23 @@ function rPermissionManifestCard(state, manifest, changed = false) {
   let lines;
   if (manifest.status === "secret") lines = [
     "Possible " + manifest.secret + " secret in " + target + ".",
-    "Posible secreto " + manifest.secret + " en " + target + ".",
       "remove the value, leave a reference, show the Digest",
-      "quita el valor, deja una referencia, muestra el Digest",
   ];
   else if (manifest.status === "state-objective") {
     const redo = changed ? "pmnm-guard redo; " : "";
     lines = [
       manifest.detail + " has no exact operation.",
-      manifest.detail + " no tiene operación exacta.",
       redo + "bind objective=" + manifest.detail + " in " + target + ", show Digest, run pmnm-guard digest",
-      redo + "vincula objective=" + manifest.detail + " en " + target + ", muestra el Digest, ejecuta pmnm-guard digest",
     ];
   } else if (changed) lines = [
     "Permission forecast changed: " + target + ".",
-    "El pronóstico de permisos cambió: " + target + ".",
     "pmnm-guard redo; review the file, show the revised Digest, run pmnm-guard digest",
-    "pmnm-guard redo; revisa el archivo, muestra el Digest revisado, ejecuta pmnm-guard digest",
   ];
   else lines = [
     "Invalid pmnm.permissions/v1 file: " + target + ".",
-    "Archivo pmnm.permissions/v1 inválido: " + target + ".",
     "fix the file, show the Digest, run pmnm-guard digest",
-    "corrige el archivo, muestra el Digest, ejecuta pmnm-guard digest",
   ];
-  return rCard(state, "Blocked", ...lines);
+  return rCard( "Blocked", ...lines);
 }
 function rWriteTaskPreflight(state, issues, normalizations = []) {
   const target = rTaskFile(state, R_TASK_PREFLIGHT_FILE);
@@ -1605,28 +1699,24 @@ function rTaskPreflightCard(state, target, issues) {
   const summary = issues.slice(0, 4).map((entry) => {
     const status = entry.status === "state-noop" ? "no-op" : entry.status.replaceAll("-", " ");
     const rule = entry.rule.replaceAll("-", " ");
-    const surface = entry.source === R_TASK_VERIFY_FILE ? "verification plan " : "";
+    const surface = entry.source === R_TASK_VERIFY_FILE
+      ? "verification plan " + entry.source + " "
+      : entry.source + " ";
     return surface + status + " " + rule + (entry.detail ? " (" + entry.detail + ")" : "");
   }).join("; ");
   return rCard(
-    state,
     "Blocked",
     "Task preflight found " + issues.length + " issues: " + summary + ". Full report: " + target + ".",
-    "El preflight de la tarea encontró " + issues.length + " problemas: " + summary + ". Reporte completo: " + target + ".",
     "fix every issue in " + target + ", then show the Digest and run pmnm-guard digest once",
-    "corrige todos los problemas de " + target + ", luego muestra el Digest y ejecuta pmnm-guard digest una sola vez",
   );
 }
 function rStateOperationCard(state) {
   const plan = rTaskFile(state, R_TASK_PLAN_FILE) || R_TASK_PLAN_FILE;
   const permissions = rTaskFile(state, R_TASK_PERMISSION_FILE) || R_TASK_PERMISSION_FILE;
   return rCard(
-    state,
     "Blocked",
     "Unplanned state operation.",
-    "Operación de estado no planeada.",
     "pmnm-guard redo; add it to " + plan + " and " + permissions + ", show Digest, run pmnm-guard digest",
-    "pmnm-guard redo; agrégala a " + plan + " y " + permissions + ", muestra el Digest, ejecuta pmnm-guard digest",
   );
 }
 function rBoundContractProblem(state, event) {
@@ -1646,6 +1736,10 @@ function rBoundContractProblem(state, event) {
   if (impact.status !== "not-required" && (impact.status !== "ready" || impact.hash !== state.impact_plan_hash)) {
     return rImpactCard(state, impact.status === "ready");
   }
+  const expectations = rExpectations(state);
+  if (expectations.status !== "not-required" && (expectations.status !== "ready" || expectations.hash !== state.expectations_plan_hash)) {
+    return rExpectationsCard(state, expectations, expectations.status === "ready");
+  }
   const permissions = rPermissionManifest(state, event, plan);
   if (permissions.status !== "ready" || permissions.hash !== state.permission_manifest_hash) {
     return rPermissionManifestCard(state, permissions, true);
@@ -1663,32 +1757,29 @@ function rShapeCard(state, shape, stale = false) {
   const verificationPath = rTaskFile(state, R_TASK_VERIFY_FILE) || R_TASK_VERIFY_FILE;
   if (stale) {
     return rCard(
-      state,
       "Blocked",
       verificationPath + " claims predate the latest project change.",
-      "Las afirmaciones de " + verificationPath + " son anteriores al último cambio del proyecto.",
       "write fresh example: and unchanged: observations in " + verificationPath + " after the latest change, then retry pmnm-guard verified",
-      "escribe observaciones nuevas example: y unchanged: en " + verificationPath + " después del último cambio, luego repite pmnm-guard verified",
     );
   }
   if (shape.stateProblem) {
+    // Name the kinds the plan actually carries, so following this NEXT literally can succeed.
+    const kinds = (shape.missingKinds || []).map((kind) => kind + ":");
+    const named = kinds.length
+      ? kinds.length === 1 ? kinds[0] : kinds.slice(0, -1).join(", ") + " and " + kinds[kinds.length - 1]
+      : "the planned";
+    const stateKind = kinds.some((kind) => kind.startsWith("state:") || kind.startsWith("unchanged-state:"));
     return rCard(
-      state,
       "Blocked",
-      "State evidence differs from plan: " + shape.stateProblem + ".",
-      "La evidencia de estado difiere del plan: " + shape.stateProblem + ".",
-      "record exact state: and unchanged-state: lines in " + verificationPath + "; retry pmnm-guard verified",
-      "registra líneas state: y unchanged-state: exactas en " + verificationPath + "; repite pmnm-guard verified",
+      (stateKind ? "State evidence" : "Evidence") + " differs from plan: " + shape.stateProblem + ".",
+      "record exact " + named + " lines in " + verificationPath + "; retry pmnm-guard verified",
     );
   }
   const missing = [!shape.example && "example:", !shape.unchanged && "unchanged:"].filter(Boolean).join(" and ");
   return rCard(
-    state,
     "Blocked",
     verificationPath + " is missing " + (missing || "the required evidence lines") + ".",
-    "A " + verificationPath + " le falta " + (missing || "las líneas de evidencia requeridas") + ".",
     "write '- example: <task case> → <observed>' and '- unchanged: <preserved case> → <observed>' in " + verificationPath + ", then retry pmnm-guard verified",
-    "escribe '- example: <caso de tarea> → <observado>' y '- unchanged: <caso preservado> → <observado>' en " + verificationPath + ", luego repite pmnm-guard verified",
   );
 }
 function rScopeProblem(state, event, resolution) {
@@ -1696,7 +1787,7 @@ function rScopeProblem(state, event, resolution) {
   if (plan.status !== "ready") return rPlanCard(state, plan.status, plan.detail);
   if (plan.hash !== state.plan_file_hash) return rPlanCard(state, "changed");
   if (!resolution.resolvable || !resolution.targets.length) {
-    return rPlanCard(state, "scope", rText(state, "This command's write target", "El destino de este comando"));
+    return rPlanCard(state, "scope", "This command's write target");
   }
   const unexpected = resolution.targets.filter(
     (target) => !plan.targets.some((planned) => planned.hash === rHash(target.path)),
@@ -1715,26 +1806,34 @@ function rScopeProblem(state, event, resolution) {
 function rReadsProjectSource(classification) {
   return classification?.boundary === "project";
 }
-function rRouteReadCard(state, repeated) {
+function rOpenTask(state) {
+  return Boolean(state.task_id && !state.completion);
+}
+function rRouteReadCard() {
   return rCard(
-    state,
-    repeated ? "Blocked" : "Note",
-    repeated
-      ? "Project source was read again without an open task."
-      : "Project source was read without an open task.",
-    repeated
-      ? "Se volvió a leer código del proyecto sin una tarea abierta."
-      : "Se leyó código del proyecto sin una tarea abierta.",
-    "pmnm-guard start task=<ticket-or-id> effort=<light|standard|high>",
+    "Blocked",
+    "Project source cannot be read before a task is open.",
+    "pmnm-guard start task=<ticket-or-id> effort=<light|standard|high> work=<implementation|advisory|verification>",
   );
 }
+function rFileReadBoundary(state, event) {
+  const input = event.tool_input && typeof event.tool_input === "object" ? event.tool_input : {};
+  const named = input.file_path || input.path;
+  const cwd = rCanonical(rResolvePath(".", event));
+  if (!cwd) return null;
+  // A pattern search with no directory searches the working directory itself.
+  const target = typeof named === "string" && named ? rCanonical(rResolvePath(named, event)) : cwd;
+  const search = event.tool_name === "Glob" || event.tool_name === "Grep";
+  if (!target || (!rInside(target, cwd) && !(search && rInside(cwd, target)))) return null;
+  if (state.folder_path && rInside(target, rCanonical(state.folder_path) || state.folder_path)) return null;
+  return "project";
+}
 function rRouteBeforeRead(state, event, options, classification) {
-  const openTask = Boolean(state.task_id && !state.completion);
-  if (!openTask) {
+  if (!rOpenTask(state)) {
+    // No grace: the project is not read before the task that will record why.
     if (!rReadsProjectSource(classification)) return null;
     state.source_reads_without_task += 1;
-    const repeated = state.source_reads_without_task > 1;
-    return {deny: repeated, card: rRouteReadCard(state, repeated)};
+    return {deny: true, card: rRouteReadCard()};
   }
   const unavailable = rFolderIssue(state, event, options);
   if (unavailable) return {deny: true, card: unavailable};
@@ -1743,6 +1842,7 @@ function rRouteBeforeRead(state, event, options, classification) {
     return {deny: true, card: rTaskFolderCard(state)};
   }
   if (state.rule_basis_required) {
+    if (classification.reason === "file-tool-read") return {deny: true, card: rRuleBasisCard(state)};
     const payload = rPayload(event);
     const matches = rRuleReadMatches(state, event, payload);
     if (!matches.length) return {deny: true, card: rRuleBasisCard(state)};
@@ -1756,28 +1856,9 @@ function rRouteBeforeRead(state, event, options, classification) {
   return null;
 }
 function rRejectedCard(state, reason, next) {
-  const spanishReasons = {
-    "unknown receipt": "recibo desconocido",
-    "no task open": "no hay tarea abierta",
-    "no Digest shown": "no se mostró Digest",
-    "Digest not agreed": "Digest no acordado",
-    "stale, before last redo": "anterior al último redo",
-    "human answer not observed": "respuesta humana no observada",
-    "folder not requested": "carpeta no solicitada",
-    "project not requested": "proyecto no solicitado",
-    "nothing denied to classify": "nada denegado que clasificar",
-    "nothing denied to declare": "nada denegado que declarar",
-    "declaration contradicts shell write": "la declaración contradice una escritura visible del shell",
-    "nothing to allow": "nada que permitir",
-  };
-  const localized = state.language === "es"
-    ? spanishReasons[reason] || reason.replace("missing field ", "falta el campo ").replace("bad value ", "valor inválido en ")
-    : reason;
   return rCard(
-    state,
     "Blocked",
     "Receipt rejected: " + reason + ".",
-    "Recibo rechazado: " + localized + ".",
     next,
   );
 }
@@ -1828,7 +1909,7 @@ function rAliasControl(control) {
     const task = fields.task || fields.activity;
     if (!task) throw new Error("missing field task");
     if (!fields.effort) throw new Error("missing field effort");
-    return mapped("start", {task, effort: fields.effort});
+    return mapped("start", {task, effort: fields.effort, work: fields.work || "implementation"});
   }
   if (alias === "checkpoint") return mapped("digest");
   if (alias === "align") {
@@ -1860,14 +1941,14 @@ function rReceiptNext(action, state) {
     verified: "pmnm-guard verified result=<passed|failed|partial|blocked> how=<command|inspection|human>",
     done: "pmnm-guard done audit=<passed|partial|blocked>",
   };
-  if (action === "start") return `pmnm-guard start task=${state.task_id || "<ticket-or-id>"} effort=${state.effort || "<light|standard|high>"}`;
+  if (action === "start") return `pmnm-guard start task=${state.task_id || "<ticket-or-id>"} effort=${state.effort || "<light|standard|high>"} work=${state.work_type || "<implementation|advisory|verification>"}`;
   if (action === "allow") return "pmnm-guard allow effect=" + (state.pending_denied?.effect || "<effect>");
   return fixed[action] || "pmnm-guard status";
 }
-function rStateCard(state, event = null) {
+function rStateCard(state, event = null, options = {}) {
   if (state.folder_status === "missing") return rFolderCard(state, false);
   if (state.folder_status === "folder-missing") return rFolderCard(state, true);
-  if (state.folder_status === "unreadable") return rRecoveryCard(state, "pointer", rPointerPath());
+  if (state.folder_status === "unreadable") return rRecoveryCard(state, "pointer", rPointerPath(options));
   if (state.folder_status === "index-unreadable") return rRecoveryCard(state, "index", path.join(state.folder_path, R_INDEX_FILE));
   if (state.pending_question?.kind === "project" && event) return rProjectCard(state, event);
   if (!state.task_id) return rNoTaskCard(state);
@@ -1875,21 +1956,15 @@ function rStateCard(state, event = null) {
   if (state.pending_question?.kind === "digest") {
     if (state.human_response_epoch !== null) {
       return rCard(
-        state,
         "Note",
         "The human answered the Digest for " + state.task_id + ".",
-        "El humano respondió al Digest de " + state.task_id + ".",
         "if the human agreed as shown: pmnm-guard agreed; if anything changed: show the revised Digest, then pmnm-guard digest",
-        "si aceptó tal cual: pmnm-guard agreed; si cambió algo: muestra el Digest corregido y luego pmnm-guard digest",
       );
     }
     return rCard(
-      state,
       "Blocked",
       "The Digest for " + state.task_id + " is waiting for the human's answer.",
-      "El Digest de " + state.task_id + " espera la respuesta del humano.",
       "stop here; no more actions until the human answers",
-      "detente aquí; ninguna acción más hasta que el humano responda",
     );
   }
   if (state.task_path && rFsType(state.task_path) === "missing" && !state.task_folder_noted) {
@@ -1897,45 +1972,57 @@ function rStateCard(state, event = null) {
   }
   if (state.digest_agreed_epoch === state.epoch) {
     return rCard(
-      state,
       "Note",
       "Digest for " + state.task_id + " is agreed.",
-      "El Digest de " + state.task_id + " está acordado.",
       "continue within the Digest; pmnm-guard redo if it no longer holds",
-      "continúa dentro del Digest; pmnm-guard redo si ya no se sostiene",
+    );
+  }
+  if (state.work_type === "verification") {
+    return rCard(
+      "Note",
+      "Task " + state.task_id + " is open for exact non-mutating verification without an implementation Digest.",
+      "run only the requested read or check, record its literal evidence, then pmnm-guard verified",
     );
   }
   const planPath = rTaskFile(state, R_TASK_PLAN_FILE) || R_TASK_PLAN_FILE;
   return rCard(
-    state,
     "Note",
     "Task " + state.task_id + " is open and its plan Digest at " + planPath + " is not agreed.",
-    "La tarea " + state.task_id + " está abierta y su Digest de plan en " + planPath + " no está acordado.",
     "investigate, show the plan Digest for " + planPath + ", then pmnm-guard digest",
-    "investiga, muestra el Digest de plan de " + planPath + " y luego ejecuta pmnm-guard digest",
   );
 }
 function rTaskTransitionCard(state) {
   const requested = state.pending_question?.task || "the requested task";
   const verified = rVerifiedNow(state);
   return rCard(
-    state,
     "Ask",
     verified
       ? "Unfinished work remains in task " + state.task_id + " before switching to " + requested + "; current verification remains recorded."
       : "Task " + state.task_id + " has unfinished, unverified work before switching to " + requested + ".",
-    verified
-      ? "Aún queda trabajo pendiente en " + state.task_id + " antes de cambiar a " + requested + "; su verificación vigente sigue registrada."
-      : "La tarea " + state.task_id + " tiene trabajo pendiente sin verificar antes de cambiar a " + requested + ".",
-    "ask the human whether to pause " + state.task_id + " and switch to " + requested + "; stop until they answer; after yes, repeat pmnm-guard start task=" + requested + " effort=" + (state.pending_question?.effort || state.effort || "standard") + "; after no, repeat pmnm-guard start task=" + state.task_id + " effort=" + (state.effort || "standard"),
-    "pregunta al humano si debe pausar " + state.task_id + " y cambiar a " + requested + "; detente hasta que responda; tras el sí, repite pmnm-guard start task=" + requested + " effort=" + (state.pending_question?.effort || state.effort || "standard") + "; tras el no, repite pmnm-guard start task=" + state.task_id + " effort=" + (state.effort || "standard"),
+    "ask the human whether to pause " + state.task_id + " and switch to " + requested + "; stop until they answer; after yes, repeat pmnm-guard start task=" + requested + " effort=" + (state.pending_question?.effort || state.effort || "standard") + " work=" + (state.pending_question?.work || "<implementation|advisory|verification>") + "; after no, repeat pmnm-guard start task=" + state.task_id + " effort=" + (state.effort || "standard") + " work=" + (state.work_type || "<implementation|advisory|verification>"),
+  );
+}
+function rWorkTypeCard(state, requested) {
+  return rCard(
+    "Blocked",
+    "Task " + state.task_id + " is already bound to work type " + state.work_type + ", not " + requested + ".",
+    "run pmnm-guard redo before changing the work type, or repeat pmnm-guard start with work=" + state.work_type,
+  );
+}
+function rVerificationMutationCard(state) {
+  const plan = rTaskFile(state, R_TASK_PLAN_FILE) || R_TASK_PLAN_FILE;
+  return rCard(
+    "Blocked",
+    "Non-mutating verification cannot perform this operation, so it needs implementation work.",
+    "run pmnm-guard redo first, then pmnm-guard start task=" + state.task_id + " effort=" + state.effort + " work=implementation, update " + plan + ", show the Digest, and run pmnm-guard digest",
   );
 }
 function rOnStart(state, fields, event, now, options) {
-  rFields(fields, ["task", "effort"]);
+  rFields(fields, ["task", "effort", "work"]);
   const task = rDecodeField(fields.task, "task");
   if (!R_SAFE_NAME.test(task)) throw new Error("bad value task");
   if (!R_EFFORTS.has(fields.effort)) throw new Error("bad value effort");
+  if (!R_WORK_TYPES.has(fields.work)) throw new Error("bad value work");
   const changed = state.task_id !== task;
   const reopening = !changed && Boolean(state.completion);
   let transitionApproved = false;
@@ -1956,10 +2043,24 @@ function rOnStart(state, fields, event, now, options) {
     }
   }
   if (changed && !transitionApproved && state.task_id && (state.mutation_count > 0 || state.effect_count > 0) && !state.completion) {
-    rAsk(state, "task-transition", {task, effort: fields.effort});
-    return rDenied(state, rTaskTransitionCard(state));
+      rAsk(state, "task-transition", {task, effort: fields.effort, work: fields.work});
+      return rDenied(state, rTaskTransitionCard(state));
   }
   if (!changed && !reopening) {
+    const mayChangeWork =
+      state.phase === "INVESTIGATE" &&
+      state.digest_shown_epoch === null &&
+      state.digest_agreed_epoch === null &&
+      state.work_change_authorized;
+    if (
+      state.work_type &&
+      state.work_type !== fields.work &&
+      (!mayChangeWork || state.pending_writes.length)
+    ) {
+      return rDenied(state, rWorkTypeCard(state, fields.work));
+    }
+    if (state.work_type !== fields.work) state.work_change_authorized = false;
+    state.work_type = fields.work;
     const effortRank = {light: 0, standard: 1, high: 2};
     if (effortRank[fields.effort] > effortRank[state.effort]) state.effort = fields.effort;
     const unavailable = rFolderIssue(state, event, options);
@@ -1969,8 +2070,8 @@ function rOnStart(state, fields, event, now, options) {
     }
     const output = unavailable ||
       (state.task_path && rFsType(state.task_path) === "missing" ? rTaskFolderCard(state) :
-        (state.rule_basis_required ? rRuleBasisCard(state) : rStateCard(state, event)));
-    rEvent(state, "task-resumed", {task_hash: state.task_hash, effort: state.effort}, now);
+        (state.rule_basis_required ? rRuleBasisCard(state) : rStateCard(state, event, options)));
+    rEvent(state, "task-resumed", {task_hash: state.task_hash, effort: state.effort, work: state.work_type}, now);
     return rAllowed(state, output);
   }
   if (changed || reopening) {
@@ -1982,6 +2083,7 @@ function rOnStart(state, fields, event, now, options) {
   state.source_reads_without_task = 0;
   state.plan_gate_seq = state.event_seq;
   state.effort = fields.effort;
+  state.work_type = fields.work;
   state.phase = "INVESTIGATE";
   state.pending_question = null;
   const configuration = rRefreshConfig(state, event, options);
@@ -1990,7 +2092,7 @@ function rOnStart(state, fields, event, now, options) {
     rAsk(state, "folder");
     output = rFolderCard(state, configuration.status === "folder-missing");
   } else if (rEnterRecovery(state, configuration)) {
-    output = rStateCard(state, event);
+    output = rStateCard(state, event, options);
   } else if (!configuration.project) {
     rAsk(state, "project");
     output = rProjectCard(state, event);
@@ -2000,9 +2102,9 @@ function rOnStart(state, fields, event, now, options) {
   } else {
     rSeedTask(state);
     rRequireRuleBasis(state);
-    output = state.rule_basis_required ? rRuleBasisCard(state) : rStateCard(state, event);
+    output = state.rule_basis_required ? rRuleBasisCard(state) : rStateCard(state, event, options);
   }
-  rEvent(state, "task-started", {task_hash: state.task_hash, effort: state.effort}, now);
+  rEvent(state, "task-started", {task_hash: state.task_hash, effort: state.effort, work: state.work_type}, now);
   return rAllowed(state, output);
 }
 function rOnFolder(state, fields, event, now, options) {
@@ -2076,7 +2178,7 @@ function rOnFolder(state, fields, event, now, options) {
   } else {
     rSeedTask(state);
     rRequireRuleBasis(state);
-    output = state.rule_basis_required ? rRuleBasisCard(state) : rStateCard(state, event);
+    output = state.rule_basis_required ? rRuleBasisCard(state) : rStateCard(state, event, options);
   }
   rEvent(state, "folder-configured", {folder_hash: rHash(folder)}, now);
   return rAllowed(state, output);
@@ -2134,7 +2236,7 @@ function rOnProject(state, fields, event, now, options) {
     output = rTaskFolderCard(state);
   } else {
     rSeedTask(state);
-    output = rStateCard(state, event);
+    output = rStateCard(state, event, options);
   }
   rEvent(state, "project-configured", {project_hash: rHash(name), cwd_hash: rHash(cwd)}, now);
   return rAllowed(state, output);
@@ -2150,30 +2252,37 @@ function rOnDigest(state, fields, event, now, options) {
   }
   if (!rRuleBasisCurrent(state)) return rDenied(state, rRuleBasisCard(state));
   if (state.pending_question?.kind === "digest" && state.digest_shown_epoch === state.epoch) {
-    return rAllowed(state, rStateCard(state, event));
+    return rAllowed(state, rStateCard(state, event, options));
   }
   const plan = rPlan(state, event);
   const verificationPlan = rVerificationPlan(state);
   const impact = rImpactContract(state, plan);
+  const expectations = rExpectations(state);
   const permissions = rPermissionManifest(state, event, plan);
   const environmentPlan = rEnvironmentPlan(state, permissions.status === "ready" && rNeedsEnvironmentPlan(permissions));
   const issues = [
     ...(plan.issues || []),
     ...(state.effort === "light" ? [] : verificationPlan.issues || []),
     ...(impact.issues || []),
+    ...(expectations.issues || []),
     ...(permissions.issues || []),
     ...(environmentPlan.issues || []),
   ];
   const preflight = rWriteTaskPreflight(state, issues, plan.normalizations || []);
   if (issues.length) return rDenied(state, rTaskPreflightCard(state, preflight, issues));
   if (plan.status !== "ready") return rDenied(state, rPlanCard(state, plan.status, plan.detail));
-  if (state.plan_write_seq === null || state.plan_write_seq <= state.plan_gate_seq) {
+  const revisedContract = state.redo_contract_hash !== null && state.redo_contract_hash !==
+    rHash(JSON.stringify([impact.hash, expectations.hash]));
+  if ((state.plan_write_seq === null || state.plan_write_seq <= state.plan_gate_seq) && !revisedContract) {
     return rDenied(state, rPlanCard(state, "stale"));
   }
   if (state.effort !== "light" && verificationPlan.status !== "ready") {
     return rDenied(state, rVerificationPlanCard(state, verificationPlan));
   }
   if (permissions.status !== "ready") return rDenied(state, rPermissionManifestCard(state, permissions));
+  if (expectations.status !== "not-required" && expectations.status !== "ready") {
+    return rDenied(state, rExpectationsCard(state, expectations));
+  }
   const workspace = rScope(event, options, plan, state.workspace_scope_snapshot);
   const workspaceProblem = rPlanScopeProblem(state, plan, workspace);
   if (workspaceProblem) return rDenied(state, workspaceProblem);
@@ -2182,6 +2291,8 @@ function rOnDigest(state, fields, event, now, options) {
   state.plan_target_hashes = plan.targets.map((target) => target.hash);
   state.verification_plan_hash = verificationPlan.status === "ready" ? verificationPlan.hash : null;
   state.impact_plan_hash = impact.status === "ready" ? impact.hash : null;
+  state.expectations_plan_hash = expectations.status === "ready" ? expectations.hash : null;
+  state.redo_contract_hash = null;
   state.permission_manifest_hash = permissions.hash;
   state.environment_plan_hash = environmentPlan.status === "ready" ? environmentPlan.hash : null;
   state.digest_rule_basis_hash = state.rule_basis_hash;
@@ -2189,18 +2300,16 @@ function rOnDigest(state, fields, event, now, options) {
   state.workspace_digest_snapshot = workspace;
   state.investigation_stop_count = 0;
   state.digest_shown_epoch = state.epoch;
+  state.pending_denied = null;
   state.digest_prompt_epoch = state.prompt_epoch;
   state.human_response_epoch = null;
   state.digest_agreed_epoch = null;
   state.phase = "AWAITING_HUMAN";
   rAsk(state, "digest");
   const output = rCard(
-    state,
     "Blocked",
     "The Digest for " + state.task_id + " is waiting for the human's answer; it forecasts " + (permissions.task.length + permissions.taskCapabilities.length) + " task and " + ((permissions.project?.length || 0) + (permissions.projectCapabilities?.length || 0)) + " project permissions.",
-    "El Digest de " + state.task_id + " espera la respuesta del humano; anticipa " + (permissions.task.length + permissions.taskCapabilities.length) + " permisos de tarea y " + ((permissions.project?.length || 0) + (permissions.projectCapabilities?.length || 0)) + " de proyecto.",
     "stop here; no more actions until the human answers",
-    "detente aquí; ninguna acción más hasta que el humano responda",
   );
   rEvent(state, "digest-shown", {epoch: state.epoch}, now);
   state.plan_gate_seq = state.event_seq;
@@ -2232,6 +2341,10 @@ function rOnAgreed(state, fields, event, now, options) {
   if (impact.status !== "not-required" && (impact.status !== "ready" || impact.hash !== state.impact_plan_hash)) {
     return rDenied(state, rImpactCard(state, impact.status === "ready"));
   }
+  const expectations = rExpectations(state);
+  if (expectations.status !== "not-required" && (expectations.status !== "ready" || expectations.hash !== state.expectations_plan_hash)) {
+    return rDenied(state, rExpectationsCard(state, expectations, expectations.status === "ready"));
+  }
   const permissions = rPermissionManifest(state, event, plan);
   if (permissions.status !== "ready" || permissions.hash !== state.permission_manifest_hash) {
     return rDenied(state, rPermissionManifestCard(state, permissions, true));
@@ -2257,13 +2370,15 @@ function rOnAgreed(state, fields, event, now, options) {
     }));
     state.project_permission_project_hash = rHash(state.project_path);
   }
+  const mode = state.work_type === "verification"
+    ? ["Non-mutating verification may begin within it.", "run only the agreed read or check and record its evidence"]
+    : state.work_type === "advisory"
+      ? ["Advisory work may begin within it.", "produce only the agreed deliverable and test its boundary"]
+      : ["Implementation may begin within it.", "implement and record decisions and evidence in the task folder as they happen"];
   const output = rCard(
-    state,
     "Note",
-    "Digest for " + state.task_id + " agreed. Implementation may begin within it; " + (state.task_permissions.length + state.task_capabilities.length) + " task permissions are active.",
-    "Digest de " + state.task_id + " acordado. La implementación puede empezar dentro de él; hay " + (state.task_permissions.length + state.task_capabilities.length) + " permisos de tarea activos.",
-    "implement; record decisions and evidence in the task folder as they happen",
-    "implementa; anota decisiones y evidencia en la carpeta de tarea conforme ocurran",
+    "Digest for " + state.task_id + " agreed. " + mode[0] + " " + (state.task_permissions.length + state.task_capabilities.length) + " task permissions are active.",
+    mode[1],
   );
   rEvent(state, "digest-agreed", {epoch: state.epoch}, now);
   return rAllowed(state, output);
@@ -2271,7 +2386,11 @@ function rOnAgreed(state, fields, event, now, options) {
 function rOnRedo(state, fields, now) {
   rFields(fields);
   if (!state.task_id) throw new Error("no task open");
+  if (state.plan_file_hash) {
+    state.redo_contract_hash ||= rHash(JSON.stringify([state.impact_plan_hash, state.expectations_plan_hash]));
+  }
   state.epoch += 1;
+  state.work_change_authorized = true;
   state.digest_shown_epoch = null;
   state.digest_prompt_epoch = null;
   state.human_response_epoch = null;
@@ -2280,6 +2399,7 @@ function rOnRedo(state, fields, now) {
   state.plan_target_hashes = [];
   state.verification_plan_hash = null;
   state.impact_plan_hash = null;
+  state.expectations_plan_hash = null;
   state.permission_manifest_hash = null;
   state.task_permission_epoch = null;
   state.task_permissions = [];
@@ -2294,12 +2414,9 @@ function rOnRedo(state, fields, now) {
   state.completion = null;
   state.phase = "INVESTIGATE";
   const output = rCard(
-    state,
     "Note",
     "Digest for " + state.task_id + " withdrawn.",
-    "Digest de " + state.task_id + " retirado.",
-    "investigate what changed, update the task record and plan.md, show a new Digest, then pmnm-guard digest",
-    "investiga qué cambió, actualiza el registro de tarea y plan.md, muestra un Digest nuevo y luego ejecuta pmnm-guard digest",
+    "investigate what changed, update the task record and the changed plan, impact or expectations contract, show a new Digest, then pmnm-guard digest",
   );
   rEvent(state, "digest-redone", {epoch: state.epoch}, now);
   return rAllowed(state, output);
@@ -2503,6 +2620,83 @@ function rVerifiedNow(state) {
       state.last_verification.effect_count === state.effect_count,
   );
 }
+function rOwesHandover(state) {
+  // Both conditions are observed, not inferred: the work type was declared at start and is durable,
+  // and an unbounded available workspace is what the closing card calls a version-control comparison.
+  return (
+    state.work_type === "implementation" &&
+    state.plan_target_hashes.length > 0 &&
+    state.workspace_scope_snapshot?.status === "available" &&
+    // The closing card reads this same flag as falsy meaning a version-control comparison, and it is
+    // only set true for a direct comparison of planned paths, so the test matches that line exactly.
+    !state.workspace_scope_snapshot?.bounded
+  );
+}
+// The sentence the card asks for, without its terminal period, so the card and this parser are one
+// string rather than two that happen to agree.
+const R_HANDOVER_NONE = "No version-control step applies to this task";
+
+/** Index of the first `#` that opens a comment: unquoted, unescaped and starting a word. */
+function rCommentStart(line) {
+  let quote = null;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (character === "\\" && quote !== "'") {
+      index += 1;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === "#" && (index === 0 || /\s/.test(line[index - 1]))) return index;
+  }
+  return -1;
+}
+
+/**
+ * One supported hand-over command, as a complete token sequence.
+ *
+ * Quoting is shell syntax and not evidence that the words after it are not prose, so the whole line
+ * is matched against a bounded form instead. An unexplained positional token refuses the line, which
+ * is what separates handing a command over from mentioning one.
+ */
+function rHandoverCommand(tokens) {
+  if (tokens.length < 2 || tokens[0].quoted || tokens[1].quoted || tokens[0].value !== "git") return false;
+  const rest = tokens.slice(2);
+  const positional = (token) => !token.quoted && !token.value.startsWith("-");
+  if (tokens[1].value === "commit") return rest.length === 2 && !rest[0].quoted && rest[0].value === "-m";
+  if (tokens[1].value === "push") return rest.length === 0 || (rest.length === 2 && rest.every(positional));
+  if (tokens[1].value === "tag") return rest.length === 1 && positional(rest[0]);
+  return false;
+}
+
+function rHandoverSatisfied(message) {
+  const text = typeof message === "string" ? message : "";
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim().replace(/^[`$>*\-\s]+/, "");
+    if (line.replace(/\.$/, "").toLowerCase() === R_HANDOVER_NONE.toLowerCase()) return true;
+    const comment = rCommentStart(line);
+    const lexed = rLex(comment < 0 ? line : line.slice(0, comment));
+    if (lexed.invalid || lexed.segments.length !== 1) continue;
+    const [segment] = lexed.segments;
+    // A redirection is a second effect the token list no longer shows, so it refuses the line.
+    if (segment.redirectWrite || segment.redirectTargets.length) continue;
+    if (rHandoverCommand(segment.tokens)) return true;
+  }
+  return false;
+}
+function rHandoverCard(state) {
+  return rCard(
+    "Ask",
+    "This task changed planned files against version control, so the human needs the exact command to run.",
+    "show the Test Digest again with one line added: the exact command, such as git commit -m \"<message>\", or the line '" + R_HANDOVER_NONE + ".'; both must be in one message; then end the turn",
+  );
+}
 function rTestDigestCurrent(state) {
   return Boolean(
     state.test_digest_epoch === state.epoch &&
@@ -2606,12 +2800,9 @@ function rTestDigestCard(state) {
   const target = rTaskFile(state, R_TASK_VERIFY_FILE) || R_TASK_VERIFY_FILE;
   const task = state.task_id || "<task id>";
   return rCard(
-    state,
     "Blocked",
     "A current actionable Test Digest has not been shown to the human.",
-    "No se ha mostrado al humano un Test Digest accionable y vigente.",
     "read " + target + ", then show this contiguous block with one non-empty value on each line, in order: Test — " + task + "; Where: …; Environment: …; As: …; Data: …; Steps: …; Expect: …; Evidence: …; Cleanup: …; Can run: …; stop for the human",
-    "lee " + target + ", luego muestra este bloque contiguo con un valor no vacío en cada línea y en este orden: Prueba — " + task + "; Dónde: …; Entorno: …; Como: …; Datos: …; Pasos: …; Esperado: …; Evidencia: …; Limpieza: …; Se puede ejecutar: …; detente para el humano",
   );
 }
 function rRetry(state, entry, hash, effect) {
@@ -2624,7 +2815,12 @@ function rOnAllow(state, fields, now) {
   if (!R_SENSITIVE_EFFECTS.has(fields.effect)) throw new Error("bad value effect");
   const pending = state.pending_denied;
   if (!pending || pending.kind !== "sensitive" || pending.effect !== fields.effect) throw new Error("nothing to allow");
-  if (state.prompt_epoch <= pending.asked_prompt_epoch) throw new Error("nothing to allow");
+  if (
+    state.prompt_epoch <= pending.asked_prompt_epoch ||
+    pending.approved_prompt_epoch !== state.prompt_epoch
+  ) {
+    return rDenied(state, rSensitiveProofCard(state));
+  }
   state.sensitive_allow = {
     effect: pending.effect,
     command_hash: pending.command_hash,
@@ -2634,12 +2830,9 @@ function rOnAllow(state, fields, now) {
   };
   state.pending_denied = null;
   const output = rCard(
-    state,
     "Note",
     "The human allowed this " + fields.effect + " command once.",
-    "El humano autorizó una vez este comando de " + fields.effect + ".",
     "rerun the same command",
-    "reintenta el mismo comando",
   );
   rEvent(state, "sensitive-allowed", {effect: fields.effect}, now);
   return rAllowed(state, output);
@@ -2720,9 +2913,9 @@ function rOnDeclare(state, fields, now) {
     output = rSensitiveCard(state, requiredEffect, "declared " + fields.effect + " at " + fields.boundary + " boundary");
   } else {
     const text = proactive
-      ? ["Intent is set for the next unknown operation, without authority.", "Hay intención para la siguiente operación desconocida, sin autoridad.", "run it", "ejecútala"]
-      : ["The command has one declared effect and boundary.", "El comando tiene un efecto y límite declarados.", "retry it", "reinténtalo"];
-    output = rCard(state, "Note", ...text);
+      ? ["Intent is set for the next unknown operation, without authority.", "run it"]
+      : ["The command has one declared effect and boundary.", "retry it"];
+    output = rCard( "Note", ...text);
   }
   rEvent(state, "command-declared", {effect: fields.effect, boundary: fields.boundary, capability: fields.capability}, now);
   return rAllowed(state, output);
@@ -2741,12 +2934,9 @@ function rOnClassify(state, fields, now) {
   };
   state.pending_denied = null;
   const output = rCard(
-    state,
     "Note",
     "The command is classified as " + fields.effect + " for one exact retry.",
-    "El comando se clasificó como " + fields.effect + " para un solo reintento exacto.",
     "rerun the same command",
-    "reintenta el mismo comando",
   );
   rEvent(state, "command-classified", {effect: fields.effect}, now);
   return rAllowed(state, output);
@@ -2782,7 +2972,7 @@ function rObserveEffect(state, pending, now, late = false, resolution = null, wo
       state.verification_claim_effect_count = state.effect_count;
     }
     if (pending.rule_file_hashes?.length) {
-      state.rules_file_hashes_written = [...new Set([...state.rules_file_hashes_written, ...pending.rule_file_hashes])].slice(0, 3);
+      state.rules_file_hashes_written = [...new Set([...state.rules_file_hashes_written, ...pending.rule_file_hashes])].slice(0, R_MAX_RULE_FILES);
       if (material) {
         rRequireRuleBasis(state);
         state.digest_agreed_epoch = null;
@@ -2833,12 +3023,9 @@ function rOnResult(state, fields, now) {
     state.reconciled_writes.push({...pending, outcome: "no-effect"});
     state.reconciled_writes = state.reconciled_writes.slice(-16);
     const output = rCard(
-      state,
       "Note",
       "The command is recorded as no effect.",
-      "El comando quedó registrado sin efecto.",
       "inspect the current state; rerun the command only if its effect is still required",
-      "inspecciona el estado actual; repite el comando sólo si su efecto sigue siendo necesario",
     );
     rEvent(state, "result-reconciled", {outcome: "no-effect"}, now);
     return rAllowed(state, output);
@@ -2846,12 +3033,9 @@ function rOnResult(state, fields, now) {
   rObserveEffect(state, pending, now, false, null, null, true);
   state.phase = "RECOVERY";
   const output = rCard(
-    state,
     "Note",
     "The command result remains unknown, so its possible effect is preserved.",
-    "El resultado del comando sigue desconocido, así que se conserva su posible efecto.",
     "inspect the current state; pmnm-guard redo if the Digest no longer holds",
-    "revisa el estado actual; pmnm-guard redo si el Digest ya no se sostiene",
   );
   rEvent(state, "result-reconciled", {outcome: "unknown"}, now);
   return rAllowed(state, output);
@@ -3064,21 +3248,21 @@ function rHasCheck(cwd) {
 }
 
 const R_FIXED_CARDS = {
-  inspection: ["Ask", "Inspection is not an executed check, and this project exposes a verification command.", "La inspección no ejecuta una comprobación y este proyecto ofrece un comando de verificación.", "ask the human whether inspection-only evidence is enough; stop until they answer; after yes: pmnm-guard verified result=passed how=inspection; after no: run the check that tests the change", "pregunta al humano si basta la evidencia por inspección; detente hasta que responda; tras el sí: pmnm-guard verified result=passed how=inspection; tras el no: corre la comprobación que prueba el cambio"],
-  "stale-command": ["Blocked", "No successful check is recorded after the latest change.", "No hay una comprobación exitosa registrada después del último cambio.", "run the check that tests the change again, then pmnm-guard verified result=<passed|failed|partial|blocked> how=command", "corre de nuevo la comprobación que prueba el cambio y luego pmnm-guard verified result=<passed|failed|partial|blocked> how=command"],
-  "open-objectives": ["Blocked", "Open plan objectives mean this check cannot yet verify the task contract.", "Hay objetivos abiertos en el plan, así que esta comprobación todavía no puede verificar el contrato de la tarea.", "continue the planned work; keep investigation checks as evidence without running pmnm-guard verified, then mark completed objectives [x] before final verification", "continúa el trabajo planeado; conserva las comprobaciones de investigación como evidencia sin ejecutar pmnm-guard verified y marca [x] los objetivos terminados antes de la verificación final"],
-  human: ["Ask", "Human verification has not been observed after this request.", "No se ha observado verificación humana después de esta solicitud.", "ask the human to perform and report the manual check; stop until they answer; then retry pmnm-guard verified result=passed how=human", "pide al humano que realice y reporte la comprobación manual; detente hasta que responda; luego repite pmnm-guard verified result=passed how=human"],
-  compound: ["Blocked", "This compound command contains an unknown or separately sensitive effect.", "Este comando compuesto contiene un efecto desconocido o sensible por separado.", "split it into one directly reviewable command per effect, then retry each command separately", "sepáralo en un comando directamente revisable por efecto y luego reintenta cada comando por separado"],
-  unresolved: ["Blocked", "PMNM cannot resolve this write's literal target safely.", "PMNM no puede resolver de forma segura el destino literal de esta escritura.", "use one supported literal command with explicit targets, or split the operation", "usa un comando literal compatible con destinos explícitos o separa la operación"],
-  index: ["Blocked", "index.json is maintained by PMNM and this write did not run.", "index.json lo mantiene PMNM y esta escritura no se ejecutó.", "write task evidence in the task folder instead", "escribe la evidencia de la tarea dentro de su carpeta"],
-  boundary: ["Blocked", "This write crosses the PMNM folder boundary, so it did not run.", "Esta escritura cruza el límite de la carpeta PMNM, así que no se ejecutó.", "split it into one contained PMNM write and one separate project operation", "sepárala en una escritura contenida en PMNM y otra operación del proyecto"],
-  redirect: ["Blocked", "This command writes through shell redirection, so implementation cannot start without an agreed Digest.", "Este comando escribe mediante una redirección del shell, así que la implementación necesita un Digest acordado.", "investigate, show the Digest, then pmnm-guard digest", "investiga, muestra el Digest y luego pmnm-guard digest"],
-  "split-sensitive": ["Blocked", "This sensitive operation is too long or complex to review completely in one card.", "Esta operación sensible es demasiado larga o compleja para revisarla completa en una tarjeta.", "split it into a shorter command whose complete effect can be shown, then retry", "sepárala en un comando más corto cuyo efecto completo pueda mostrarse y luego reintenta"],
-  "stale-session": ["Blocked", "Another session owns guarded changes for this project.", "Otra sesión controla los cambios protegidos de este proyecto.", "continue in the active session, or restart this session to take over with transient authority cleared", "continúa en la sesión activa o reinicia esta sesión para tomar el control con la autoridad transitoria eliminada"],
+  inspection: ["Ask", "Inspection is not an executed check, and this project exposes a verification command.", "ask the human whether inspection-only evidence is enough; stop until they answer; after yes: pmnm-guard verified result=passed how=inspection; after no: run the check that tests the change"],
+  "stale-command": ["Blocked", "No successful check is recorded after the latest change.", "run the check that tests the change again, then pmnm-guard verified result=<passed|failed|partial|blocked> how=command"],
+  "open-objectives": ["Blocked", "Open plan objectives mean this check cannot yet verify the task contract.", "continue the planned work; keep investigation checks as evidence without running pmnm-guard verified, then mark completed objectives [x] before final verification"],
+  human: ["Ask", "Human verification has not been observed after this request.", "ask the human to perform and report the manual check; stop until they answer; then retry pmnm-guard verified result=passed how=human"],
+  compound: ["Blocked", "This compound command contains an unknown or separately sensitive effect.", "split it into one directly reviewable command per effect, then retry each command separately"],
+  unresolved: ["Blocked", "PMNM cannot resolve this write's literal target safely.", "use one supported literal command with explicit targets, or split the operation"],
+  index: ["Blocked", "index.json is maintained by PMNM and this write did not run.", "write task evidence in the task folder instead"],
+  boundary: ["Blocked", "This write crosses the PMNM folder boundary, so it did not run.", "split it into one contained PMNM write and one separate project operation"],
+  redirect: ["Blocked", "This command writes through shell redirection, so implementation cannot start without an agreed Digest.", "investigate, show the Digest, then pmnm-guard digest"],
+  "split-sensitive": ["Blocked", "This sensitive operation is too long or complex to review completely in one card.", "split it into a shorter command whose complete effect can be shown, then retry"],
+  "stale-session": ["Blocked", "Another session owns guarded changes for this project.", "continue in the active session, or restart this session to take over with transient authority cleared"],
 };
 
 function rFixCard(state, name) {
-  return rCard(state, ...R_FIXED_CARDS[name]);
+  return rCard( ...R_FIXED_CARDS[name]);
 }
 function rFingerprint(state, event, options, now) {
   const provider = typeof options.fingerprintProvider === "function" ? options.fingerprintProvider : rGitFingerprint;
@@ -3110,7 +3294,11 @@ function rOnVerified(state, fields, event, now, options) {
   if (!R_VERIFICATION_RESULTS.has(fields.result)) throw new Error("bad value result");
   if (!R_VERIFICATION_METHODS.has(fields.how)) throw new Error("bad value how");
   if (!state.task_id) throw new Error("no task open");
+  if (state.work_type === "verification" && (state.mutation_count > 0 || state.effect_count > 0)) {
+    return rDenied(state, rVerificationMutationCard(state));
+  }
   let shape = null;
+  let expectationsHash = null;
   if (fields.result === "passed") {
     let plan = null;
     if (state.plan_file_hash) {
@@ -3120,6 +3308,11 @@ function rOnVerified(state, fields, event, now, options) {
       if (plan.status !== "ready" || plan.hash !== state.plan_file_hash) {
         return rDenied(state, rPlanCard(state, plan.status === "ready" ? "changed" : plan.status, plan.detail));
       }
+    }
+    if (state.effort === "high" && state.work_type === "verification" && !state.plan_file_hash) {
+      const expectations = rExpectations(state);
+      if (expectations.status !== "ready") return rDenied(state, rExpectationsCard(state, expectations));
+      expectationsHash = expectations.hash;
     }
     shape = rVerifyShape(state, plan);
     if (shape.status !== "ready" || !shape.example || !shape.unchanged) {
@@ -3175,6 +3368,7 @@ function rOnVerified(state, fields, event, now, options) {
     how: fields.how,
     fingerprint,
     claim_hash: shape?.hash || null,
+    expectations_hash: expectationsHash,
   };
   state.phase = "VERIFY";
   if (["inspection", "human-verification"].includes(state.pending_question?.kind)) state.pending_question = null;
@@ -3182,12 +3376,9 @@ function rOnVerified(state, fields, event, now, options) {
   return rAllowed(
     state,
     rCard(
-      state,
       "Note",
       "Final task verification is recorded (" + fields.result + ").",
-      "La verificación final de la tarea está registrada (" + fields.result + ").",
       "complete the required review and final audit, then pmnm-guard done audit=<passed|partial|blocked>; the Test Digest follows that audit",
-      "completa la revisión requerida y la auditoría final, luego ejecuta pmnm-guard done audit=<passed|partial|blocked>; el Test Digest sigue a esa auditoría",
     ),
   );
 }
@@ -3220,7 +3411,8 @@ function rReviewPacket(state) {
   }
   const missing = required.filter((field) => !values.has(field));
   if (duplicate || missing.length) return {status: duplicate ? "duplicate" : "incomplete", missing};
-  if (values.get("plan-digest") !== state.plan_file_hash) return {status: "stale-plan", missing: []};
+  const planBinding = state.work_type === "verification" && !state.plan_file_hash ? "none" : state.plan_file_hash;
+  if (values.get("plan-digest") !== planBinding) return {status: "stale-plan", missing: []};
   if (values.get("fingerprint") !== state.last_verification?.fingerprint?.hash) return {status: "stale-verification", missing: []};
   const empty=value=>/^(?:none|n\/a|not applicable|unavailable|unknown)\W*$/i.test(value)||/<[^>]*>/.test(value);
   if (empty(values.get("strongest-counterexample"))) return {status: "missing-counterexample", missing: []};
@@ -3234,29 +3426,40 @@ function rReviewPacket(state) {
 function rReviewPacketCard(state, packet) {
   const target = rTaskFile(state, R_TASK_REVIEW_FILE) || R_TASK_REVIEW_FILE;
   const statuses = {
-    "stale-plan": [" Its plan binding is stale.", " Su vínculo con el plan está obsoleto."],
-    "stale-verification": [" Its verification binding is stale.", " Su vínculo con la verificación está obsoleto."],
-    "missing-counterexample": [" It does not test a concrete counterexample.", " No prueba un contraejemplo concreto."],
-    "missing-independent-check": [" It has no independent check.", " No tiene una comprobación independiente."],
-    "non-independent-check": [" Its independent check repeats the author's evidence.", " Su comprobación independiente repite la evidencia del autor."],
-    "unresolved-disagreement": [" It records an unresolved disagreement.", " Registra un desacuerdo sin resolver."],
+    "stale-plan": " Its plan binding is stale.",
+    "stale-verification": " Its verification binding is stale.",
+    "missing-counterexample": " It does not test a concrete counterexample.",
+    "missing-independent-check": " It has no independent check.",
+    "non-independent-check": " Its independent check repeats the author's evidence.",
+    "unresolved-disagreement": " It records an unresolved disagreement.",
   };
-  const [statusDetail, statusDetailEs] = statuses[packet.status] || ["", ""];
+  if (packet.status === "stale-plan" && state.effort === "high" && !state.plan_file_hash && state.work_type !== "verification") {
+    return rCard(
+      "Blocked",
+      "High implementation needs an agreed plan Digest before closure.",
+      "write the implementation plan and show its Digest, or run pmnm-guard redo first, then pmnm-guard start task=" + state.task_id + " effort=high work=verification for strictly non-mutating work",
+    );
+  }
+  const binding = packet.status === "stale-plan"
+    ? state.plan_file_hash
+      ? " Use the exact plan-digest: " + state.plan_file_hash + "."
+      : " Use the exact plan-digest: none for verification without a Digest."
+    : "";
+  const statusDetail = (statuses[packet.status] || "") + binding;
   const detail = packet.missing?.length ? " Missing: " + packet.missing.join(", ") + "." : statusDetail;
-  const detailEs = packet.missing?.length ? " Faltan: " + packet.missing.join(", ") + "." : statusDetailEs;
   return rCard(
-    state,
     "Blocked",
     "High-effort completion needs a current semantic review packet in " + target + "." + detail,
-    "El cierre de esfuerzo High necesita un paquete vigente de revisión semántica en " + target + "." + detailEs,
     "have a human or non-author model review the contract, evidence and strongest counterexample; complete every named field in " + target + ", including the impact fields when shown; then retry pmnm-guard done",
-    "pide a un humano o modelo no autor que revise el contrato, la evidencia y el contraejemplo más fuerte; completa todos los campos indicados en " + target + ", incluidos los de impacto cuando aparezcan; luego reintenta pmnm-guard done",
   );
 }
 function rOnDone(state, fields, event, now, options) {
   rFields(fields, ["audit"]);
   if (!R_AUDIT_RESULTS.has(fields.audit)) throw new Error("bad value audit");
   if (!state.task_id) throw new Error("no task open");
+  if (state.work_type === "verification" && (state.mutation_count > 0 || state.effect_count > 0)) {
+    return rDenied(state, rVerificationMutationCard(state));
+  }
   if (!rRuleBasisCurrent(state)) {
     rRequireRuleBasis(state);
     return rDenied(state, rRuleBasisCard(state));
@@ -3278,12 +3481,9 @@ function rOnDone(state, fields, event, now, options) {
     return rAllowed(
       state,
       rCard(
-        state,
         "Note",
         "The audit is blocked, so task " + state.task_id + " remains open.",
-        "La auditoría está bloqueada, así que la tarea " + state.task_id + " sigue abierta.",
         "resolve the blocker, verify again, then retry pmnm-guard done audit=<passed|partial|blocked>",
-        "resuelve el bloqueo, verifica de nuevo y reintenta pmnm-guard done audit=<passed|partial|blocked>",
       ),
     );
   }
@@ -3304,6 +3504,12 @@ function rOnDone(state, fields, event, now, options) {
     const impact = rImpactContract(state, impactPlan, {final: true});
     if (impact.status !== "ready" || impact.hash !== state.impact_plan_hash) {
       return rDenied(state, rImpactCard(state, impact.status === "ready"));
+    }
+  }
+  if (fields.audit === "passed" && state.effort === "high" && state.work_type === "verification" && !state.plan_file_hash) {
+    const expectations = rExpectations(state);
+    if (expectations.status !== "ready" || expectations.hash !== state.last_verification?.expectations_hash) {
+      return rDenied(state, rExpectationsCard(state, expectations, expectations.status === "ready"));
     }
   }
   if (fields.audit === "passed" && state.effort === "high") {
@@ -3382,17 +3588,13 @@ function rOnDone(state, fields, event, now, options) {
   state.pending_question = null;
   state.pending_denied = null;
   const mode = state.plan_target_hashes.length && currentWorkspace.status === "available" ? (currentWorkspace.bounded ? 1 : 2) : 0;
-  const stateDetail = stateCount ? (state.language === "es" ? " Objetivos de estado: " : " State objectives: ") + stateCount + "." : "";
+  const stateDetail = stateCount ? " State objectives: " + stateCount + "." : "";
   const comparison = ["No project-file comparison.", "Compared planned paths directly.", "Compared version-control state."][mode] + stateDetail;
-  const comparisonEs = ["Sin comparación de archivos del proyecto.", "Rutas del plan comparadas directamente.", "Se comparó el estado del control de versiones."][mode] + stateDetail;
   const rules = state.rules_file_hashes_written.length;
   const output = rCard(
-    state,
     "Note",
     "Task " + state.task_id + " closed, audit " + fields.audit + ". " + comparison + " Rules files written: " + rules + ". The human commits.",
-    "Tarea " + state.task_id + " cerrada, auditoría " + fields.audit + ". " + comparisonEs + " Archivos de reglas escritos: " + rules + ". El commit lo hace el humano.",
-    "for a new request, run pmnm-guard start task=<ticket-or-id> effort=<light|standard|high>",
-    "para una solicitud nueva, ejecuta pmnm-guard start task=<ticket-or-id> effort=<light|standard|high>",
+    "for a new request, run pmnm-guard start task=<ticket-or-id> effort=<light|standard|high> work=<implementation|advisory|verification>",
   );
   rEvent(state, "task-completed", {audit: fields.audit}, now);
   return rAllowed(state, output);
@@ -3427,7 +3629,7 @@ function rOnStatus(state, fields, event, options) {
       output: rRewriteControl(rHumanCard(state)),
     };
   }
-  return rAllowed(state, rStateCard(state, event));
+  return rAllowed(state, rStateCard(state, event, options));
 }
 function rReceiptReason(error) {
   const message = String(error && error.message ? error.message : error);
@@ -3477,11 +3679,7 @@ function rReject(state, error, action) {
   const reason = rReceiptReason(error);
   let next = rReceiptNext(action, state);
   if (reason === "human answer not observed") {
-    next = rText(
-      state,
-      "stop here; no more actions until the human answers",
-      "detente aquí; ninguna acción más hasta que el humano responda",
-    );
+    next = "stop here; no more actions until the human answers";
   }
   if (reason === "folder not requested" || reason === "project not requested") next = rReceiptNext("start", state);
   return rDenied(state, rRejectedCard(state, reason, next));
@@ -3489,52 +3687,37 @@ function rReject(state, error, action) {
 function rResultCard(state, pending) {
   const operation = "operation " + (pending.operation_id || pending.command_hash?.slice(0, 12) || "unknown") + " (" + pending.effect + ")";
   return rCard(
-    state,
     "Blocked",
     "The host reported no result for " + operation + ".",
-    "El host no reportó resultado para la " + operation + ".",
     "inspect what happened, then pmnm-guard result outcome=<unknown|no-effect>",
-    "revisa qué pasó y luego pmnm-guard result outcome=<unknown|no-effect>",
   );
 }
 function rUnknownCommandCard(state, payload) {
   return rCard(
-    state,
     "Blocked",
-    "This shell tool has no trusted effect declaration: " + rPreview(payload) + ". `pmnm-guard` is a receipt intercepted by the Codex hook, not a program on PATH.",
-    "Esta herramienta shell no tiene una declaración de efecto confiable: " + rPreview(payload) + ". `pmnm-guard` es un recibo interceptado por el hook de Codex, no un programa en PATH.",
+    "This shell tool has no trusted effect declaration: " + rPreview(payload) + ". `pmnm-guard` is a PMNM receipt handled by the active host adapter, not a program on PATH.",
     "pmnm-guard declare effect=<investigation|implementation|verification|state-change> boundary=<project|pmnm|host|local-environment|network|external|mixed|unknown> persistence=<none|transient|persistent|unknown> certainty=<certain|uncertain> capability=<id|none>; then rerun the exact command",
-    "pmnm-guard declare effect=<investigation|implementation|verification|state-change> boundary=<project|pmnm|host|local-environment|network|external|mixed|unknown> persistence=<none|transient|persistent|unknown> certainty=<certain|uncertain> capability=<id|none>; luego reintenta el comando exacto",
   );
 }
 function rHiddenCommandCard(state) {
   return rCard(
-    state,
     "Blocked",
     "The shell hides part of this operation, so an effect declaration cannot make it reviewable.",
-    "El shell oculta parte de esta operación, así que una declaración de efecto no puede volverla revisable.",
     "run one literal command without expansion, evaluation, or a hidden inner command",
-    "ejecuta un comando literal sin expansión, evaluación ni un comando interno oculto",
   );
 }
 function rSecretCard(state, kind) {
   return rCard(
-    state,
     "Blocked",
     "That write contains what looks like a secret (" + kind + "), and secrets never go in the PMNM folder.",
-    "Esa escritura contiene lo que parece un secreto (" + kind + "), y los secretos nunca van en la carpeta PMNM.",
     "remove it, keep a reference to where it lives, then retry",
-    "quítalo, deja una referencia a dónde vive y reintenta",
   );
 }
 function rDigestRequiredCard(state) {
   return rCard(
-    state,
     "Blocked",
     "No plan Digest is agreed for " + state.task_id + ", so implementation cannot start.",
-    "No hay Digest de plan acordado para " + state.task_id + ", así que la implementación no puede empezar.",
     "investigate, show the Digest, then pmnm-guard digest",
-    "investiga, muestra el Digest y luego pmnm-guard digest",
   );
 }
 function rReviewable(event, payload, resolution) {
@@ -3549,31 +3732,43 @@ function rReviewable(event, payload, resolution) {
 }
 function rSensitiveCard(state, effect, review) {
   const phrases = {
-    deletion: ["deletes files", "borra archivos"],
-    movement: ["moves files", "mueve archivos"],
-    "external-write": ["writes outside the project and PMNM folder", "escribe fuera del proyecto y de la carpeta PMNM"],
-    git: ["runs git", "ejecuta git"],
-    dependencies: ["changes dependencies", "cambia dependencias"],
-    publish: ["publishes", "publica"],
-    environment: ["changes the environment", "cambia el entorno"],
-    network: ["reaches the network", "sale a la red"],
+    deletion: "deletes files",
+    movement: "moves files",
+    "external-write": "writes outside the project and PMNM folder",
+    git: "runs git",
+    dependencies: "changes dependencies",
+    publish: "publishes",
+    environment: "changes the environment",
+    network: "reaches the network",
   };
-  const [englishEffect, spanishEffect] = phrases[effect] || [effect, effect];
+  const englishEffect = phrases[effect] || effect;
   const independent =
     effect === "git" && /\bgit\s+(?:commit|push|tag)\b/.test(review)
       ? " PMNM does not commit or push by itself."
       : "";
-  const independentEs =
-    effect === "git" && /\bgit\s+(?:commit|push|tag)\b/.test(review)
-      ? " PMNM no hace commit ni push por sí mismo."
-      : "";
+  const token = rApprovalToken(state);
   return rCard(
-    state,
     "Ask",
     "This command " + englishEffect + ": " + review + "." + independent,
-    "Este comando " + spanishEffect + ": " + review + "." + independentEs,
-    "name what this command changes and ask the human whether to allow it; stop until they answer; after clear approval: pmnm-guard allow effect=" + effect + ", then rerun the same command",
-    "nombra lo que este comando cambia y pregunta al humano si lo autoriza; detente hasta que responda; tras una aprobación clara: pmnm-guard allow effect=" + effect + ", luego repite el mismo comando",
+    "show the exact operation and ask the human to reply exactly " + token + ", then stop. After that exact reply, run pmnm-guard allow effect=" + effect + " and rerun the same command",
+  );
+}
+function rApprovalToken(state) {
+  const pending = state.pending_denied;
+  if (!pending || pending.kind !== "sensitive") return "PMNM-ALLOW-UNKNOWN";
+  return "PMNM-ALLOW-" + rHash([
+    state.task_hash || "no-task",
+    state.epoch,
+    pending.command_hash,
+    pending.effect,
+    pending.asked_prompt_epoch,
+  ].join("\0")).slice(0, 12).toUpperCase();
+}
+function rSensitiveProofCard(state) {
+  return rCard(
+    "Ask",
+    "The exact operation-bound approval token was not observed in the latest human message.",
+    "ask the human to reply exactly " + rApprovalToken(state) + " and stop. Then run pmnm-guard allow effect=" + (state.pending_denied?.effect || "<effect>"),
   );
 }
 function rSameDenial(state, kind, commandHash, turnHash) {
@@ -3593,6 +3788,7 @@ function rDenyState(state, kind, classification, commandHash) {
     reason: classification.reason || null,
     command_hash: commandHash,
     asked_prompt_epoch: state.prompt_epoch,
+    approved_prompt_epoch: null,
     denied_turn_hash: state.current_turn_hash,
   };
 }
@@ -3637,7 +3833,7 @@ function rFolderIssue(state, event, options) {
   } catch {
     state.folder_status = "unreadable";
     state.phase = "RECOVERY";
-    return rStateCard(state, event);
+    return rStateCard(state, event, options);
   }
   if (["missing", "folder-missing"].includes(configuration.status)) {
     if (!state.pending_question || state.pending_question.kind !== "folder") {
@@ -3645,7 +3841,7 @@ function rFolderIssue(state, event, options) {
     }
     return rFolderCard(state, configuration.status === "folder-missing");
   }
-  if (rEnterRecovery(state, configuration)) return rStateCard(state, event);
+  if (rEnterRecovery(state, configuration)) return rStateCard(state, event, options);
   if (!configuration.project) {
     if (!state.pending_question || state.pending_question.kind !== "project") {
       rAsk(state, "project");
@@ -3682,7 +3878,11 @@ function rOnPreTool(state, event, now, options) {
     }
   }
 
-  const classificationInitial = rClassifyEvent(event, payload);
+  let classificationInitial = rClassifyEvent(event, payload);
+  if (classificationInitial.reason === "file-tool-read") {
+    const boundary = rFileReadBoundary(state, event);
+    if (boundary) classificationInitial = {...classificationInitial, boundary};
+  }
   const commandHash = rOpHash(event, payload);
   const stateForecast = rForecastEntry(state, commandHash, "state-change");
   let classification = classificationInitial;
@@ -3800,19 +4000,26 @@ function rOnPreTool(state, event, now, options) {
     }
   }
 
+  const unresolvedImplementation = classification.effect === "implementation" && !resolution.resolvable;
+  const mayRewriteProject =
+    classification.effect === "dependencies" ||
+    (classification.effect === "git" && /^(?:git-(?:checkout|switch|reset|rebase|merge|cherry-pick|revert|clean|apply|rm|mv|restore|pull))$/.test(classification.reason));
+  if (
+    state.work_type === "verification" &&
+    (projectWrite || externalWrite || unresolvedImplementation || mayRewriteProject || R_SENSITIVE_EFFECTS.has(classification.requiredEffect || classification.effect))
+  ) {
+    return rDenied(state, rVerificationMutationCard(state));
+  }
+
   if (!rootOperation && state.task_path && rFsType(state.task_path) !== "dir") {
     state.task_folder_noted = true;
     return rDenied(state, rTaskFolderCard(state));
   }
 
   if (state.pending_question?.kind === "digest") {
-    return rDenied(state, rStateCard(state, event));
+    return rDenied(state, rStateCard(state, event, options));
   }
 
-  const unresolvedImplementation = classification.effect === "implementation" && !resolution.resolvable;
-  const mayRewriteProject =
-    classification.effect === "dependencies" ||
-    (classification.effect === "git" && /^(?:git-(?:checkout|switch|reset|rebase|merge|cherry-pick|revert|clean|apply|rm|mv|restore|pull))$/.test(classification.reason));
   const requiresDigest = projectWrite || unresolvedImplementation || mayRewriteProject || classification.effect === "state-change";
   if (requiresDigest && !rDigestCurrent(state)) {
     const card = classification.reason === "shell-redirection" ? rFixCard(state, "redirect") : rDigestRequiredCard(state);
@@ -3897,7 +4104,14 @@ function rOnPostTool(state, event, now, options) {
           return false;
         }
       }).map((target) => rHash(target));
-      state.rule_basis_observed_hashes = [...new Set([...state.rule_basis_observed_hashes, ...observed])].slice(-8);
+      state.rule_basis_observed_hashes = [...new Set([...state.rule_basis_observed_hashes, ...observed])].slice(-R_MAX_RULE_BASIS_PATHS);
+      // A read that named a required path and came back without its bytes is a distinct observation
+      // from a path nobody read, and the reload card has to be able to tell them apart.
+      const attempted = state.rule_basis_paths
+        .filter((target) => pending.path_hashes.includes(rHash(target)))
+        .map((target) => rHash(target))
+        .filter((hash) => !state.rule_basis_observed_hashes.includes(hash));
+      state.rule_basis_unmatched = [...new Set([...state.rule_basis_unmatched, ...attempted])].slice(-R_MAX_RULE_BASIS_PATHS);
       const required = state.rule_basis_paths.map((target) => rHash(target));
       if (required.every((hash) => state.rule_basis_observed_hashes.includes(hash))) {
         const basis = rRuleBasis(state);
@@ -3906,12 +4120,9 @@ function rOnPostTool(state, event, now, options) {
         state.rule_basis_required = false;
         rEvent(state, "rule-basis-loaded", {basis_hash: basis.hash}, now);
         ruleOutput = rHookContext("PostToolUse", rCard(
-            state,
             "Note",
             "The active task's durable rule basis is loaded.",
-            "La base duradera de reglas de la tarea activa está cargada.",
             "continue from the current task record; show a revised Digest if the basis changed",
-            "continúa desde el registro vigente de la tarea; muestra un Digest revisado si cambió la base",
           ));
       }
     }
@@ -3926,12 +4137,9 @@ function rOnPostTool(state, event, now, options) {
       if (event.tool_name === "apply_patch") {
         const target = rPatchTargets(payload, event).targets[0]?.path || "file";
         const output = rCard(
-          state,
           "Note",
           "The patch to " + path.basename(target) + " did not apply and changed nothing.",
-          "El parche a " + path.basename(target) + " no se aplicó y no cambió nada.",
           "fix the patch against the current file and retry",
-          "corrige el parche contra el archivo actual y reintenta",
         );
         rEvent(state, "effect-failed", {effect: pending.effect}, now);
         return {state, output: rHookContext("PostToolUse", output)};
@@ -3944,14 +4152,13 @@ function rOnPostTool(state, event, now, options) {
     const wasVerification = pending.effect === "verification";
     const workspaceChanged = rObserveEffect(state, pending, now, false, resolution, workspaceAfter);
     if (wasVerification && workspaceChanged) {
-      const output = rCard(
-        state,
-        "Blocked",
-        "The verification command changed the project, so it cannot count as a check.",
-        "El comando de verificación cambió el proyecto, así que no puede contar como comprobación.",
-        "run pmnm-guard redo first; then inspect the changes, update plan.md, show the revised Digest, and run pmnm-guard digest",
-        "ejecuta primero pmnm-guard redo; luego revisa los cambios, actualiza plan.md, muestra el Digest revisado y ejecuta pmnm-guard digest",
-      );
+      const output = state.work_type === "verification"
+        ? rVerificationMutationCard(state)
+        : rCard(
+          "Blocked",
+          "The verification command changed the project, so it cannot count as a check.",
+          "run pmnm-guard redo first, then inspect the changes, update plan.md, show the revised Digest, and run pmnm-guard digest",
+        );
       return {state, output: rHookContext("PostToolUse", output)};
     }
     return {state, output: ruleOutput};
@@ -3967,12 +4174,9 @@ function rOnPostTool(state, event, now, options) {
     rObserveEffect(state, pending, now, true, resolution, rSnapshot(event, options));
     const operation = "Operation " + (pending.operation_id || pending.command_hash?.slice(0, 12) || "unknown");
     const output = rCard(
-      state,
       "Note",
       operation + " did take effect after all.",
-      "La operación " + (pending.operation_id || pending.command_hash?.slice(0, 12) || "desconocida") + " sí tuvo efecto después de todo.",
       "inspect the current state, then continue; pmnm-guard redo if the Digest no longer holds",
-      "revisa el estado actual y continúa; pmnm-guard redo si el Digest ya no se sostiene",
     );
     return {state, output: rHookContext("PostToolUse", output)};
   }
@@ -3983,26 +4187,40 @@ function rOnPrompt(state, event, now) {
   rRecoverDigest(state, event, now);
   state.prompt_epoch += 1;
   state.current_turn_hash = rHash(String(event.turn_id || state.prompt_epoch));
-  state.language = rDetectLanguage(event.prompt, state.language);
   state.stop_turn_hash = null;
   state.stop_next_hash = null;
   let output = null;
-  if (
+  if (state.pending_denied?.kind === "sensitive" && !["digest", "test-digest"].includes(state.pending_question?.kind)) {
+    state.pending_denied.approved_prompt_epoch = null;
+    if (String(event.prompt || "").trim() === rApprovalToken(state)) {
+      state.pending_denied.approved_prompt_epoch = state.prompt_epoch;
+      output = rHookContext(
+        "UserPromptSubmit",
+        rCard(
+          "Note",
+          "The human supplied the exact operation-bound approval token.",
+          "pmnm-guard allow effect=" + state.pending_denied.effect + ", then rerun the same command",
+        ),
+      );
+      rEvent(state, "sensitive-approval-observed", {effect: state.pending_denied.effect}, now);
+    } else {
+      output = rHookContext("UserPromptSubmit", rSensitiveProofCard(state));
+      rEvent(state, "sensitive-approval-missing", {effect: state.pending_denied.effect}, now);
+    }
+  } else if (
     state.pending_question?.kind === "digest" &&
     state.digest_shown_epoch === state.epoch &&
     state.prompt_epoch > state.pending_question.asked_prompt_epoch
   ) {
+    state.pending_denied = null;
     state.human_response_epoch = state.prompt_epoch;
     state.phase = "AWAITING_HUMAN";
     output = rHookContext(
       "UserPromptSubmit",
       rCard(
-        state,
         "Note",
         "The human answered the Digest for " + state.task_id + ".",
-        "El humano respondió al Digest de " + state.task_id + ".",
         "if the human agreed as shown: pmnm-guard agreed; if anything changed: show the revised Digest, then pmnm-guard digest",
-        "si aceptó tal cual: pmnm-guard agreed; si cambió algo: muestra el Digest corregido y luego pmnm-guard digest",
       ),
     );
     rEvent(state, "digest-response-observed", {epoch: state.epoch}, now);
@@ -4011,17 +4229,15 @@ function rOnPrompt(state, event, now) {
     rTestDigestCurrent(state) &&
     state.prompt_epoch > state.pending_question.asked_prompt_epoch
   ) {
+    state.pending_denied = null;
     state.test_digest_response_epoch = state.prompt_epoch;
     state.pending_question = null;
     output = rHookContext(
       "UserPromptSubmit",
       rCard(
-        state,
         "Note",
         "The human received the current Test Digest for " + state.task_id + ".",
-        "El humano recibió el Test Digest vigente de " + state.task_id + ".",
         "audit the whole change and its evidence, then pmnm-guard done audit=<passed|partial|blocked>",
-        "audita todo el cambio y su evidencia, luego ejecuta pmnm-guard done audit=<passed|partial|blocked>",
       ),
     );
     rEvent(state, "test-digest-response-observed", {epoch: state.epoch}, now);
@@ -4032,45 +4248,39 @@ function rOnPrompt(state, event, now) {
 function rQuestionText(state) {
   const kind = state.pending_question?.kind;
   const words = {
-    folder: ["PMNM folder location", "ubicación de la carpeta PMNM"],
-    project: ["project name", "nombre del proyecto"],
-    digest: ["the plan Digest", "el Digest de plan"],
-    "test-digest": ["the Test Digest", "el Test Digest"],
-    inspection: ["inspection-only verification", "verificación sólo por inspección"],
-    "human-verification": ["human verification", "verificación humana"],
-    "task-identity": ["task-folder identity", "identidad de la carpeta de tarea"],
-    "task-transition": ["the task transition", "el cambio de tarea"],
-    "pointer-recovery": ["PMNM configuration recovery", "recuperación de la configuración PMNM"],
-    "index-recovery": ["PMNM configuration recovery", "recuperación de la configuración PMNM"],
-  }[kind] || ["the open question", "la pregunta abierta"];
-  return rText(state, ...words);
+    folder: "PMNM folder location",
+    project: "project name",
+    digest: "the plan Digest",
+    "test-digest": "the Test Digest",
+    inspection: "inspection-only verification",
+    "human-verification": "human verification",
+    "task-identity": "task-folder identity",
+    "task-transition": "the task transition",
+    "pointer-recovery": "PMNM configuration recovery",
+    "index-recovery": "PMNM configuration recovery",
+  }[kind] || "the open question";
+  return words;
 }
 function rHumanCard(state) {
-  const question = state.pending_denied?.kind === "sensitive"
-    ? rText(state, "sensitive command", "comando sensible")
-    : rQuestionText(state);
+  if (state.pending_denied?.kind === "sensitive") return rSensitiveProofCard(state);
+  const question = rQuestionText(state);
   return rCard(
-    state,
     "Note",
     "PMNM is waiting for the human: " + question + ".",
-    "PMNM espera al humano: " + question + ".",
     "stop here; no more actions until the human answers",
-    "detente aquí; ninguna acción más hasta que el humano responda",
   );
 }
 function rRepeatedStop(state, next) {
   return rCard(
-    state,
     "Note",
     "PMNM stopped this turn once already and will not again.",
-    "PMNM ya detuvo este turno una vez y no lo hará de nuevo.",
     next,
   );
 }
 function rStopOnce(state, nextCard, now) {
   const next =
     nextCard.split("\n").find((line) => line.startsWith("NEXT:"))?.slice(5).trim() ||
-    rText(state, "stop here; no more actions until the human answers", "detente aquí; ninguna acción más hasta que el humano responda");
+    "stop here; no more actions until the human answers";
   if (state.stop_turn_hash === state.current_turn_hash) {
     return {state, output: rWarning(rRepeatedStop(state, next))};
   }
@@ -4085,21 +4295,15 @@ function rUnverifiedCard(state) {
   const external = !changed;
   const next = rReceiptNext("verified", state);
   let english = "External or system effects are unverified.";
-  let spanish = "Efectos externos o del sistema sin verificar.";
   if (paths) {
     english = paths + " planned " + (paths === 1 ? "path changed; it is unverified." : "paths changed; they are unverified.");
-    spanish = paths + " " + (paths === 1 ? "ruta planificada cambió; sigue sin verificar." : "rutas planificadas cambiaron; siguen sin verificar.");
   } else if (changed) {
     english = "Project work changed and nothing verified it yet.";
-    spanish = "El trabajo del proyecto cambió y nada lo ha verificado.";
   }
   return rCard(
-    state,
     "Blocked",
     english,
-    spanish,
     "check the " + (external ? "effect" : "change") + ", then " + next,
-    "comprueba el " + (external ? "efecto" : "cambio") + " y ejecuta " + next,
   );
 }
 function rClosingCard(state) {
@@ -4108,30 +4312,19 @@ function rClosingCard(state) {
   const detail = fingerprint?.provider === "git"
     ? "Fingerprint " + fingerprint.hash + ": base " + fingerprint.base + ", HEAD " + fingerprint.head + ", " + fingerprint.staged + " staged, " + fingerprint.unstaged + " unstaged, " + fingerprint.untracked + " untracked."
     : "Fingerprint " + (fingerprint?.hash || "unknown") + ": " + (fingerprint?.changed || 0) + " files changed by PMNM, no version control.";
-  const detailEs = fingerprint?.provider === "git"
-    ? "Fingerprint " + fingerprint.hash + ": base " + fingerprint.base + ", HEAD " + fingerprint.head + ", " + fingerprint.staged + " staged, " + fingerprint.unstaged + " sin stage, " + fingerprint.untracked + " sin seguimiento."
-    : "Fingerprint " + (fingerprint?.hash || "unknown") + ": " + (fingerprint?.changed || 0) + " archivos cambiados por PMNM, sin control de versiones.";
   return rCard(
-    state,
     "Note",
     "Verification recorded (" + (verification?.result || "unknown") + "). " + detail,
-    "Verificación registrada (" + (verification?.result || "desconocida") + "). " + detailEs,
     "complete the required review and final audit, then pmnm-guard done audit=<passed|partial|blocked>; show the Test Digest only when that audit requests it",
-    "completa la revisión requerida y la auditoría final, luego ejecuta pmnm-guard done audit=<passed|partial|blocked>; muestra el Test Digest sólo cuando esa auditoría lo solicite",
   );
 }
 function rPauseCard(state, repeated = false) {
   return rCard(
-    state,
     repeated ? "Ask" : "Note",
     "Investigation is pausing with no Digest recorded this turn.",
-    "La investigación se pausa sin Digest registrado en este turno.",
     repeated
       ? "show the Digest now; if one question blocks it, ask that question and stop here"
       : "show the Digest; if your last message already asks the human one question, stop here",
-    repeated
-      ? "muestra el Digest ahora; si una pregunta lo bloquea, hazla y detente aquí"
-      : "muestra el Digest; si tu último mensaje ya hace una pregunta al humano, detente aquí",
   );
 }
 function rOnStop(state, event, now) {
@@ -4148,6 +4341,11 @@ function rOnStop(state, event, now) {
   if (rVerifiedNow(state) && !state.completion && state.test_digest_audit_epoch === state.epoch) {
     if (!rTestDigestCurrent(state)) {
       if (!rTestDigestShape(state, event.last_assistant_message)) return rStopOnce(state, rTestDigestCard(state), now);
+      // The hand-over rides the same message. It is always satisfiable, so a wrong reading of the
+      // condition costs one line rather than a blocked closure.
+      if (rOwesHandover(state) && !rHandoverSatisfied(event.last_assistant_message)) {
+        return rStopOnce(state, rHandoverCard(state), now);
+      }
       state.test_digest_epoch = state.epoch;
       state.test_digest_prompt_epoch = state.prompt_epoch;
       state.test_digest_response_epoch = null;
@@ -4191,11 +4389,9 @@ export function processEvent(stateInput, event, options = {}) {
           output: rHookContext(
             "SessionStart",
             rCard(
-              state,
               "Note",
               "PMNM reset pre-release guard state to the 0.1.0 flow.",
-              "PMNM reinició el estado previo del guard al flujo 0.1.0.",
-              "pmnm-guard start task=<ticket-or-id> effort=<light|standard|high>",
+              "pmnm-guard start task=<ticket-or-id> effort=<light|standard|high> work=<implementation|advisory|verification>",
             ),
           ),
         };
@@ -4323,9 +4519,9 @@ function rWriteState(statePath, state) {
 }
 
 const R_TASK_DURABLE_FIELDS = (
-  "phase epoch effort digest_shown_epoch digest_agreed_epoch permission_manifest_hash environment_plan_hash task_permission_epoch task_permissions task_capabilities " +
+  "phase epoch effort work_type digest_shown_epoch digest_agreed_epoch permission_manifest_hash environment_plan_hash task_permission_epoch task_permissions task_capabilities " +
   "mutation_count effect_count verification_count changed_target_hashes observed_state_hashes historical_state_hashes " +
-  "plan_file_hash plan_target_hashes verification_plan_hash impact_plan_hash workspace_scope_snapshot workspace_digest_snapshot " +
+  "plan_file_hash plan_target_hashes verification_plan_hash impact_plan_hash expectations_plan_hash redo_contract_hash work_change_authorized workspace_scope_snapshot workspace_digest_snapshot " +
   "verification_claim_mutation_count verification_claim_effect_count rules_file_hashes_written last_check last_verification " +
   "digest_rule_basis_hash completion"
 ).split(" ");
@@ -4398,12 +4594,9 @@ function rCanLoadRequestedTask(state, task) {
 }
 function rConcurrentTaskCard(state) {
   return rCard(
-    state,
     "Blocked",
     "This task changed in another session after this session loaded it.",
-    "Esta tarea cambió en otra sesión después de que esta sesión la cargó.",
-    "run pmnm-guard start task=" + state.task_id + " effort=" + (state.effort || "standard") + " to reload it; reconcile any conflicting local conclusion before writing",
-    "ejecuta pmnm-guard start task=" + state.task_id + " effort=" + (state.effort || "standard") + " para recargarla; reconcilia cualquier conclusión local en conflicto antes de escribir",
+    "run pmnm-guard start task=" + state.task_id + " effort=" + (state.effort || "standard") + " work=" + (state.work_type || "<implementation|advisory|verification>") + " to reload it, then reconcile any conflicting local conclusion before writing",
   );
 }
 export function processPersistedEvent(event, options = {}) {
@@ -4484,15 +4677,11 @@ export function processPersistedEvent(event, options = {}) {
 }
 function rEmergencyOutput(event, error) {
   const state = rBaseState();
-  state.language = rDetectLanguage(event && event.prompt, "en");
   const detail = rOneLine(error && error.message ? error.message : String(error), 180);
   const message = rCard(
-    state,
     "Blocked",
     "PMNM could not read its own state: " + detail + ".",
-    "PMNM no pudo leer su propio estado: " + detail + ".",
     "check /hooks and pmnm-guard status before continuing",
-    "revisa /hooks y pmnm-guard status antes de continuar",
   );
   if (event?.hook_event_name === "PreToolUse") {
     const payload = rPayload(event);

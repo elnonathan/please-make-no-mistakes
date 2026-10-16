@@ -2,17 +2,17 @@
 
 ## Contract
 
-Please, Make No Mistakes uses a repository marketplace that selects one exact npm package version containing the portable skill and optional Codex lifecycle guard:
+Please, Make No Mistakes uses two repository marketplaces, one for Codex and one for Claude Code. Both select the same exact npm package version, which contains the portable skill, the optional Codex lifecycle guard and the Claude Code adapter:
 
 ```text
 GitHub repository marketplace
   -> exact npm package version
-  -> Codex plugin installation
+  -> Codex or Claude Code plugin installation
 ```
 
-The repository is the marketplace source users add to Codex. Its marketplace identity is also `please-make-no-mistakes`, which avoids colliding with another repository owned by the same maintainer. `.agents/plugins/marketplace.json` pins one immutable npm version, `.codex-plugin/plugin.json` exposes the packaged `skills/` directory, and Codex discovers the conventional `hooks/hooks.json` path without a manifest field. A release changes the package, plugin, marketplace, skill, and guard artifact together.
+The repository is the marketplace source users add to Codex or to Claude Code. Its marketplace identity is also `please-make-no-mistakes` in both hosts, which avoids colliding with another repository owned by the same maintainer. `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` each pin the same immutable npm version and are not packaged themselves. `.claude-plugin/plugin.json` exposes the Claude Code plugin, whose hooks are `hooks/claude/hooks.json`; `.codex-plugin/plugin.json` exposes the packaged `skills/` directory, and its `hooks` field declares `./hooks/codex/hooks.json`, which replaces Codex's default discovery. No conventional `hooks/hooks.json` ships, because Claude Code merges that file into any plugin root that carries one. A release changes the package, plugin, marketplace, skill, and guard artifact together.
 
-The npm package is also the canonical transport artifact for future compatible hosts. It does not imply universal activation: each host still needs a documented and tested registration adapter. The current automated host-specific route is Codex; [SETUP.md](../SETUP.md) fails closed rather than inventing commands for another host.
+The npm package is also the canonical transport artifact for future compatible hosts. It does not imply universal activation: each host still needs a documented and tested registration adapter. The host-specific routes are Codex and Claude Code; [SETUP.md](../SETUP.md) fails closed rather than inventing commands for another host.
 
 This route does not depend on a listing in the OpenAI Plugins Directory. A future directory submission would be a separate release and trust boundary.
 
@@ -35,6 +35,7 @@ For version `X.Y.Z`, all of these must agree before tagging:
 - `package.json` version is `X.Y.Z`;
 - `.codex-plugin/plugin.json` version is `X.Y.Z`;
 - `.agents/plugins/marketplace.json` selects npm package `please-make-no-mistakes` at `X.Y.Z` from `https://registry.npmjs.org`;
+- `.claude-plugin/marketplace.json` selects the same package, version and registry;
 - the release tag is exactly `vX.Y.Z`.
 
 The validators reject version drift and a marketplace that points to a mutable or local source.

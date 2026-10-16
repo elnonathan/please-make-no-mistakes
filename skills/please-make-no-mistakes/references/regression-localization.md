@@ -213,6 +213,10 @@ Known history or environment limits:
 
 Use a host tool or adapter command only after its availability is established, as `flow.md` requires for implementation tools. Consult the adapter's declared authoritative documentation for traversal, result classifications, ambiguity, isolation, and restoration mechanics. Do not copy those mechanics into the portable core or assume another system shares them.
 
+## Reproduction steps
+
+Every provenance record of a defect carries steps someone else can follow without your context: preconditions and data, identity and role, entry point and path, the exact sequence, the defective result to expect, the evidence that shows it, and how to tell it from correct behavior. Mark which steps were executed and which are hypothetical, and say whether reproducing it changes data and how to restore it.
+
 ## Stop and report
 
 Stop narrowing and report the strongest bounded result when:

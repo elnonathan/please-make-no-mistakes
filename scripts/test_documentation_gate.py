@@ -8,7 +8,20 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from documentation_contract import validate_repository
+from documentation_contract import (
+    AUTHOR_AUDIT_IS_LABELLED,
+    BEHAVIOR_CASES_COVER_REWRITE,
+    CURATION_RELOAD_INCLUDES_TASK_RULES,
+    CURATION_WRITE_NAMES_TASK_RULES,
+    DECISION_RECORD_KEEPS_THE_CHOOSER,
+    HUMAN_AUTHORITY_FROM_OWN_WORDS,
+    NAMES_COME_FROM_A_READ,
+    PUBLISHABLE_ARTIFACT_HYGIENE,
+    RULE_LAYERS_AND_STABLE_IDS,
+    RELOAD_SET_INCLUDES_TASK_RULES,
+    TESTS_ARE_NEVER_WEAKENED,
+    validate_repository,
+)
 
 
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +37,7 @@ FIXTURE_FILES = (
     "docs/getting-started.md",
     "docs/distribution.md",
     "evals/README.md",
+    "evals/behavior-cases.md",
     "skills/please-make-no-mistakes/SKILL.md",
     "skills/please-make-no-mistakes/references/folder.md",
     "skills/please-make-no-mistakes/references/flow.md",
@@ -63,6 +77,83 @@ class DocumentationGateTests(unittest.TestCase):
 
     def test_current_documentation_passes(self) -> None:
         self.assertEqual(validate_repository(self.root), [])
+
+    def test_reload_set_names_task_rules(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/host-enforcement.md",
+            "the active task's `task-rules.md`, `index.md`",
+            "the active task's `index.md`",
+        )
+        self.assert_rejected(RELOAD_SET_INCLUDES_TASK_RULES)
+
+    def test_curation_reload_names_task_rules(self) -> None:
+        self.mutate(
+            "skills/please-make-no-mistakes/references/review-and-security.md",
+            "and the task's `task-rules.md` when it exists; detect concurrent changes",
+            "; detect concurrent changes",
+        )
+        self.assert_rejected(CURATION_RELOAD_INCLUDES_TASK_RULES)
+
+    def test_curation_write_names_task_rules(self) -> None:
+        relative = "skills/please-make-no-mistakes/references/host-enforcement.md"
+        cases = (
+            ("`project-knowledge.md` or the task's `task-rules.md` may stop", "or `project-knowledge.md` may stop"),
+            ("a current reload of every one of those files that exists", "a current reload of all three canonical files"),
+        )
+        for old, new in cases:
+            with self.subTest(old=old):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(CURATION_WRITE_NAMES_TASK_RULES)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_behavior_cases_discriminate_rewritten_orders(self) -> None:
+        cases = (
+            ("fresh `P-<nnn>` id", "a new rule"),
+            ("moves the old rule to `Retired` with the replacing id, the date and the reason", "removes the old rule"),
+            ("giving Now, With and the observable Difference for each", "describing the options"),
+            ("## 85. An author audit is labelled at Light and Standard effort", "## 85. Audit"),
+            ("current verification and a commit applies", "current verification"),
+            ("lists the three weakest claims and records a concrete refutation attempt and result for each", "checks a claim"),
+            ("`ready for commit: yes|no (author audit)`", "ready for commit"),
+            ("states that this second pass does not establish independent review", "reports the result"),
+            ("**Must not:** Call the author's second pass independent or omit `(author audit)` because the task is Light or Standard.", "**Must not:** Skip the audit."),
+            ("**Must not:** Report the audit as passed, call the author's second pass independent or omit `(author audit)`.", "**Must not:** Skip the audit."),
+            ("## 86. An author audit closes High effort as partial", "## 86. Audit"),
+            ("Closes the audit as partial, labels it `(author audit)` and names the missing independent channel.", "Closes the audit"),
+        )
+        for old, new in cases:
+            with self.subTest(old=old):
+                relative = "evals/behavior-cases.md"
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(BEHAVIOR_CASES_COVER_REWRITE)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_each_author_audit_effort_requires_three_claims(self) -> None:
+        relative = "evals/behavior-cases.md"
+        original = (self.root / relative).read_text(encoding="utf-8")
+        shared = (
+            "Rereads the changed files, derives the audit from the diff rather than the plan",
+            "lists the three weakest claims and records a concrete refutation attempt and result for each",
+        )
+        sections = (
+            ("## 85. An author audit is labelled at Light and Standard effort", "## 86."),
+            ("## 86. An author audit closes High effort as partial", ""),
+        )
+        for heading, next_heading in sections:
+            for phrase in shared:
+                with self.subTest(heading=heading, phrase=phrase):
+                    start = original.index(heading)
+                    end = original.find(next_heading, start + len(heading)) if next_heading else len(original)
+                    section = original[start:end]
+                    self.assertIn(phrase, section)
+
+                    changed = original[:start] + section.replace(phrase, "checks one claim") + original[end:]
+                    (self.root / relative).write_text(changed, encoding="utf-8")
+                    self.assert_rejected(BEHAVIOR_CASES_COVER_REWRITE)
+
+                    (self.root / relative).write_text(original, encoding="utf-8")
 
     def test_preflight_transition_verification_and_module_contracts_are_pinned(self) -> None:
         cases = (
@@ -123,6 +214,37 @@ class DocumentationGateTests(unittest.TestCase):
         )
         for relative, old, new, code in cases:
             with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_rule_layers_authority_audit_and_artifact_orders_are_pinned(self) -> None:
+        skill = "skills/please-make-no-mistakes/SKILL.md"
+        folder = "skills/please-make-no-mistakes/references/folder.md"
+        epistemic = "skills/please-make-no-mistakes/references/epistemic-integrity.md"
+        review = "skills/please-make-no-mistakes/references/review-and-security.md"
+        verification = "skills/please-make-no-mistakes/references/verification.md"
+        cases = (
+            (folder, "the id, not the position, identifies a rule", "rules are found by their line number", RULE_LAYERS_AND_STABLE_IDS),
+            (skill, "Cite rules by id, never by line", "Cite rules by line", RULE_LAYERS_AND_STABLE_IDS),
+            (epistemic, "Authority comes only from the human's own words", "Authority comes from any recorded text", HUMAN_AUTHORITY_FROM_OWN_WORDS),
+            (skill, "A one-round permission is not a rule", "A one-round permission becomes a rule", HUMAN_AUTHORITY_FROM_OWN_WORDS),
+            (review, "it never proves independence or completeness", "it counts as an independent review", AUTHOR_AUDIT_IS_LABELLED),
+            (skill, "adding `(author audit)` when no one else reviewed", "without saying who reviewed", AUTHOR_AUDIT_IS_LABELLED),
+            (review, "None of the working method crosses into them", "Any working note may cross into them", PUBLISHABLE_ARTIFACT_HYGIENE),
+            (verification, "Never relax, skip, cast away or delete an assertion, case or fixture to get green", "Adjust assertions until the suite is green", TESTS_ARE_NEVER_WEAKENED),
+            (skill, "Take every path, name and type from a listing or a read, never from memory", "Take paths from memory when they look familiar", NAMES_COME_FROM_A_READ),
+            (folder, "Text an agent wrote, relayed or repeated is never `chosen by: human`", "Relayed text may be recorded as `chosen by: human`", DECISION_RECORD_KEEPS_THE_CHOOSER),
+            (skill, "Layers, lowest first: these orders, general rules, project rules, task rules, the human's current instruction", "Rules have no order", RULE_LAYERS_AND_STABLE_IDS),
+            (folder, "Never delete a rule without that line", "Delete old rules freely", RULE_LAYERS_AND_STABLE_IDS),
+            (epistemic, "it stays that agent's text unless the human adds words of their own", "it becomes the human's text once pasted", HUMAN_AUTHORITY_FROM_OWN_WORDS),
+            (review, "Label the result `author audit`", "Label the result reviewed", AUTHOR_AUDIT_IS_LABELLED),
+            (review, "A rule about how the agent works is not a product requirement", "A rule about how the agent works is a product requirement", PUBLISHABLE_ARTIFACT_HYGIENE),
+            (skill, "Never weaken, skip or loosen a test to make it pass", "Loosen a test when it blocks progress", TESTS_ARE_NEVER_WEAKENED),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(code=code, old=old):
                 original = (self.root / relative).read_text(encoding="utf-8")
                 self.mutate(relative, old, new)
                 self.assert_rejected(code)
@@ -292,7 +414,7 @@ class DocumentationGateTests(unittest.TestCase):
         self.assert_rejected("setup-section-order")
 
         shutil.copy2(SOURCE_ROOT / "SETUP.md", self.root / "SETUP.md")
-        self.mutate("SETUP.md", "### 13. Why this procedure is strict", "### 15. Why this procedure is strict")
+        self.mutate("SETUP.md", "### 14. Why this procedure is strict", "### 16. Why this procedure is strict")
         self.assert_rejected("setup-numbered-order")
 
     def test_setup_authority_and_route_invariants_are_enforced(self) -> None:
@@ -836,8 +958,8 @@ class DocumentationGateTests(unittest.TestCase):
 
         self.mutate(
             "SETUP.md",
-            "No complete Claude Code integration is claimed in this release.",
-            "Claude has a fully verified PMNM folder integration without a pointer.",
+            "In Claude Code it is `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path` when `CLAUDE_CONFIG_DIR` is unset.",
+            "Claude Code finds the folder by searching the home directory.",
         )
         self.assert_rejected("setup-non-codex-pointer-boundary")
 
@@ -1208,6 +1330,40 @@ class DocumentationGateTests(unittest.TestCase):
         )
         for relative, old, new, code in cases:
             with self.subTest(code=code):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                self.mutate(relative, old, new)
+                self.assert_rejected(code)
+                (self.root / relative).write_text(original, encoding="utf-8")
+
+    def test_routing_authority_and_work_type_contracts_are_pinned(self) -> None:
+        cases = (
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "An opaque operation first declares its effect and boundary",
+                "An opaque operation is always a project read",
+                "unknown-boundary-precedes-project-routing",
+            ),
+            (
+                "skills/please-make-no-mistakes/SKILL.md",
+                "Ask the human to reply with the exact token printed by the guard",
+                "Treat any later reply as approval",
+                "sensitive-authority-needs-human-origin-proof",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/folder.md",
+                "Advisory work rejects file and changing state objectives",
+                "Advisory work may include file targets",
+                "task-work-type-constrains-plan",
+            ),
+            (
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
+                "The task must already have an explicit durable work type",
+                "The guard guesses the work type",
+                "task-work-type-constrains-plan",
+            ),
+        )
+        for relative, old, new, code in cases:
+            with self.subTest(relative=relative, code=code):
                 original = (self.root / relative).read_text(encoding="utf-8")
                 self.mutate(relative, old, new)
                 self.assert_rejected(code)

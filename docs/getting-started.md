@@ -26,7 +26,7 @@ The only other folder questions are whether a possibly matching task folder is t
 
 ## When The Codex Guard Is Active
 
-The Codex plugin includes an optional lifecycle guard. After you review and trust its current definition through `/hooks`, covered events can make a skipped transition observable.
+The Codex plugin includes an optional lifecycle guard. After you review and trust its current definition through `/hooks`, covered events can make a skipped transition observable. In Claude Code, enabling the plugin runs its adapter without a separate trust step.
 
 A card has two lines: what happened, and `NEXT:` with one exact action. Its first word is the level. Blocked means the action did not run. Ask means you answer next. Note means continue. A card is not a question for you: the agent reports it in one sentence and takes the `NEXT:` action; after an Ask it stops until you answer.
 

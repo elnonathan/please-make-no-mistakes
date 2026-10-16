@@ -6,9 +6,9 @@ This roadmap lists what is decided. It is not a release promise.
 
 The first public release is 0.1.0. It is published after the installation test passes in a real host session against the exact installed candidate, not before. Until then the package exists as a repository source and a local artifact.
 
-## Claude adapter
+## Other hosts
 
-A Claude Code adapter is a separate, later phase. It uses Claude's own lifecycle surfaces, state location and native tests. It does not copy or inherit the Codex hook; similar event names do not carry identical guarantees. Claude Code may discover the portable skill through its own supported mechanism, but this repository will not claim the complete PMNM folder workflow until it documents and verifies one literal pointer for that host. No Claude guard is claimed today.
+Codex and Claude Code each have a plugin, a marketplace and an adapter over one shared engine. Another host may discover the portable skill through its own supported mechanism; this repository will not claim the complete PMNM folder workflow until it documents and verifies one literal pointer for that host, and any guard for it needs its own adapter. Similar event names do not carry identical guarantees.
 
 ## Rules and guards
 

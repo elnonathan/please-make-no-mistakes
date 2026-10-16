@@ -18,6 +18,8 @@ FULL_CHECKS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("package-and-skill", (PYTHON, "scripts/validate_skill.py")),
     ("source-validator-adversarial", (PYTHON, "scripts/test_validate_skill.py")),
     ("host-guard", ("node", "--test", "scripts/test_host_guard.mjs")),
+    ("claude-adapter", ("node", "--test", "scripts/test_claude_adapter.mjs")),
+    ("claude-discovery", ("node", "--test", "scripts/test_claude_discovery.mjs")),
     ("documentation-contract", (PYTHON, "scripts/documentation_gate.py")),
     ("documentation-adversarial", (PYTHON, "scripts/test_documentation_gate.py")),
     ("agent-evaluation", (PYTHON, "scripts/test_agent_evaluation.py")),

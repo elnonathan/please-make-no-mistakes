@@ -2,6 +2,8 @@
 
 Investigate, plan Digest, work, verify, audit, then hand over the Test Digest. Project mutations and material advisory deliverables enter through the plan Digest and reach human acceptance only after the agent's audit is current. A bounded verification-only path is described below.
 
+At task entry, choose one explicit work type. `implementation` permits a plan with repository files or changing state. `advisory` permits only paired deliverables and boundaries. `verification` is for an exact non-mutating check. The guard persists that choice with the task. To change it, withdraw the current Digest with `redo` and repeat `start` with the new work type.
+
 ## 1. Investigate
 
 - Resolve the request: outcome, completion condition, constraints, what is ambiguous.
@@ -19,9 +21,11 @@ Investigate, plan Digest, work, verify, audit, then hand over the Test Digest. P
 
 ## 2. Plan Digest
 
-Before showing the Digest, write `plan.md`. Repository files use `- [ ] <path> — <what changes>` and preserved files use `- [ ] excluded: <path> — <why>`. Material external or system results use `- [ ] state: <stable-id> — <before> => <after>` and preserved state uses `- [ ] unchanged-state: <stable-id> — <invariant>`. A material advisory result uses `- [ ] deliverable: <stable-id> — <result>` paired with `- [ ] boundary: <same-id> — <strongest relevant alternative, exclusion or uncertainty and its disposition>`. Paths are files, not directories. A safe absolute path physically inside the repository canonicalizes to the same identity as its relative spelling; prefer the relative spelling. Objective ids are stable, lowercase and contain no spaces; state before and after must differ. A state already checked when its Digest is shown records completed history. Corroborate its present result, but do not invent or repeat the old operation. The combined list is the promise. Update the other task files with the current state, evidence, decisions, rejected paths and open questions. Write a human correction before a revised Digest. The Digest is not ready while the task folder lags behind it.
+Before showing the Digest, write `plan.md`. Repository files use `- [ ] <path> — <what changes>` and preserved files use `- [ ] excluded: <path> — <why>`. Material external or system results use `- [ ] state: <stable-id> — <before> => <after>` and preserved state uses `- [ ] unchanged-state: <stable-id> — <invariant>`. A material advisory result uses `- [ ] deliverable: <stable-id> — <result>` paired with `- [ ] boundary: <same-id> — <strongest relevant alternative, exclusion or uncertainty and its disposition>`. Advisory work uses only those pairs. File and changing state objectives contradict it. Verification work is non-mutating and may use only `excluded:` and `unchanged-state:` entries to preserve explicit scope. A project, external or system mutation requires `redo`, `work=implementation`, a changing objective and a new Digest. Paths are files, not directories. A task that changes no repository file plans only the objective forms allowed by its work type. A safe absolute path physically inside the repository canonicalizes to the same identity as its relative spelling. Prefer the relative spelling. Objective ids are stable, lowercase and contain no spaces. State before and after must differ. A state already checked when its Digest is shown records completed history. Corroborate its present result, but do not invent or repeat the old operation. The combined list is the promise. Update the other task files with the current state, evidence, decisions, rejected paths and open questions. Write a human correction before a revised Digest. The Digest is not ready while the task folder lags behind it.
 
 Before the Digest, `verification.md` must name the changed contract, the request case, a preserved case, entry surface, environment, actor, safe data, numbered steps, expected observations, available capability, evidence to retain and cleanup. Use `not-applicable` or `unavailable` only with a reason. Discover these from the repository and available tools; do not invent an account, URL, fixture or capability. When `impact.md` applies, its local rationale or transitive ledger, dynamic-boundary dispositions, non-functional matrix and before-plan omission check are part of the same agreement. `unresolved-blocking` prevents the Digest. `unresolved-accepted-risk` names what the human is agreeing to leave unresolved; it does not turn uncertainty into evidence.
+
+After `redo`, a material change to the bound expectations or impact contract can support a revised Digest with the same `plan.md` objectives. Restoring the exact agreed bytes does not create a new contract. Before `redo`, that restoration permits retrying the original action. After `redo`, an otherwise unchanged contract still needs an actual plan change before another Digest.
 
 List every predictable sensitive operation in `permissions.json`. Use `task` for authority that ends with this task. Use `project` only for an operation or bounded capability the human intends to reuse across tasks; including `project: []` explicitly revokes the previously active project set. Omit `project` to preserve it. A planned non-file transition is task scoped and names the matching `objective`. Its operation keeps a more specific effect such as `network` or `environment`; use `state-change` only when no supported effect describes the exact covered operation. The Codex adapter accepts at most 32 entries. Exact Bash operations are single-line and reviewable; a state operation may instead identify another covered host tool through its exact JSON input:
 
@@ -42,9 +46,9 @@ This file forecasts authority; it does not bypass native host approval or prove 
 
 When another actor will execute a consequential operation, prepare a bounded execution package instead of treating prose as proof. Name the executor, observer, intended effect and boundary, exact scope, prerequisites, cost or load expectation, stop signal, evidence to return, cleanup and the environment or revision against which the instructions were derived. “Read-only” describes mutation, not cost: an expensive scan, query or inspection still needs a bounded scope and stop condition. Distinguish evidence available before execution, evidence only the executor can observe and evidence that can be checked afterward. Dates and freshness come from an observable clock, revision or source timestamp; otherwise record them as unknown. The package is provider-neutral and does not grant authority to its executor.
 
-Preflight the complete `plan.md`, `verification.md`, applicable `impact.md`, `permissions.json` and any required `environment.md` before asking for agreement. Collect every defect first and report each source, line, violated rule and concrete correction together. Under the Codex guard, `digest` writes the full result to guard-owned `preflight.md`; fix that one report before retrying. Safe canonicalization may change representation without changing the contract. Never treat a normalization as permission to move an external helper, reinterpret prose as a state objective or grant an operation.
+Preflight the complete `plan.md`, `verification.md`, applicable `impact.md`, High-effort `expectations.md`, `permissions.json` and any required `environment.md` before asking for agreement. Collect every defect first and report each source, line, violated rule and concrete correction together. Under the Codex guard, `digest` writes the full result to guard-owned `preflight.md`; fix that one report before retrying. Safe canonicalization may change representation without changing the contract. Never treat a normalization as permission to move an external helper, reinterpret prose as a state objective or grant an operation.
 
-The Digest's Change field is `plan.md` read aloud: the same paths, the same reasons, plus one line, `Existing mechanism compared: <name> — reused | not reused because <reason>`. Its Impact field states the mode, roots, unresolved boundaries and accepted residual risks without reproducing the whole ledger.
+At High effort the Digest's Impact and Ambiguities fields are read from `expectations.md` rather than derived again: the impact of the rows whose coverage is missing or partial, and the ambiguity of the rows whose evidence cell names an open boundary. Those rows are bound to the Digest and must be reloaded after compaction, resume or a new session. Changing them withdraws authority and requires a revised Digest. The Digest's Change field is `plan.md` read aloud: the same paths, the same reasons, plus one line, `Existing mechanism compared: <name> — reused | not reused because <reason>`. Its Impact field states the mode, roots, unresolved boundaries and accepted residual risks without reproducing the whole ledger.
 
 Show it in this shape, then ask. End your turn.
 
@@ -63,7 +67,7 @@ Do you agree?
 
 Light effort: one line per field, the request case, one preserved case and the minimum direct evidence. Standard adds the strongest alternative or counterexample and the adjacent affected surface. High adds policy basis, containment, a non-author evidence channel and an independently derived impact challenge.
 
-When the human agrees as shown, continue. When they change anything, show a revised Digest; do not merge the change silently. When they ask a question, answer it in one or two sentences and ask again.
+When the human agrees as shown, continue. When they change anything, show a revised Digest; do not merge the change silently. Showing a Digest again retires the agreement the previous one earned, so show it when the plan changed, not when the conversation moved. Show it before the next project write, state operation or final delivery. Until one of those is next, record the change in the task folder and keep investigating. When they ask a question, answer it in one or two sentences and ask again.
 
 The checkbox is progress, not evidence. Reordering lines, checking boxes or replacing a safe absolute repository path with its canonical relative spelling does not change the agreement. Changing a target, reason, state contract, verification contract or permission does. Update `plan.md`, show the revised Digest and use `pmnm-guard redo` before continuing.
 
@@ -73,6 +77,8 @@ For a question that needs the human's decision during investigation, use this sh
 What I need from you: <one decision, with my recommendation>
 What I can continue without you: <the work that does not depend on it>
 ```
+
+Open the Digest with the requested deliverable in the human's own terms and the strongest alternative reading of it. The investigate step aims falsifiability at the code; this aims it at your reading of the request, which is where the more expensive error lives.
 
 ## 3. Work inside the plan
 
@@ -103,30 +109,21 @@ Bind the audit to its fingerprint. With version control, name the provider's bas
 
 Name what the audit could compare: version control, planned paths against their recorded baseline, or no project files. Report state evidence separately. A state-only task says that no project-file comparison occurred; it does not invent a file or version-control fingerprint. Without version control, say so; do not describe a comparison that did not happen.
 
+Before closing, name any claim from this task that will still be true for the next one in this project and choose `promote` or `task-local` for it, as [folder](folder.md) describes. `project-knowledge.md` is what makes the second task cheaper than the first.
+
 ## 6. Independent review
 
-At High effort, or when the human asks, a reviewer who did not write the change reads the current contract, `plan.md`, `impact.md`, `verification.md` and changed surface, then runs or performs at least one check the author did not use. `review.md` records `contract`, `plan-digest`, `fingerprint`, `changed-surface`, `evidence`, `strongest-counterexample`, `independent-check`, `disagreement` and `residual-limit`. When impact analysis applies, it also records `impact-roots`, `impact-omission-check` and `non-functional-dispositions`. The reviewer derives a root or omitted branch independently rather than confirming the plan's list. The plan hash and verification fingerprint bind the packet to the state reviewed. The counterexample must be concrete, and the independent check cannot merely repeat the author's evidence. Use `disagreement: none` only when no unresolved contradiction remains; otherwise reconcile with the human or close as partial or blocked. The reviewer may be a human or another model. The guard checks shape, identity, freshness and an explicitly unresolved disagreement. It cannot prove reviewer independence, interpret arbitrary test semantics or turn the packet into truth or command authority.
+At High effort, or when the human asks, a reviewer who did not write the change reads the current contract, `plan.md`, `impact.md`, `verification.md` and changed surface, then runs or performs at least one check the author did not use. `review.md` records `contract`, `plan-digest`, `fingerprint`, `changed-surface`, `evidence`, `strongest-counterexample`, `independent-check`, `disagreement` and `residual-limit`. For a strictly non-mutating verification task that closes without a plan Digest, write `plan-digest: none` and bind the review to the current verification fingerprint. When impact analysis applies, it also records `impact-roots`, `impact-omission-check` and `non-functional-dispositions`. The reviewer derives a root or omitted branch independently rather than confirming the plan's list. The plan hash, when one exists, and the verification fingerprint bind the packet to the state reviewed. The counterexample must be concrete, and the independent check cannot merely repeat the author's evidence. Use `disagreement: none` only when no unresolved contradiction remains; otherwise reconcile with the human or close as partial or blocked. The reviewer may be a human or another model. The guard checks shape, identity, freshness and an explicitly unresolved disagreement. It cannot prove reviewer independence, interpret arbitrary test semantics or turn the packet into truth or command authority.
 
-If no non-author reviewer is available, perform an adversarial self-review that tries one concrete counterexample not used during implementation. Label the result partial, record the missing independent channel and never present it as equivalent evidence or a completeness proof.
+If no non-author reviewer is available, run the author audit in [review and security](review-and-security.md).
 
 ## 7. Test Digest handoff
 
-After current verification, the required review and the agent's final audit, show the Test Digest and stop for the human. It belongs at the final acceptance boundary, normally immediately before a commit, submit or close. Do not emit it after an intermediate check or while implementation, review or audit remains. It must be actionable without reconstructing the investigation:
-
-```
-Test — <task id>
-Where: <URL, screen, command or endpoint>
-Environment: <runtime and required setup>
-As: <user, role, account or caller characteristics>
-Data: <safe fixture or record and its provenance>
-Steps: 1. … 2. … 3. …
-Expect: <what should be seen at each step>
-Evidence: <what to retain>
-Cleanup: <what must be restored, or why none is needed>
-Can run: <yes with the available capability | no with the exact limitation>
-```
+After current verification, the required review and the agent's final audit, show the Test Digest and stop for the human. It belongs at the final acceptance boundary, normally immediately before a commit, submit or close. Do not emit it after an intermediate check or while implementation, review or audit remains. Use the exact shape in [verification](verification.md#test-digest); it must be actionable without reconstructing the investigation.
 
 Investigate executable interface capabilities before declaring `Can run: no`. When no tool can run it, say exactly what remains human-owned and that it has not run. Never describe a run you did not do. Under the Codex guard, the first `done` after a current audit requests this handoff. The Test Digest must then appear in the assistant's current message and receive a later human response before `done` can close; the guard checks its shape and freshness, never its truth.
+
+When a manual check can change the steps after it, hand over only the next step and wait for its result. Listing the rest in advance invents a sequence that the first result may not survive.
 
 ## Verification-only path
 

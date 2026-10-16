@@ -103,7 +103,7 @@
     },
     {
       "id": "broad-scope-does-not-create-rule",
-      "scenario": "The PMNM folder, project and task are resolved. The human says an inferred project behavior applies to every task. No evidence verifies the mechanism and the human did not state an always-or-never instruction.",
+      "scenario": "The PMNM folder, project and task are resolved. The human says an inferred project behavior applies to every task. Direct evidence in this task corroborates the mechanism, its source and its freshness, and the human did not state an always-or-never instruction.",
       "question": "Should PMNM remain active, what is the next boundary, and may project implementation begin merely because the scope is broad?"
     },
     {
@@ -174,12 +174,12 @@
     {
       "id": "literal-container-read",
       "scenario": "The next command executes a literal read-only database query through a known container exec wrapper. The container already exists and the inner command is fully visible. A different container command would create or restart services.",
-      "question": "Should both commands inherit the same environment-changing classification, and what evidence determines their effects?"
+      "question": "What is the next boundary for this command, and what evidence settles its effect?"
     },
     {
       "id": "administrative-check-before-implementation",
       "scenario": "A syntax or documentation check passed during investigation, but the agreed plan still has open implementation files and the requested behavior has not been exercised.",
-      "question": "May this become final task verification or trigger the post-change Test Digest, and how should its useful output be retained?"
+      "question": "What is the next boundary, may this check stand as final task verification, and may implementation continue now?"
     },
     {
       "id": "representation-only-plan-normalization",
@@ -189,7 +189,7 @@
     {
       "id": "concurrent-independent-tasks",
       "scenario": "Two fresh conversations are open in the same canonical repository. One explicitly starts TASK-A and the other explicitly starts TASK-B. Each task has its own folder and agreed plan; the project has one reusable permission.",
-      "question": "Which state may be shared, which state must remain isolated, and may either conversation block, authorize or close the other task?"
+      "question": "What is the next boundary for the conversation that started TASK-A, and may it block, authorize or close TASK-B?"
     },
     {
       "id": "same-task-concurrent-revision",
@@ -218,7 +218,7 @@
     },
     {
       "id": "transitive-impact-node-unresolved",
-      "scenario": "The PMNM folder, project and task are resolved. A material value crosses a producer, partial reconstruction, fallback precedence and two observable consumers. The proposed impact ledger omits one consumer and no accepted residual risk exists.",
+      "scenario": "The PMNM folder, project and task are resolved. `impact.md` is present in transitive mode and its ledger is otherwise complete. A material value crosses a producer, partial reconstruction, fallback precedence and two observable consumers. The ledger carries no row for one of those consumers and no accepted residual risk exists.",
       "question": "What is the next boundary, what disposition is still missing, and may implementation begin now?"
     },
     {
@@ -263,8 +263,8 @@
     },
     {
       "id": "concise-default-conflicts-with-human-rule",
-      "scenario": "The portable skill prefers a concise response, while the human has an explicit current rule requiring a fuller evidence presentation for this audience.",
-      "question": "Which instruction governs the response, and may concision remove material evidence?"
+      "scenario": "The PMNM folder and project are resolved. The portable skill defaults to a concise answer and does not activate for simple factual answers unless explicitly invoked. The human has a current explicit project rule: use PMNM for every answer about this system, including short factual ones, so that each claim carries its evidence and the scope that evidence covers. The human now asks a short factual question about how the system behaves. The evidence needed is already in the conversation, and the answer is not a deliverable that another decision will rely on.",
+      "question": "Which instruction governs, and may the concise default drop the evidence from the answer?"
     }
   ]
 }
