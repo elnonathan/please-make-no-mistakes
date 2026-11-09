@@ -307,6 +307,8 @@ Tokens and approvals:
 - An open token or approval is never dropped to make room. A session can hold 8 open tokens, and all sessions together 128. When either limit is full, the operation stops with no token and says so; answer an open token or let one expire, then retry.
 - A reply that matches no open token says it expired, was used or belongs to another session. Rerun the operation for a new token.
 
+At the start of each session the agent is asked to load PMNM. In Claude Code, if its first tool call that can touch the project comes before it loads the skill with the Skill tool, that call is stopped once with `Blocked: load PMNM before working on the project.`, and the agent loads the skill and retries. Send `PMNM-SKIP` alone to turn this stop off for the current session. Codex is not stopped.
+
 The brake finds `commands.json` through the same `pmnm.path` pointer as the agent. Without a pointer that holds an absolute path, it stores no verdicts: the judge is asked every time, and an approval stores no rating.
 
 The brake keeps its state in `<plugin data>/brake/`, where `<plugin data>` is the data directory the host gives the plugin. When the host gives none, the state is in `<system temp>/pmnm-brake/brake/`. The files are:
@@ -317,6 +319,7 @@ The brake keeps its state in `<plugin data>/brake/`, where `<plugin data>` is th
 - `mcp-allow.json`, the allowed MCP servers;
 - `notices.json`, which re-evaluation notices were shown;
 - `sessions.json`, hashes of the last 256 sessions that already received the line asking the agent to load PMNM;
+- `loaded.json`, hashes of the last 256 sessions that loaded the skill, were already stopped once for not loading it, or received `PMNM-SKIP`;
 - `stats.json`, decision counts (`judge_calls`, `judge_safe_high`, `judge_unanswered`, `judge_unavailable`, `catalog_hits`, `mcp_allowed`), never what was decided.
 
 When `catalog.key` cannot be read or created, the brake stores nothing and no reply approves anything: only the human can run a stopped operation. Never edit these files. An operation that names the state directory or `catalog.key` is sensitive.

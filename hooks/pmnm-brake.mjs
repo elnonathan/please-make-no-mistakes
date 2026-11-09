@@ -1584,27 +1584,79 @@ const ACTIVATION_LINE = Object.freeze({
   codex: "PMNM: for work that changes code, configuration, data or a repository, and for investigating, reviewing or verifying one, open the please-make-no-mistakes skill's SKILL.md from your skills list before reading the project.",
 });
 const MAX_SESSIONS = 256;
+// Two sealed session lists: sessions that received the line, and sessions already handled by the load
+// stop (the skill loaded, the stop already shown once, or the human sent PMNM-SKIP).
+const SESSION_LISTS = Object.freeze({GREETED: "sessions", LOADED: "loaded"});
 
-const sessionsSealFields = (sessions) => ["sessions", JSON.stringify(sessions)];
+const sessionsSealFields = (name, sessions) => [name, JSON.stringify(sessions)];
+const sessionMark = (session) => crypto.createHash("sha256").update(session).digest("hex");
 
-/** Whether this is the session's first prompt; sessions are remembered as hashes, under the brake's seal. */
-function firstPromptOfSession(env, session, secret) {
-  const file = path.join(dataDirectory(env), "sessions.json");
-  const mark = crypto.createHash("sha256").update(session).digest("hex");
+/**
+ * Adds the session to a sealed list and says whether it was new. Sessions are kept as hashes. An
+ * unsealed list counts as empty, so a forged one can only repeat a line or a stop, never silence it.
+ */
+function markSession(env, name, session, secret) {
+  const file = path.join(dataDirectory(env), name + ".json");
+  const mark = sessionMark(session);
   const stored = readJson(file, null);
   const listed = Array.isArray(stored?.sessions) ? stored.sessions : [];
-  // An unsealed list counts as empty, so a forged one can only repeat the line, never silence it.
-  const sessions = sealed(secret, sessionsSealFields(listed), stored?.seal) ? listed : [];
+  const sessions = sealed(secret, sessionsSealFields(name, listed), stored?.seal) ? listed : [];
 
   if (sessions.includes(mark)) return false;
 
   const next = [...sessions, mark].slice(-MAX_SESSIONS);
   try {
-    writeJson(file, {sessions: next, seal: seal(secret, sessionsSealFields(next))});
+    writeJson(file, {sessions: next, seal: seal(secret, sessionsSealFields(name, next))});
   } catch {
-    // An unwritten mark only repeats the line.
+    // An unwritten mark only repeats the line or the stop once more.
   }
   return true;
+}
+
+/** Whether this is the session's first prompt. */
+function firstPromptOfSession(env, session, secret) {
+  return markSession(env, SESSION_LISTS.GREETED, session, secret);
+}
+
+// The line alone did not make agents load the skill (0 of 5 cold Haiku sessions, with the line
+// delivered). So the first tool call that can touch the project, in a session that has not loaded
+// the skill, is stopped once. Once only: a host that never routes the skill load through this hook
+// cannot lock a session, which is how the retired read block failed.
+// Claude Code only: Codex has loaded the skill on its own in practice, and the failure was measured
+// in Claude Code, so Codex keeps only the first-prompt line.
+const HOSTS_WITH_LOAD_STOP = new Set(["claude"]);
+const LOAD_STOP_NEXT = "load the please-make-no-mistakes skill with the Skill tool";
+const SKIP_PROMPT = "PMNM-SKIP";
+
+/**
+ * Claude Code's Skill tool naming PMNM: the one load the host itself mediates. A file read is never
+ * credited: a hook cannot tell whether the agent saw the content (an empty head, a redirect to
+ * /dev/null), and each attempt to tell produced another way to read without reading.
+ */
+// The skill as a plugin names it, and as a standalone skill directory names it; nothing else.
+const PMNM_SKILL_IDS = new Set(["please-make-no-mistakes:please-make-no-mistakes", "please-make-no-mistakes"]);
+
+function loadsSkill(toolName, input) {
+  return toolName === "Skill" && PMNM_SKILL_IDS.has(String(input?.skill ?? input?.name ?? ""));
+}
+
+/** A tool that can read or change the project: file tools, patches, shells and MCP tools. */
+function touchesProject(toolName) {
+  return FILE_TOOLS.has(toolName) || toolName === "apply_patch" || isShellTool(toolName) || String(toolName).startsWith("mcp__");
+}
+
+/** The load stop, or null: marks the session handled when it loads the skill or when it is stopped. */
+function loadStop(host, env, session, secret, toolName, input) {
+  if (!HOSTS_WITH_LOAD_STOP.has(host)) return null;
+
+  const loading = loadsSkill(toolName, input);
+  const project = touchesProject(toolName);
+  if (!loading && !project) return null;
+
+  const firstTime = markSession(env, SESSION_LISTS.LOADED, session, secret);
+  if (!firstTime || loading) return null;
+
+  return deny("Blocked: load PMNM before working on the project.\nNEXT: " + LOAD_STOP_NEXT + ", then retry the same operation.");
 }
 
 function promptContext(text) {
@@ -1632,6 +1684,10 @@ export function handle(event, {host, env = process.env, judge = runJudge, folder
 
     const answerPrompt = () => {
       const answer = String(event.prompt || "").trim();
+      if (answer.toUpperCase() === SKIP_PROMPT) {
+        markSession(env, SESSION_LISTS.LOADED, session, secret);
+        return promptContext("PMNM: the human turned off the PMNM load stop for this session.");
+      }
       const judgeChange = confirmJudgePrompt(answer, env, secret, now, codexHome);
       if (judgeChange) return promptContext(judgeChange);
       const serverChange = mcpPrompt(answer, env, secret, now);
@@ -1674,6 +1730,9 @@ export function handle(event, {host, env = process.env, judge = runJudge, folder
   if (touchesBrakeState(toolName, input, cwd, env)) {
     return deny("Blocked: the operation reaches the brake's own state.\nNEXT: stop and show the human this exact operation; only the human can run it.");
   }
+
+  const stopped = session && secret ? loadStop(host, env, session, secret, toolName, input) : null;
+  if (stopped) return stopped;
 
   // A busy lock spends nothing: the operation is classified as if no grant existed, and a stop in the
   // same call reports busy at once instead of waiting for the lock a second time.

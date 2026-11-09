@@ -8,8 +8,22 @@ import path from "node:path";
 import test from "node:test";
 
 import {
-  SAFETY, catalogKey, classifyCommand, classifyTool, handle, hostModels, intentOfName, nameTokens, redact, runJudge,
+  SAFETY, catalogKey, classifyCommand, classifyTool, handle as rawHandle, hostModels, intentOfName, nameTokens, redact, runJudge,
 } from "../hooks/pmnm-brake.mjs";
+
+// Most tests exercise the brake's decisions inside a session that already loaded PMNM. This adapter
+// loads the skill once per session and state directory before that session's first tool call, the
+// way an agent does; the tests of the load stop itself call rawHandle directly.
+const loadedSessions = new Set();
+function handle(event, options = {}) {
+  const session = typeof event.session_id === "string" ? event.session_id : "";
+  const key = JSON.stringify([options.env?.PLUGIN_DATA || "", session, options.host]);
+  if (event.hook_event_name === "PreToolUse" && session && !loadedSessions.has(key)) {
+    loadedSessions.add(key);
+    rawHandle({hook_event_name: "PreToolUse", session_id: session, cwd: event.cwd, tool_name: "Skill", tool_input: {skill: "please-make-no-mistakes:please-make-no-mistakes"}}, {host: options.host, env: options.env, folder: options.folder});
+  }
+  return rawHandle(event, options);
+}
 
 const CWD = "/work/repo";
 const safety = (command, cwd = CWD) => classifyCommand(command, {cwd}).safety;
@@ -1135,6 +1149,8 @@ test("shell punctuation inside quotes and file-tool paths stays part of the path
 
 test("a held lock costs one short wait per call, not two", (t) => {
   const {folder, env} = setup(t);
+  // The session loads the skill before the lock is taken, so only the measured call meets the lock.
+  handle(bash("true", "/work/repo"), {host: "codex", env, folder});
   fs.writeFileSync(path.join(stateDirectory(env), "approvals.json.lock"), "");
   const started = Date.now();
   const output = handle(bash("rm -rf src", "/work/repo"), {host: "codex", env, folder});
@@ -1227,4 +1243,99 @@ test("a stale Claude cache, present or added later, neither refuses nor stops th
   assert.match(contextOf(confirmJudge(env, folder, "claude", "claude-imaginary")), /the human confirmed claude-imaginary/, "a stale cache refused the human's model");
   const noCodexCatalog = {...env, CODEX_HOME: temp(t)};
   assert.match(contextOf(confirmJudge(noCodexCatalog, folder, "codex", "gpt-small")), /could not be read/);
+});
+
+// ---------------------------------------------------------------- the PMNM load stop
+
+function event(session, tool, input, cwd = "/work/repo") {
+  return {hook_event_name: "PreToolUse", session_id: session, cwd, tool_name: tool, tool_input: input};
+}
+const LOAD_STOP = /Blocked: load PMNM before working on the project\./;
+
+test("in Claude Code the first project tool call of a session that has not loaded PMNM is stopped once, with no token", (t) => {
+  const {folder, env} = setup(t);
+  const first = rawHandle(event("cold-claude", "Read", {file_path: "/work/repo/math.js"}), {host: "claude", env, folder});
+  assert.equal(decision(first), "deny");
+  assert.match(first.hookSpecificOutput.permissionDecisionReason, LOAD_STOP);
+  assert.match(first.hookSpecificOutput.permissionDecisionReason, /load the please-make-no-mistakes skill with the Skill tool/);
+  assert.equal(tokenIn(first), undefined);
+  assert.equal(decision(rawHandle(event("cold-claude", "Read", {file_path: "/work/repo/math.js"}), {host: "claude", env, folder})), "allow", "stopped twice");
+});
+
+test("Codex, which loads the skill on its own, is never stopped for it", (t) => {
+  const {folder, env} = setup(t);
+  for (const [tool, input] of [["Bash", {command: "ls"}], ["apply_patch", {command: "*** Begin Patch\n*** Update File: /work/repo/a.js\n@@\n-a\n+b\n*** End Patch"}]]) {
+    const output = rawHandle(event("codex-" + tool, tool, input), {host: "codex", env, folder});
+    assert.doesNotMatch(output?.hookSpecificOutput?.permissionDecisionReason || "", LOAD_STOP, tool);
+  }
+});
+
+test("loading the skill with the Skill tool first means no stop at all", (t) => {
+  const {folder, env} = setup(t);
+  rawHandle(event("warm-claude", "Skill", {skill: "please-make-no-mistakes:please-make-no-mistakes"}), {host: "claude", env, folder});
+  assert.equal(decision(rawHandle(event("warm-claude", "Read", {file_path: "/work/repo/math.js"}), {host: "claude", env, folder})), "allow");
+});
+
+test("no file read counts as loading PMNM, whatever it reads or hides", (t) => {
+  const {folder, env} = setup(t);
+  const installedSkill = path.join(path.dirname(path.dirname(new URL(import.meta.url).pathname)), "skills", "please-make-no-mistakes", "SKILL.md");
+  const operations = [
+    ["Bash", {command: "cat " + installedSkill}],
+    ["Bash", {command: "head -n 0 " + installedSkill}],
+    ["Bash", {command: "cat " + installedSkill + " >/dev/null"}],
+    ["Bash", {command: "echo " + installedSkill}],
+    ["Bash", {command: "cat /nonexistent/skills/please-make-no-mistakes/SKILL.md"}],
+    ["Read", {file_path: installedSkill}],
+    ["Skill", {skill: "some-other-skill"}],
+  ];
+  // A read credited as a load would itself pass; not credited, it is the session's one stop. Another
+  // skill touches nothing, so the stop falls on the next project read.
+  operations.forEach(([tool, input], index) => {
+    const session = "not-a-load-" + index;
+    const first = rawHandle(event(session, tool, input), {host: "claude", env, folder});
+    const stopped = tool === "Skill" ? rawHandle(event(session, "Read", {file_path: "/work/repo/math.js"}), {host: "claude", env, folder}) : first;
+    assert.match(stopped?.hookSpecificOutput?.permissionDecisionReason || "", LOAD_STOP, tool + " " + JSON.stringify(input) + " counted as loading PMNM");
+  });
+});
+
+test("tools that do not touch the project pass before the skill is loaded", (t) => {
+  const {folder, env} = setup(t);
+  for (const tool of ["ToolSearch", "AskUserQuestion", "TodoWrite", "WebFetch", "WebSearch", "Skill"]) {
+    assert.equal(decision(rawHandle(event("exempt-" + tool, tool, {query: "x"}), {host: "claude", env, folder})), "allow", tool);
+  }
+  assert.equal(decision(rawHandle(event("exempt-mcp", "mcp__plugin_semantic-js-mcp_semantic-js-mcp__lsp_references", {symbol: "x"}), {host: "claude", env, folder})), "deny", "an MCP tool can read the project");
+});
+
+test("PMNM-SKIP from the human lifts the stop for that session only", (t) => {
+  const {folder, env} = setup(t);
+  const reply = rawHandle({hook_event_name: "UserPromptSubmit", session_id: "skip-me", prompt: "pmnm-skip"}, {host: "claude", env, folder});
+  assert.match(contextOf(reply), /the human turned off the PMNM load stop for this session/);
+  assert.equal(decision(rawHandle(event("skip-me", "Read", {file_path: "/work/repo/a.js"}), {host: "claude", env, folder})), "allow");
+  assert.equal(decision(rawHandle(event("other-session", "Read", {file_path: "/work/repo/a.js"}), {host: "claude", env, folder})), "deny");
+});
+
+test("a forged load mark is ignored, and the brake's own state still comes first", (t) => {
+  const {folder, env} = setup(t);
+  fs.mkdirSync(stateDirectory(env), {recursive: true});
+  const mark = crypto.createHash("sha256").update("forged").digest("hex");
+  fs.writeFileSync(path.join(stateDirectory(env), "loaded.json"), JSON.stringify({sessions: [mark]}));
+  assert.match(rawHandle(event("forged", "Read", {file_path: "/work/repo/a.js"}), {host: "claude", env, folder}).hookSpecificOutput.permissionDecisionReason, LOAD_STOP);
+  const touch = rawHandle(event("state-first", "Bash", {command: "cat " + path.join(stateDirectory(env), "approvals.json")}), {host: "claude", env, folder});
+  assert.match(touch.hookSpecificOutput.permissionDecisionReason, /reaches the brake's own state/);
+});
+
+test("only the exact PMNM skill identifier counts as a load; a similar or unknown name does not", (t) => {
+  const {folder, env} = setup(t);
+  const lookalikes = ["please-make-no-mistakes:other-skill", "please-make-no-mistakes-extra", "other-plugin:please-make-no-mistakes", "PLEASE-MAKE-NO-MISTAKES:please-make-no-mistakes ", "nonexistent"];
+  lookalikes.forEach((skill, index) => {
+    const session = "lookalike-" + index;
+    rawHandle(event(session, "Skill", {skill}), {host: "claude", env, folder});
+    const next = rawHandle(event(session, "Read", {file_path: "/work/repo/math.js"}), {host: "claude", env, folder});
+    assert.match(next?.hookSpecificOutput?.permissionDecisionReason || "", LOAD_STOP, JSON.stringify(skill) + " counted as loading PMNM");
+  });
+  for (const skill of ["please-make-no-mistakes:please-make-no-mistakes", "please-make-no-mistakes"]) {
+    const session = "exact-" + skill.length;
+    rawHandle(event(session, "Skill", {skill}), {host: "claude", env, folder});
+    assert.equal(decision(rawHandle(event(session, "Read", {file_path: "/work/repo/math.js"}), {host: "claude", env, folder})), "allow", skill);
+  }
 });

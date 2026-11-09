@@ -27,7 +27,7 @@ Three more prompts belong to the human alone: `PMNM-CONFIRM-JUDGE <host> <model>
 4. If the human names a model, use that one.
 5. Ask the human to send the confirm prompt. Present the price as the reason for the proposal, not as proof that the account can run the model or of what it will cost.
 
-On the first prompt of each session the brake adds one line to your context: load this skill before reading the project. Do that before any other step.
+On the first prompt of each session the brake adds one line to your context: load this skill before reading the project. Do that before any other step. In Claude Code, if you do not, the first tool call that can touch the project is stopped once with `Blocked: load PMNM before working on the project.` Load the skill with the Skill tool, as its NEXT says, then retry the same operation; only the Skill tool counts as loading it, not reading its files. The human can send `PMNM-SKIP` to turn this stop off for one session. Codex is not stopped; load the skill as the line says.
 
 The brake keeps its state in the host's plugin data directory, or under `<system temp>/pmnm-brake/` when the host gives none: a sealed secret key, pending approvals and one-time grants, the confirmed judge, the allowed MCP servers, the sessions it has greeted and decision counts. In the PMNM folder it writes only `commands.json`, its sealed verdicts without command text; `models.json` holds your judge proposal and grants nothing. Never read or edit the brake's state. An operation that reaches it, by any spelling, glob or link, is denied with no token: only the human can run it.
 
