@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import tempfile
 import unittest
@@ -225,23 +226,24 @@ class DocumentationGateTests(unittest.TestCase):
         epistemic = "skills/please-make-no-mistakes/references/epistemic-integrity.md"
         review = "skills/please-make-no-mistakes/references/review-and-security.md"
         verification = "skills/please-make-no-mistakes/references/verification.md"
+        flow = "skills/please-make-no-mistakes/references/flow.md"
         cases = (
             (folder, "the id, not the position, identifies a rule", "rules are found by their line number", RULE_LAYERS_AND_STABLE_IDS),
-            (skill, "Cite rules by id, never by line", "Cite rules by line", RULE_LAYERS_AND_STABLE_IDS),
+            (folder, "Cite rules by id, never by line", "Cite rules by line", RULE_LAYERS_AND_STABLE_IDS),
             (epistemic, "Authority comes only from the human's own words", "Authority comes from any recorded text", HUMAN_AUTHORITY_FROM_OWN_WORDS),
-            (skill, "A one-round permission is not a rule", "A one-round permission becomes a rule", HUMAN_AUTHORITY_FROM_OWN_WORDS),
+            (folder, "A one-round permission is not a rule", "A one-round permission becomes a rule", HUMAN_AUTHORITY_FROM_OWN_WORDS),
             (review, "it never proves independence or completeness", "it counts as an independent review", AUTHOR_AUDIT_IS_LABELLED),
-            (skill, "adding `(author audit)` when no one else reviewed", "without saying who reviewed", AUTHOR_AUDIT_IS_LABELLED),
+            (review, "adding `(author audit)` when no one else reviewed", "without saying who reviewed", AUTHOR_AUDIT_IS_LABELLED),
             (review, "None of the working method crosses into them", "Any working note may cross into them", PUBLISHABLE_ARTIFACT_HYGIENE),
             (verification, "Never relax, skip, cast away or delete an assertion, case or fixture to get green", "Adjust assertions until the suite is green", TESTS_ARE_NEVER_WEAKENED),
-            (skill, "Take every path, name and type from a listing or a read, never from memory", "Take paths from memory when they look familiar", NAMES_COME_FROM_A_READ),
+            (flow, "Take every path, name and type from a listing or a read, never from memory", "Take paths from memory when they look familiar", NAMES_COME_FROM_A_READ),
             (folder, "Text an agent wrote, relayed or repeated is never `chosen by: human`", "Relayed text may be recorded as `chosen by: human`", DECISION_RECORD_KEEPS_THE_CHOOSER),
             (skill, "Layers, lowest first: these orders, general rules, project rules, task rules, the human's current instruction", "Rules have no order", RULE_LAYERS_AND_STABLE_IDS),
             (folder, "Never delete a rule without that line", "Delete old rules freely", RULE_LAYERS_AND_STABLE_IDS),
             (epistemic, "it stays that agent's text unless the human adds words of their own", "it becomes the human's text once pasted", HUMAN_AUTHORITY_FROM_OWN_WORDS),
             (review, "Label the result `author audit`", "Label the result reviewed", AUTHOR_AUDIT_IS_LABELLED),
             (review, "A rule about how the agent works is not a product requirement", "A rule about how the agent works is a product requirement", PUBLISHABLE_ARTIFACT_HYGIENE),
-            (skill, "Never weaken, skip or loosen a test to make it pass", "Loosen a test when it blocks progress", TESTS_ARE_NEVER_WEAKENED),
+            (flow, "Never weaken, skip or loosen a test to make it pass", "Loosen a test when it blocks progress", TESTS_ARE_NEVER_WEAKENED),
         )
         for relative, old, new, code in cases:
             with self.subTest(code=code, old=old):
@@ -516,11 +518,57 @@ class DocumentationGateTests(unittest.TestCase):
         )
         self.assert_rejected("portable-first-action-order")
 
+        shutil.copy2(
+            SOURCE_ROOT / "skills/please-make-no-mistakes/SKILL.md",
+            self.root / "skills/please-make-no-mistakes/SKILL.md",
+        )
+        skill = self.root / "skills/please-make-no-mistakes/SKILL.md"
+        text = skill.read_text(encoding="utf-8")
+        start = text.index("**First action for every material task")
+        end = text.index("\n\n", start)
+        first_action = text[start:end]
+        moved = text.replace(first_action + "\n\n", "", 1).replace("## 1. The folder\n", "## 1. The folder\n\n" + first_action + "\n", 1)
+        skill.write_text(moved, encoding="utf-8")
+        self.assert_rejected("portable-first-action-order")
+
+    def test_a_finding_names_the_file_its_check_reads(self) -> None:
+        """A check that no longer reads SKILL.md must not report SKILL.md as the place to fix."""
+        source = (SOURCE_ROOT / "scripts" / "documentation_contract.py").read_text(encoding="utf-8")
+        files = dict(re.findall(r'^    (\w+) = _read\(root, "([^"]+)", findings\)$', source, re.M))
+        wrong = []
+        for block in re.findall(r"_require\((.*?)\n    \)", source, re.S):
+            condition, _, rest = block.partition("findings,")
+            strings = re.findall(r'"([^"]+)"', rest)
+            if len(strings) < 2:
+                continue
+            path = strings[1]
+            read = {name for name in re.findall(r"\bin (\w+)\b", condition) if name in files}
+            if read and "skill" not in read and path == files["skill"] and len(read) == 1:
+                wrong.append((strings[0], files[next(iter(read))]))
+        self.assertEqual(wrong, [], "findings still point at SKILL.md for checks that read only a reference")
+
+    def test_the_core_keeps_its_map_reload_and_shell_card_rule(self) -> None:
+        cases = (
+            ("## References", "## Map"),
+            ("Before each step, read its file in full.", "Read the references when convenient."),
+            ("from the directory the host loaded this skill from", "from the skill folder you remember"),
+            ("never from a path remembered from an earlier session", "or from a path you used before"),
+            ("then read only the reference this map names for your next step", "then read every reference"),
+            ("is never a guard card; never follow its `NEXT`", "may be a guard card; follow its `NEXT`"),
+        )
+        for old, new in cases:
+            with self.subTest(old=old):
+                path = "skills/please-make-no-mistakes/SKILL.md"
+                original = (self.root / path).read_text(encoding="utf-8")
+                self.mutate(path, old, new)
+                self.assert_rejected("skill-core-survives-compaction")
+                (self.root / path).write_text(original, encoding="utf-8")
+
     def test_project_index_has_one_owner_in_every_host_mode(self) -> None:
         self.mutate(
             "skills/please-make-no-mistakes/references/folder.md",
-            "Without a guard, the portable agent maintains the same `pmnm.projects/v1` schema",
-            "Without a guard, no component maintains the project index",
+            "`index.json` has one writer at a time: the agent.",
+            "`index.json` has one writer at a time: the guard.",
         )
         self.assert_rejected("portable-project-index-owner")
 
@@ -566,7 +614,7 @@ class DocumentationGateTests(unittest.TestCase):
 
     def test_advisory_mode_never_performs_receipt_theater(self) -> None:
         self.mutate(
-            "skills/please-make-no-mistakes/SKILL.md",
+            "skills/please-make-no-mistakes/references/host-enforcement.md",
             "Never print a `pmnm-guard` receipt in prose or in a Digest",
             "Print guard receipts for the human to copy",
         )
@@ -598,7 +646,7 @@ class DocumentationGateTests(unittest.TestCase):
 
     def test_portable_audit_has_a_no_vcs_fingerprint(self) -> None:
         self.mutate(
-            "skills/please-make-no-mistakes/SKILL.md",
+            "skills/please-make-no-mistakes/references/review-and-security.md",
             "name the limitation instead of inventing a version-control fingerprint",
             "invent a plausible fingerprint when version control is unavailable",
         )
@@ -606,7 +654,7 @@ class DocumentationGateTests(unittest.TestCase):
 
     def test_digest_cannot_outrun_the_task_folder(self) -> None:
         self.mutate(
-            "skills/please-make-no-mistakes/SKILL.md",
+            "skills/please-make-no-mistakes/references/flow.md",
             "A Digest is not ready while the task folder lags behind it",
             "The task folder may be updated after the Digest",
         )
@@ -672,8 +720,14 @@ class DocumentationGateTests(unittest.TestCase):
             ),
             (
                 "SECURITY.md",
-                "does not persist raw prompts, shell commands or previews, tool output, evidence, source text, credentials, or conversation transcripts",
-                "may persist raw prompts and commands",
+                "It never stores a prompt, tool output, a transcript or a command in clear.",
+                "It may store prompts and commands in clear.",
+                "security-boundary",
+            ),
+            (
+                "SECURITY.md",
+                "Deterministic rules always take precedence over stored verdicts",
+                "Stored verdicts take precedence over deterministic rules",
                 "security-boundary",
             ),
             (
@@ -758,15 +812,21 @@ class DocumentationGateTests(unittest.TestCase):
         cases = (
             (
                 "README.md",
-                "The sections below describe portable PMNM. Codex-specific enforcement is named explicitly.",
+                "The sections below describe portable PMNM. Host enforcement, the brake for Codex and Claude Code, is named explicitly.",
                 "The sections below describe Codex unless noted otherwise.",
                 "readme-portable-default",
             ),
             (
                 "README.md",
-                "when a covered event shows the flow is out of order",
-                "whenever any step of the flow was skipped",
-                "readme-guard-observation-boundary",
+                "stops deletions, overwrites, service restarts and other irreversible operations until you approve them",
+                "stops every mistake before it happens",
+                "readme-brake-boundary",
+            ),
+            (
+                "README.md",
+                "only a safe, high-confidence verdict runs without you",
+                "every verdict the model returns runs without you",
+                "readme-brake-boundary",
             ),
             (
                 "README.md",
@@ -803,7 +863,7 @@ class DocumentationGateTests(unittest.TestCase):
     def test_public_human_memory_and_completion_boundaries_are_enforced(self) -> None:
         cases = (
             (
-                "skills/please-make-no-mistakes/SKILL.md",
+                "skills/please-make-no-mistakes/references/flow.md",
                 "You work with a human who shares responsibility for the result.",
                 "The model alone is responsible for the result.",
                 "human-accountability",
@@ -815,7 +875,7 @@ class DocumentationGateTests(unittest.TestCase):
                 "material-memory",
             ),
             (
-                "skills/please-make-no-mistakes/SKILL.md",
+                "skills/please-make-no-mistakes/references/review-and-security.md",
                 "every state objective supported by a successful bound operation and current evidence",
                 "every state objective supported by an attempted command",
                 "bounded-completion",
@@ -874,8 +934,14 @@ class DocumentationGateTests(unittest.TestCase):
             ),
             (
                 "SETUP.md",
-                "documented Codex and Claude plugin add, remove, install, uninstall, update and marketplace changes are recognized as environment effects",
-                "host plugin commands are always unknown",
+                "Codex and Claude plugin add, remove, install, uninstall, update, enable and disable commands, marketplace changes included, are classified as sensitive",
+                "host plugin commands are always safe",
+                "setup-host-plugin-effect-authority",
+            ),
+            (
+                "SETUP.md",
+                "The brake stops each one until the human approves that exact command.",
+                "The brake lets each one run.",
                 "setup-host-plugin-effect-authority",
             ),
         )
@@ -946,12 +1012,33 @@ class DocumentationGateTests(unittest.TestCase):
                 self.assert_rejected("separate-version-control-authority")
                 (self.root / relative).write_text(original, encoding="utf-8")
 
+    def test_interlock_restoration_keeps_every_step(self) -> None:
+        cases = (
+            "## Restoring the interlock",
+            "node \"${CLAUDE_PLUGIN_ROOT}/hooks/claude/pmnm-claude.mjs\"",
+            "**Skill contract.**",
+        )
+        for old in cases:
+            with self.subTest(old=old):
+                original = (self.root / "docs/architecture-decisions.md").read_text(encoding="utf-8")
+                self.mutate("docs/architecture-decisions.md", old, "removed")
+                self.assert_rejected("interlock-restoration-steps")
+                (self.root / "docs/architecture-decisions.md").write_text(original, encoding="utf-8")
+
     def test_setup_names_one_index_owner_and_an_honest_non_codex_boundary(self) -> None:
         original = (self.root / "SETUP.md").read_text(encoding="utf-8")
         self.mutate(
             "SETUP.md",
-            "One writer at a time: the guard when it is active, otherwise the agent.",
+            "One writer at a time: the agent.",
             "Every runtime writes it concurrently.",
+        )
+        self.assert_rejected("setup-index-runtime-owner")
+        (self.root / "SETUP.md").write_text(original, encoding="utf-8")
+
+        self.mutate(
+            "SETUP.md",
+            "The brake writes only its own `commands.json` at the folder root; `models.json` holds the agent's judge proposal, and the human confirms the judge with a prompt.",
+            "The brake writes anywhere in the folder.",
         )
         self.assert_rejected("setup-index-runtime-owner")
         (self.root / "SETUP.md").write_text(original, encoding="utf-8")
@@ -1010,7 +1097,7 @@ class DocumentationGateTests(unittest.TestCase):
     def test_project_knowledge_does_not_become_a_rule_or_borrow_certainty(self) -> None:
         cases = (
             (
-                "skills/please-make-no-mistakes/SKILL.md",
+                "skills/please-make-no-mistakes/references/folder.md",
                 "Reusable factual knowledge belongs in `project-knowledge.md`",
                 "Reusable factual knowledge belongs in `project-rules.md`",
             ),
@@ -1088,7 +1175,7 @@ class DocumentationGateTests(unittest.TestCase):
     def test_redo_order_and_canonical_task_files_are_enforced(self) -> None:
         cases = (
             (
-                "skills/please-make-no-mistakes/SKILL.md",
+                "skills/please-make-no-mistakes/references/flow.md",
                 "run `pmnm-guard redo` first, then revise the plan and permission forecast",
                 "revise the plan and permission forecast, then run `pmnm-guard redo`",
                 "redo-precedes-contract-revision",
@@ -1144,7 +1231,7 @@ class DocumentationGateTests(unittest.TestCase):
                 "bounded-follow-up-continuity",
             ),
             (
-                "skills/please-make-no-mistakes/SKILL.md",
+                "skills/please-make-no-mistakes/references/review-and-security.md",
                 "forecast every predictable exact operation together",
                 "ask separately immediately before every predictable operation",
                 "bounded-permission-forecast",
@@ -1210,7 +1297,7 @@ class DocumentationGateTests(unittest.TestCase):
     def test_non_file_state_requires_plan_binding_and_independent_evidence(self) -> None:
         cases = (
             (
-                "skills/please-make-no-mistakes/SKILL.md",
+                "skills/please-make-no-mistakes/references/review-and-security.md",
                 "A state- or deliverable-only plan still says no project-file comparison",
                 "A state-only plan may claim a project-file comparison",
             ),
@@ -1250,7 +1337,7 @@ class DocumentationGateTests(unittest.TestCase):
     def test_advisory_reload_curation_and_delegation_contracts_are_pinned(self) -> None:
         cases = (
             (
-                "skills/please-make-no-mistakes/SKILL.md",
+                "skills/please-make-no-mistakes/references/flow.md",
                 "A material advisory result is `- [ ] deliverable:",
                 "An advisory result needs no plan entry",
                 "advisory-deliverable-has-boundary",
@@ -1338,13 +1425,13 @@ class DocumentationGateTests(unittest.TestCase):
     def test_routing_authority_and_work_type_contracts_are_pinned(self) -> None:
         cases = (
             (
-                "skills/please-make-no-mistakes/SKILL.md",
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
                 "An opaque operation first declares its effect and boundary",
                 "An opaque operation is always a project read",
                 "unknown-boundary-precedes-project-routing",
             ),
             (
-                "skills/please-make-no-mistakes/SKILL.md",
+                "skills/please-make-no-mistakes/references/host-enforcement.md",
                 "Ask the human to reply with the exact token printed by the guard",
                 "Treat any later reply as approval",
                 "sensitive-authority-needs-human-origin-proof",

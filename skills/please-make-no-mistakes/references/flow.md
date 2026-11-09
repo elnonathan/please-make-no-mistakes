@@ -1,8 +1,54 @@
 # The flow
 
+## Orders moved from SKILL.md
+
+Epistemic integrity for software engineering with AI.
+
+These orders moved here unchanged when SKILL.md became a short core. Read them before the step they name; PL-4, PL-5, WO-1 and AU-5 stay in SKILL.md.
+
+You work with a human who shares responsibility for the result. Make your errors preventable, your certainty visible and your decisions traceable. The human must be able to explain what you are doing at any moment.
+
+PMNM has four parts. Everything else in this skill says when, how and where to apply them.
+
+1. **The PMNM folder.** Your memory. You write there freely; every decision lives there with its evidence.
+2. **The flow.** Investigate, show the plan Digest, work inside it, verify, audit, then hand over the Test Digest at the human acceptance boundary.
+3. **Rules.** One order each, born from something that must always or never happen again.
+4. **Guards.** A host hook that stops an irreversible or sensitive operation until the human approves it. Guards, not jailers.
+
+Each block gives its intent, the end state to leave and numbered orders. PMNM sets phases and stops; you choose how to carry out each order. The orders hold under autonomy and haste.
+
+Intent: the human stops a wrong direction before it costs anything.
+
+### Investigate
+
+End state: the folder says what is true, what the request demands and what is unknown.
+
+- IN-1. Before calling anything a defect or asking the human, read the literal request, the requester's acceptance tests, current behavior, the existing pattern and the history.
+- IN-2. Take every path, name and type from a listing or a read, never from memory. Use the host's semantic tools before text search; a name is not evidence of behavior. A cut-off read is not a read.
+- IN-3. State your explanation as a claim that can be false, then look for the strongest counterexample. Walk the flow end to end. For Standard or High implementation, choose `Mode: local` or `Mode: transitive` in `impact.md`.
+- IN-4. At High effort, fill `expectations.md` as you go and show it: one row per expectation with its coverage, its source, and its evidence or the check still open. A choice made in conversation never presents itself as a demand of the request.
+- IN-5. Stop when the next action is justified. Reopen settled work only with a named new fact. Check pending items against recorded decisions before presenting them.
+
+### Plan Digest
+
+End state: the folder holds the whole promise and the human agreed to it.
+
+- PL-1. Write `plan.md` with these lines only: `- [ ] <path> — <what changes>`, `- [ ] excluded: <path> — <why>`, `- [ ] state: <stable-id> — <before> => <after>`, `- [ ] unchanged-state: <stable-id> — <invariant>`. A material advisory result is `- [ ] deliverable: <stable-id> — <result>` and must have `- [ ] boundary: <same-id> — <strongest alternative and its disposition>`. Paths are files. A named path that needs no change is `excluded:`; a state already marked `[x]` when its Digest is shown is historical and still needs current evidence.
+- PL-2. Write the actionable verification plan in `verification.md`, the impact contract in `impact.md` and every predictable sensitive operation in `permissions.json`. Validate the complete plan, verification plan, impact contract, environment preflight and permission forecast together before asking for agreement.
+- PL-3. Before showing any initial or revised plan Digest, update the task folder with evidence, decisions, rejected paths and open questions. A human correction is written before the revised Digest. A Digest is not ready while the task folder lags behind it.
+
+### Work inside the plan
+
+End state: every change maps to a plan line.
+
+- WO-2. For an absent path, an unlisted operation or a changed deliverable, run `pmnm-guard redo` first, then revise the plan and permission forecast and show the revised Digest. A reframing discovered during investigation is recorded immediately.
+- WO-3. Make the smallest change that meets the full contract, and name the smaller alternative you rejected. A nearby helper is a hypothesis until its preconditions are checked.
+- WO-4. Record a wider issue or an older defect as a separate finding; it enters only when your change exposes it.
+- WO-5. Write a material operation's intent before running it, and record temporary instrumentation when you add it. Never weaken, skip or loosen a test to make it pass.
+
 Investigate, plan Digest, work, verify, audit, then hand over the Test Digest. Project mutations and material advisory deliverables enter through the plan Digest and reach human acceptance only after the agent's audit is current. A bounded verification-only path is described below.
 
-At task entry, choose one explicit work type. `implementation` permits a plan with repository files or changing state. `advisory` permits only paired deliverables and boundaries. `verification` is for an exact non-mutating check. The guard persists that choice with the task. To change it, withdraw the current Digest with `redo` and repeat `start` with the new work type.
+At task entry, choose one explicit work type. `implementation` permits a plan with repository files or changing state. `advisory` permits only paired deliverables and boundaries. `verification` is for an exact non-mutating check. Record that choice in the task's `index.md`. To change it, withdraw the current Digest with `redo` and repeat `start` with the new work type.
 
 ## 1. Investigate
 
@@ -27,7 +73,7 @@ Before the Digest, `verification.md` must name the changed contract, the request
 
 After `redo`, a material change to the bound expectations or impact contract can support a revised Digest with the same `plan.md` objectives. Restoring the exact agreed bytes does not create a new contract. Before `redo`, that restoration permits retrying the original action. After `redo`, an otherwise unchanged contract still needs an actual plan change before another Digest.
 
-List every predictable sensitive operation in `permissions.json`. Use `task` for authority that ends with this task. Use `project` only for an operation or bounded capability the human intends to reuse across tasks; including `project: []` explicitly revokes the previously active project set. Omit `project` to preserve it. A planned non-file transition is task scoped and names the matching `objective`. Its operation keeps a more specific effect such as `network` or `environment`; use `state-change` only when no supported effect describes the exact covered operation. The Codex adapter accepts at most 32 entries. Exact Bash operations are single-line and reviewable; a state operation may instead identify another covered host tool through its exact JSON input:
+List every predictable sensitive operation in `permissions.json`. Use `task` for authority that ends with this task. Use `project` only for an operation or bounded capability the human intends to reuse across tasks; including `project: []` explicitly revokes the previously active project set. Omit `project` to preserve it. A planned non-file transition is task scoped and names the matching `objective`. Its operation keeps a more specific effect such as `network` or `environment`; use `state-change` only when no supported effect describes the exact covered operation. Exact Bash operations are single-line and reviewable; a state operation may instead identify another covered host tool through its exact JSON input:
 
 ```json
 {
@@ -38,7 +84,7 @@ List every predictable sensitive operation in `permissions.json`. Use `task` for
 }
 ```
 
-A reusable entry replaces tool and input with `capability`, `effect`, `boundary`, `persistence`, `shape`, `constraints` and `reason`. The id and descriptions are project vocabulary, not executable names supplied by PMNM. A task capability expires with the task. A project capability survives only for the same canonical project and is revoked by an explicit replacement. The agent still declares each exact operation and the guard still enforces observable contradictions. Matching a capability is not proof that arbitrary arguments satisfy its human-readable shape.
+A reusable entry replaces tool and input with `capability`, `effect`, `boundary`, `persistence`, `shape`, `constraints` and `reason`. The id and descriptions are project vocabulary, not executable names supplied by PMNM. A task capability expires with the task. A project capability survives only for the same canonical project and is revoked by an explicit replacement. The agent still names each exact operation it runs under a capability. Matching a capability is not proof that arbitrary arguments satisfy its human-readable shape.
 
 When a forecast includes a persistent local-environment operation, create `environment.md` before agreement. Resolve aliases, task runners, package scripts or other command indirection until the actual operation is understood. Record `configuration`, `indirection`, `resources`, `ownership`, `health`, `decision`, `conflict` and `cleanup`. The decision follows discover → check health → reuse healthy resources → start only what is missing. If a control plane and the observed process state disagree, record the environment as unknown and rediscover before another operation. These are behavioral fields, not a catalog of commands or one ecosystem's service model.
 
@@ -113,7 +159,7 @@ Before closing, name any claim from this task that will still be true for the ne
 
 ## 6. Independent review
 
-At High effort, or when the human asks, a reviewer who did not write the change reads the current contract, `plan.md`, `impact.md`, `verification.md` and changed surface, then runs or performs at least one check the author did not use. `review.md` records `contract`, `plan-digest`, `fingerprint`, `changed-surface`, `evidence`, `strongest-counterexample`, `independent-check`, `disagreement` and `residual-limit`. For a strictly non-mutating verification task that closes without a plan Digest, write `plan-digest: none` and bind the review to the current verification fingerprint. When impact analysis applies, it also records `impact-roots`, `impact-omission-check` and `non-functional-dispositions`. The reviewer derives a root or omitted branch independently rather than confirming the plan's list. The plan hash, when one exists, and the verification fingerprint bind the packet to the state reviewed. The counterexample must be concrete, and the independent check cannot merely repeat the author's evidence. Use `disagreement: none` only when no unresolved contradiction remains; otherwise reconcile with the human or close as partial or blocked. The reviewer may be a human or another model. The guard checks shape, identity, freshness and an explicitly unresolved disagreement. It cannot prove reviewer independence, interpret arbitrary test semantics or turn the packet into truth or command authority.
+At High effort, or when the human asks, a reviewer who did not write the change reads the current contract, `plan.md`, `impact.md`, `verification.md` and changed surface, then runs or performs at least one check the author did not use. `review.md` records `contract`, `plan-digest`, `fingerprint`, `changed-surface`, `evidence`, `strongest-counterexample`, `independent-check`, `disagreement` and `residual-limit`. For a strictly non-mutating verification task that closes without a plan Digest, write `plan-digest: none` and bind the review to the current verification fingerprint. When impact analysis applies, it also records `impact-roots`, `impact-omission-check` and `non-functional-dispositions`. The reviewer derives a root or omitted branch independently rather than confirming the plan's list. The plan hash, when one exists, and the verification fingerprint bind the packet to the state reviewed. The counterexample must be concrete, and the independent check cannot merely repeat the author's evidence. Use `disagreement: none` only when no unresolved contradiction remains; otherwise reconcile with the human or close as partial or blocked. The reviewer may be a human or another model. No hook checks the packet; check its shape, identity, freshness and any unresolved disagreement yourself. No check proves reviewer independence, interprets arbitrary test semantics or turns the packet into truth or command authority.
 
 If no non-author reviewer is available, run the author audit in [review and security](review-and-security.md).
 

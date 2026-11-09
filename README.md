@@ -10,29 +10,29 @@
 
 [Install](#install) · [Getting started](docs/getting-started.md) · [Setup](SETUP.md) · [Security](SECURITY.md)
 
-Please, Make No Mistakes (PMNM) is a portable agent skill for work where context, evidence, and consequences matter. Its Codex and Claude Code plugins also include an optional lifecycle guard. The guard can block, ask or note when a covered event shows the flow is out of order, then point to one valid next step.
+Please, Make No Mistakes (PMNM) is a portable agent skill for work where context, evidence, and consequences matter. Its Codex and Claude Code plugins also include an optional lifecycle guard: a destructive-operation brake that stops deletions, overwrites, service restarts and other irreversible operations until you approve them, and asks the model you confirmed, by default the cheapest the host offers, only about what its rules cannot place.
 
 > “Please, make no mistakes” is an impossible request. This project does not promise infallibility. It makes avoidable mistakes harder to miss.
 
 ## Install
 
-Share [this repository](https://github.com/elnonathan/please-make-no-mistakes) with your coding agent and ask it to install PMNM by following [SETUP.md](SETUP.md). The setup guide identifies the host that is actually running, selects a supported registration route, preserves existing configuration, and verifies the installed skill and any host adapter separately.
+Share [this repository](https://github.com/elnonathan/please-make-no-mistakes) with your coding agent and ask it to install PMNM by following [SETUP.md](SETUP.md). The setup guide identifies the host that is actually running, selects a supported registration route, preserves existing configuration, and verifies the installed skill and any host hook separately.
 
 This repository is a plugin marketplace for Codex and for Claude Code, and both marketplaces select the same exact npm version. Another host should use its own documented skill or plugin mechanism. npm can carry the exact artifact, but installing the package alone does not make a host load it.
 
-The Agent Skill is the portable part of PMNM. The bundled lifecycle guard is implemented and tested for Codex and for Claude Code, each through its own adapter over one shared engine. Other hosts may discover the portable skill through their own supported mechanisms, but this repository does not yet claim their complete PMNM folder workflow. That workflow needs one documented literal pointer, and any host guard needs its own implementation and verification. Similar hook names do not establish compatibility, and a host adapter must not replace another host's hook or weaken its tested behavior.
+The Agent Skill is the portable part of PMNM. The bundled lifecycle guard is one brake, implemented and tested for Codex and for Claude Code, each host registering it through its own hook file. Other hosts may discover the portable skill through their own supported mechanisms, but this repository does not yet claim their complete PMNM folder workflow. That workflow needs one documented literal pointer, and any host guard needs its own implementation and verification. Similar hook names do not establish compatibility, and a host adapter must not replace another host's hook or weaken its tested behavior.
 
 ## Status by host
 
 | Capability | Codex | Claude Code |
 | --- | --- | --- |
 | Portable skill | Included in the plugin and covered by source and installation checks | Included in the plugin and covered by source, marketplace and plugin validation checks |
-| PMNM folder pointer | `<CODEX_HOME>/pmnm.path` remembers the folder | `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path`, remembers the folder |
-| Lifecycle guard | Optional Codex hook with deterministic coverage | Optional Claude Code hook (`hooks/claude/`) over the same engine, with deterministic coverage |
-| Evidence in this repository | Release gate and guard suite cover the current revision. Installed-host behavior remains a separate check | Release gate, adapter and hook discovery suites cover the current revision. Installed-host behavior remains a separate check |
+| PMNM folder pointer | `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path`, remembers the folder | `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path`, remembers the folder |
+| Lifecycle guard | Destructive-operation brake (`hooks/codex/hooks.json`); unplaced operations judged by the Codex model you confirmed, by default the cheapest; approval by exact token | The same brake (`hooks/claude/hooks.json`); unplaced operations judged by the Claude model you confirmed, by default the cheapest; the host's own prompt for deterministic sensitive operations |
+| Evidence in this repository | Release gate and brake suite cover the current revision. Installed-host behavior remains a separate check | Release gate, brake and hook discovery suites cover the current revision. Installed-host behavior remains a separate check |
 | Install route | Plugin from this repository's marketplace | Plugin from this repository's marketplace |
 
-The sections below describe portable PMNM. Codex-specific enforcement is named explicitly.
+The sections below describe portable PMNM. Host enforcement, the brake for Codex and Claude Code, is named explicitly.
 
 The public package contains the same runtime artifact under [skills/please-make-no-mistakes](skills/please-make-no-mistakes). Detailed installation, update, rollback, removal, and verification procedures live in SETUP so neither the user nor the agent has to invent missing steps.
 
@@ -56,25 +56,25 @@ PMNM asks the agent for four things: say the invariant, not the instance; say th
 
 4. **Verification reaches the behavior that matters.** The agent names the case the request was about and the behavior that must not change, runs the check that tests them, and says what that check proves. Then it gives you an actionable Test Digest: where to enter, the environment and safe data, who acts, the steps, expected observations, evidence, cleanup, and whether the agent can run it.
 
-5. **The result is audited before you accept it.** The agent accounts for every file, state or deliverable objective and reports whether the evidence supports the result. When a commit applies, agreeing to the plan is not a yes to commit, push, tag or publish. An exact operation named in the permission forecast may receive that authority with your agreement. Otherwise, each needs its own yes at the time or a human-owned rule, and the host still controls execution.
+5. **The result is audited before you accept it.** The agent accounts for every file, state or deliverable objective and reports whether the evidence supports the result. When a commit applies, agreeing to the plan is not a yes to commit, push, tag or publish. An exact operation named in the permission forecast may receive that authority with your agreement. Otherwise, each needs its own yes at the time or a human-owned rule, and the host still controls execution. The brake does not read the forecast. It still stops each covered destructive or sensitive operation for your exact token or, in Claude Code, the host's own prompt.
 
 6. **Every decision keeps its evidence.** What the agent read, decided, rejected and verified lives in a task folder outside the repository. It survives a context reset, and when you challenge a decision the answer comes from there rather than from memory.
 
 7. **PMNM adapts to you and your project.** Reusable project knowledge keeps its source, scope, certainty and freshness. At audit, the agent decides what is genuinely reusable and leaves one-off findings with their task. When you give an always-or-never instruction, it asks once whether that rule belongs to this project or applies generally.
 
-8. **On Codex, a guard catches covered ordering mistakes.** An optional hook reacts when a covered event shows that the flow is out of order, stops or asks as needed, and points the agent back to the next valid action in two lines. Guards, not jailers.
+8. **A brake stops irreversible operations.** On Codex and Claude Code an optional hook stops deletions, history rewrites, service restarts, publication and datastore drops before they run, and asks you for the exact approval token. Ordinary reads and project edits pass without asking. When its rules cannot place an operation, the model you confirmed, by default the cheapest the host offers, classifies it once; only a safe, high-confidence verdict runs without you. An approval covers one run of that exact operation. The model's rating of it is kept, so the same operation is not judged again: a safe rating runs and any other rating asks you directly. Guards, not jailers.
 
 ## How it works
 
 PMNM has four parts.
 
-1. **The PMNM folder.** Its location is asked once per machine (`~/PMNM` is suggested) and remembered by the host, so setup does not become a recurring conversation. Inside live the general rules, one folder per project with human-owned rules and evidence-backed knowledge, and one folder per task with its plan, verification, permission forecast and evidence. The agent writes there without asking, and the guard blocks writes that contain a detected secret on the channels it covers.
+1. **The PMNM folder.** Its location is asked once per machine (`~/PMNM` is suggested) and remembered by the host, so setup does not become a recurring conversation. Inside live the general rules, one folder per project with human-owned rules and evidence-backed knowledge, and one folder per task with its plan, verification, permission forecast and evidence. The agent writes there without asking, and never writes a secret there.
 
 2. **The flow.** Investigate, agree the files, states or deliverable and its limits, work inside them, verify, then audit before acceptance. You enter at the plan and at the audit at every effort level, and sooner when only you can decide or a new action needs a yes of its own.
 
 3. **Rules.** One sentence each, born from an always or a never, with the task and date they came from. A new rule replaces one it contradicts.
 
-4. **Guards.** Where the prose was not enough for a model, a host hook blocks, asks or notes, and always names the next valid action. Three levels, no more.
+4. **Guards.** Where an operation is destructive or sensitive, a host hook stops it (Blocked) or asks (Ask, or Claude Code's own prompt). Every Blocked or Ask card names the next valid action. Two levels, no more.
 
 The agent asks four kinds of questions about its folder, and no more: where the folder goes, the project name, whether a task folder it found is the current task, and whether an always/never is a project or general rule. Other questions are reserved for product intent, priority, risk, or authority that evidence cannot settle.
 
@@ -132,7 +132,7 @@ The skill does not:
 
 9. Ask where its folder goes more than once, or ask permission for anything inside it.
 
-10. Turn a hook receipt into proof of sufficient investigation, correct product intent, complete coverage, or valid human authority.
+10. Turn a brake approval or a judge verdict into proof of sufficient investigation, correct product intent, complete coverage, or valid human authority.
 
 ## Repository map
 
@@ -146,15 +146,15 @@ The skill does not:
 
 5. [.github/workflows/publish.yml](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.github/workflows/publish.yml): Tag only npm Trusted Publishing workflow.
 
-6. [hooks](hooks): The shared guard engine, the Codex hook configuration, and the Claude Code hook configuration and adapter.
+6. [hooks](hooks): The destructive-operation brake (`pmnm-brake.mjs`) and the Codex and Claude Code hook files that register it. The retired interlock engine and Claude adapter stay alongside, unregistered, for rollback.
 
 7. [skills/please-make-no-mistakes/SKILL.md](skills/please-make-no-mistakes/SKILL.md): The kernel: the four parts of PMNM and the reference table.
 
 8. [skills/please-make-no-mistakes/references](skills/please-make-no-mistakes/references): Procedures loaded only when their trigger applies.
 
-9. [evals](evals): Activation cases, behavior cases, host guard cases, an executable action oracle, and evaluation guidance.
+9. [evals](evals): Activation cases, behavior cases, the retired interlock's host guard cases and action oracle, and evaluation guidance.
 
-10. [scripts](scripts): Release validation, host guard tests, install comparison, and executable checks.
+10. [scripts](scripts): Release validation, brake tests, the retired interlock's guard tests, install comparison, and executable checks.
 
 11. [SETUP.md](SETUP.md): Installation, source marketplace testing, hook trust review, updates, removal, and verification.
 
@@ -177,17 +177,17 @@ From the package root:
     npm run check:documentation
     npm run smoke:evaluation
     npm test
-    npm run test:host-guard
+    npm run test:brake
     npm run validate
     npm run smoke:distribution
 
 The complete release candidate gate is available through npm run release:verify.
 
-After publishing an exact version, npm run verify:published checks the package and its tag pinned Codex installation. The install comparison and guard action oracle remain available for maintainers who need to inspect a specific installed copy or covered transition sequence. These checks can detect the omissions and ordering failures they cover. They cannot establish semantic truth or guarantee that a running client loaded the current revision.
+After publishing an exact version, npm run verify:published checks the package and its tag pinned Codex installation. The install comparison and the retired interlock's action oracle, kept for rollback, remain available for maintainers who need to inspect a specific installed copy or an interlock transition sequence. These checks can detect the omissions and ordering failures they cover. They cannot establish semantic truth or guarantee that a running client loaded the current revision.
 
 ## Distribution boundary
 
-The currently tested distribution route is a Codex plugin through this GitHub repository's marketplace. The marketplace pins an exact npm artifact containing the portable skill and bundled Codex hook. npm install alone does not register the plugin, enable its skill, or trust its hook in Codex or another host. Another coding agent may use the portable skill only through its own verified skill or plugin mechanism.
+The tested distribution routes are a Codex plugin and a Claude Code plugin through this GitHub repository's marketplaces. Each marketplace pins the same exact npm artifact containing the portable skill and the bundled brake. npm install alone does not register the plugin, enable its skill, or trust its hook in Codex, Claude Code or another host. Another coding agent may use the portable skill only through its own verified skill or plugin mechanism.
 
 This route does not depend on an OpenAI Plugins Directory listing. Installation and update procedures live in [SETUP.md](SETUP.md). Release and supply chain controls live in [docs/distribution.md](docs/distribution.md).
 

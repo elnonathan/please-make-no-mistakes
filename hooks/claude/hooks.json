@@ -1,14 +1,13 @@
 {
   "hooks": {
-    "SessionStart": [
+    "PreToolUse": [
       {
-        "matcher": "startup|resume|clear|compact|fork",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/claude/pmnm-claude.mjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pmnm-brake.mjs\" --host claude",
             "timeout": 30,
-            "statusMessage": "Please, Don't Lose the Thread"
+            "statusMessage": "Please, Make No Mistakes: checking the operation"
           }
         ]
       }
@@ -18,52 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/claude/pmnm-claude.mjs\"",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/claude/pmnm-claude.mjs\"",
-            "timeout": 30,
-            "statusMessage": "Please, Guard the First Write"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/claude/pmnm-claude.mjs\"",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/claude/pmnm-claude.mjs\"",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/claude/pmnm-claude.mjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pmnm-brake.mjs\" --host claude",
             "timeout": 30
           }
         ]

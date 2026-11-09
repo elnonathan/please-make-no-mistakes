@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "adapter": "codex-lifecycle-hooks",
-  "scope": "Executable synthetic sequences for the optional Codex lifecycle adapter. This is not a cross-host conformance claim and does not prove semantic correctness.",
+  "scope": "Executable synthetic sequences for the retired Codex procedural interlock, unregistered and kept for rollback. This is not a cross-host conformance claim and does not prove semantic correctness.",
   "vocabulary": {
     "setups": ["clean", "configured", "agreed", "armed-test-digest"],
     "events": ["prompt", "prompt-transcript", "receipt", "raw-receipt", "pre", "post", "stop", "interrupt", "mkdir-task", "write-plan", "write-verification", "write-permissions", "write-impact", "remove-impact"],

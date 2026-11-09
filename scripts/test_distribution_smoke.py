@@ -425,22 +425,27 @@ class DistributionSmokeTests(unittest.TestCase):
 
         def drop_event(root: Path) -> None:
             data = SMOKE.load_json(root / config)
-            data["hooks"].pop("PostToolUseFailure")
+            data["hooks"].pop("UserPromptSubmit")
             (root / config).write_text(json.dumps(data), encoding="utf-8")
 
         def drift_command(root: Path) -> None:
             data = SMOKE.load_json(root / config)
-            data["hooks"]["Stop"][0]["hooks"][0]["command"] = "node /tmp/elsewhere.mjs"
+            data["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"] = "node /tmp/elsewhere.mjs"
             (root / config).write_text(json.dumps(data), encoding="utf-8")
 
         def drop_timeout(root: Path) -> None:
             data = SMOKE.load_json(root / config)
-            del data["hooks"]["Stop"][0]["hooks"][0]["timeout"]
+            del data["hooks"]["UserPromptSubmit"][0]["hooks"][0]["timeout"]
             (root / config).write_text(json.dumps(data), encoding="utf-8")
 
         def second_handler(root: Path) -> None:
             data = SMOKE.load_json(root / config)
-            data["hooks"]["Stop"][0]["hooks"].append({"type": "command", "command": "node x", "timeout": 30})
+            data["hooks"]["UserPromptSubmit"][0]["hooks"].append({"type": "command", "command": "node x", "timeout": 30})
+            (root / config).write_text(json.dumps(data), encoding="utf-8")
+
+        def retired_event(root: Path) -> None:
+            data = SMOKE.load_json(root / config)
+            data["hooks"]["Stop"] = data["hooks"]["UserPromptSubmit"]
             (root / config).write_text(json.dumps(data), encoding="utf-8")
 
         def extra_module(root: Path) -> None:
@@ -472,6 +477,7 @@ class DistributionSmokeTests(unittest.TestCase):
             ("drift_command", drift_command),
             ("drop_timeout", drop_timeout),
             ("second_handler", second_handler),
+            ("retired_event", retired_event),
             ("extra_module", extra_module),
             ("linked_entry", linked_entry),
             ("forbidden_capability", forbidden_capability),
@@ -629,7 +635,7 @@ class DistributionSmokeTests(unittest.TestCase):
     def test_claude_hooks_name_the_acting_capability(self) -> None:
         codex = SMOKE.load_json(PACKAGE_ROOT / "hooks" / "codex" / "hooks.json")["hooks"]
         claude = SMOKE.load_json(PACKAGE_ROOT / "hooks" / "claude" / "hooks.json")["hooks"]
-        for event_name in ("SessionStart", "PreToolUse"):
+        for event_name in ("PreToolUse",):
             expected = codex[event_name][0]["hooks"][0]["statusMessage"]
             actual = claude[event_name][0]["hooks"][0].get("statusMessage")
             self.assertEqual(actual, expected, event_name)
@@ -677,25 +683,45 @@ class DistributionSmokeTests(unittest.TestCase):
                             ]
                         }
                     ]
-                    for event in (
-                        "SessionStart",
-                        "UserPromptSubmit",
-                        "PreToolUse",
-                        "PostToolUse",
-                        "Stop",
-                        "Interrupt",
-                    )
+                    for event in ("PreToolUse", "UserPromptSubmit")
                 },
             }
-            (hooks / "hooks.json").write_text(json.dumps(config), encoding="utf-8")
-            with self.assertRaises(SMOKE.SmokeFailure):
+            (hooks / "codex").mkdir()
+            (hooks / "codex" / "hooks.json").write_text(json.dumps(config), encoding="utf-8")
+            with self.assertRaisesRegex(SMOKE.SmokeFailure, "does not run the bundled brake"):
                 SMOKE.validate_codex_hook_tree(root)
+
+    def test_hook_tree_rejects_the_retired_interlock_registration(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-hook-retired-") as raw:
+            root = Path(raw)
+            shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+            config_file = root / "hooks" / "codex" / "hooks.json"
+            old = json.loads(config_file.read_text(encoding="utf-8"))
+            old["hooks"]["SessionStart"] = old["hooks"]["PreToolUse"]
+            config_file.write_text(json.dumps(old), encoding="utf-8")
+            with self.assertRaisesRegex(SMOKE.SmokeFailure, "register only the brake"):
+                SMOKE.validate_codex_hook_tree(root)
+
+    def test_hook_tree_rejects_a_brake_with_network_or_another_program(self) -> None:
+        mutations = {
+            "network": lambda text: text + '\nfetch("https://example.com");\n',
+            "program": lambda text: text.replace('spawn("codex", [', 'spawn("sh", [', 1),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory(prefix="pmnm-hook-brake-") as raw:
+                root = Path(raw)
+                shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
+                brake = root / "hooks" / "pmnm-brake.mjs"
+                brake.write_text(mutate(brake.read_text(encoding="utf-8")), encoding="utf-8")
+                with self.assertRaisesRegex(SMOKE.SmokeFailure, "brake"):
+                    SMOKE.validate_codex_hook_tree(root)
 
     def test_hook_tree_accepts_only_the_fixed_local_module_graph(self) -> None:
         with tempfile.TemporaryDirectory(prefix="pmnm-hook-modules-") as raw:
             root = Path(raw)
             shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
             manifest = SMOKE.validate_codex_hook_tree(root)
+            self.assertIn("pmnm-brake.mjs", manifest)
             self.assertIn("pmnm-guard.mjs", manifest)
             self.assertIn("pmnm-shell.mjs", manifest)
 
@@ -733,7 +759,8 @@ class DistributionSmokeTests(unittest.TestCase):
             root = Path(raw)
             shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
             shell = root / "hooks" / "pmnm-shell.mjs"
-            current_total = sum(path.stat().st_size for path in (root / "hooks").glob("*.mjs"))
+            # The aggregate budget covers the two legacy engine modules; the brake has its own.
+            current_total = sum((root / "hooks" / name).stat().st_size for name in ("pmnm-guard.mjs", "pmnm-shell.mjs"))
             padding = max(1, 260_001 - current_total)
             shell.write_text(shell.read_text(encoding="utf-8") + (" " * padding), encoding="utf-8")
             with self.assertRaisesRegex(SMOKE.SmokeFailure, "aggregate inspectable size budget"):
@@ -785,7 +812,7 @@ class DistributionSmokeTests(unittest.TestCase):
             root = Path(raw)
             shutil.copytree(PACKAGE_ROOT / "hooks", root / "hooks")
             shell = root / "hooks" / "pmnm-shell.mjs"
-            current_total = sum(path.stat().st_size for path in (root / "hooks").glob("*.mjs"))
+            current_total = sum((root / "hooks" / name).stat().st_size for name in ("pmnm-guard.mjs", "pmnm-shell.mjs"))
             shell.write_text(
                 shell.read_text(encoding="utf-8") + (" " * max(1, 260_001 - current_total)),
                 encoding="utf-8",

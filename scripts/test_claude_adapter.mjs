@@ -592,7 +592,7 @@ test("an unreadable pointer names the Claude root, end to end through the adapte
 // --- correction round: is_interrupt must be a boolean when present -----------
 
 const HOST_NEUTRAL_RECEIPT =
-  "`pmnm-guard` is a PMNM receipt handled by the active host adapter, not a program on PATH.";
+  "Send the `pmnm-guard` receipt as a shell-tool command. The active host adapter intercepts it before shell execution.";
 
 test("a present non-boolean is_interrupt is rejected before the engine", () => {
   for (const value of ["true", "false", 1, 0, null, {}, []]) {
@@ -662,6 +662,8 @@ test("the shared receipt card names the active host adapter, not one host", () =
     {engine},
   );
   assert.ok(card.includes(HOST_NEUTRAL_RECEIPT.replace(/`/g, "`")), "card: " + card);
+  assert.ok(card.includes("use this shell tool to submit `pmnm-guard declare"), "card: " + card);
+  assert.ok(card.includes("then rerun the exact blocked command"), "card: " + card);
   assert.equal(/Codex/i.test(card), false, "card names a single host: " + card);
 });
 

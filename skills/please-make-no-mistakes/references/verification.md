@@ -1,5 +1,17 @@
 # Verification
 
+## Orders moved from SKILL.md
+
+These orders moved here unchanged when SKILL.md became a short core. Read them before you verify.
+
+End state: every claim in `verification.md` has current evidence that could have failed.
+
+- VE-1. A syntax, metadata or documentation check run during investigation is useful evidence, but it is not final task verification while planned work remains open.
+- VE-2. After the last change, write `- example: <the request's own case> → <observed>` and `- unchanged: <what must stay the same> → <observed>`. Copy each planned `- state: <id> — <before> => <after>` and `- unchanged-state: <id> — <invariant>` exactly from `plan.md`, and write each `- deliverable:` and `- boundary:` line with what you observed. These lines are claims; they prove nothing until evidence backs them. Then get the evidence.
+- VE-3. Prove a new test can fail: see it red on the old code, or break its target, see red and restore. Run your own checker on a known break first.
+- VE-4. Mark each result as your own run, your own reading or reported, and tie it to the exact tree, untracked files included. A later edit makes it stale. Count only tests that ran.
+- VE-5. Make material branches observably different. Then record `pmnm-guard verified result=<passed|failed|partial|blocked> how=<command|inspection|human>`. A green rerun never explains a failure.
+
 Load this reference when planning checks, defining scenarios, interpreting results, handing tests to a human or deciding whether repeatable regression protection is sufficient.
 
 ## Start from the contract
@@ -84,7 +96,7 @@ For interface behavior, inspect the capabilities actually exposed by the host an
 
 When verification depends on starting or restarting local resources, preflight the environment before requesting authority or running the service. Resolve command indirection recursively, inspect current configuration and resources, identify ownership, check health, reuse what is healthy and start only what is missing. If a manager reports one state while the actual process or resource reports another, the environment is unknown until rediscovered. Record this in task-local `environment.md`; do not turn a repository-specific command into a global rule.
 
-After implementation, attempt the strongest sufficient check that is accessible and authorized. Convenience is not a reason to substitute lint for behavior. For non-file state, separate evidence that the exact operation succeeded from evidence that the resulting state matches the agreed contract. A receipt or successful tool response establishes only the first. A declared non-persistent verification follows the read path until observed evidence shows a mutation; its name does not manufacture one. A check that rewrites source, snapshots, generated output or build state is a project mutation. Record the resulting state, invalidate prior plan authority and verify again against the new state.
+After implementation, attempt the strongest sufficient check that is accessible and authorized. Convenience is not a reason to substitute lint for behavior. For non-file state, separate evidence that the exact operation succeeded from evidence that the resulting state matches the agreed contract. A receipt or successful tool response establishes only the first. A declared non-persistent verification follows the read path under a guard until observed evidence shows a mutation; its name does not manufacture one. A check that rewrites source, snapshots, generated output or build state is a project mutation. Record the resulting state, invalidate prior plan authority and verify again against the new state.
 
 Syntax, metadata, documentation and exploratory checks may support investigation or validate a tool, but they do not become final task verification merely because they pass. Keep their literal results as evidence. Do not issue a passed verification receipt or move to the Test Digest while planned file objectives are open.
 
@@ -100,7 +112,7 @@ At High effort, or when the human asks, use a non-author review to challenge wha
 
 The review is evidence, not a verdict. Its job is to expose a non-discriminating check, a substitute that exercises another contract, stale evidence, a missing precondition or a branch where correct and incorrect behavior look identical. If the independent check repeats the author's evidence, the counterexample is unavailable, or disagreement remains, do not make an unqualified passed claim. Reconcile the evidence with the human or close as partial or blocked.
 
-The Codex guard can verify that the packet is present, current, distinct in text and free of an explicitly unresolved disagreement. It cannot prove that the reviewer is independent, that a counterexample is strongest or that either interpretation is correct. Other hosts apply the same reasoning without claiming this structural enforcement.
+No hook checks the packet. Check yourself that it is present, current, distinct in text and free of an explicitly unresolved disagreement. That check cannot prove that the reviewer is independent, that a counterexample is strongest or that either interpretation is correct.
 
 When no second agent or human reviewer is available, run the author audit in [review and security](review-and-security.md).
 

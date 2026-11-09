@@ -4,23 +4,23 @@ All notable user-visible changes are recorded here.
 
 ## 0.1.0 - Unreleased
 
-First public release candidate. Epistemic integrity for software engineering with AI: one portable Agent Skill, one PMNM folder, one flow, rules born from an always or a never, and an optional lifecycle guard for Codex and Claude Code.
+First public release candidate. Epistemic integrity for software engineering with AI: one portable Agent Skill, one PMNM folder, one flow, rules born from an always or a never, and an optional destructive-operation brake for Codex and Claude Code.
 
 Orders and rule layers
 
 - The skill is written as orders: each block states its intent, the end state to leave and at most five numbered orders with stable ids, such as `IN-2`. PMNM sets the phases and stops; the agent chooses how to carry out each order.
+- `SKILL.md` is a short core that survives compaction. It opens with a reading map naming the reference to read before each step, keeps every order that can fall due before a reference is read, and stays under 12,000 characters of body. Other orders moved to their references word for word with their ids. After compaction the agent rereads the core from the directory the host loaded it from, then only the reference its next step needs. The output of a `pmnm-guard` run in a shell is never a guard card.
 - Rules come in layers: PMNM orders, the human's general rules, project rules, task rules and the current instruction. A higher layer extends, narrows or replaces a lower rule by its id. Rules carry `G-`, `P-` or `T-` ids, are never renumbered, record their basis (the human's literal words or `agent-worded`) and move to a `Retired` section instead of disappearing.
 - Human authority comes only from the human's own recorded words. Relayed agent text, summaries, repeated notes and one-round permissions do not become decisions or rules; `decisions.md` keeps who chose each decision and every autonomy grant with its scope and end.
 - When no one else can review, the author runs a labelled author audit and reports `ready for commit` with `(author audit)`.
 - New orders: names only from a listing or a read; proof that a new test can fail; results marked as own run, own reading or reported and tied to the exact tree; no weakened tests; databases discovered and accessed read-only first; nothing of the working method in publishable artifacts; a minimal decision tree that runs one scenario through every option.
-- The Codex hook configuration moved to `hooks/codex/hooks.json` with identical content and is declared in `.codex-plugin/plugin.json`. The package no longer carries a conventional `hooks/hooks.json`, so the Claude Code plugin root in the package carries only the Claude adapter's hook configuration. The Claude adapter also runs when its plugin directory is a symbolic link, including under `--preserve-symlinks-main`.
-- The guard reference now matches the engine: the exact approval token applies to `allow`, a project read before `start` is blocked on its first attempt, and each host reaches one shared engine through its own adapter.
+- The Codex hook configuration lives in `hooks/codex/hooks.json` and is declared in `.codex-plugin/plugin.json`; the Claude Code one lives in `hooks/claude/hooks.json`. The package carries no conventional `hooks/hooks.json`, so each host loads only its own registration.
 
 The folder
 
 - One PMNM folder per machine, chosen by the human once; the host keeps only a pointer to it.
 - One project folder per repository, named by the human once; reusable project knowledge stays separate from human-owned rules; one task folder per unit of work with `index.md`, `plan.md`, `verification.md` and `permissions.json`, plus `impact.md` for Standard and High work and `expectations.md` and `review.md` for High work.
-- Task-folder writes need no per-file approval. When the Codex guard is active, covered paths that escape the folder, symbolic links, machine-index writes and detected secret-shaped content are refused.
+- Task-folder writes need no per-file approval.
 - Four questions only: where the folder goes, the project name, whether a candidate folder is this task, and the level of a new rule.
 - Optional `provenance.md` keeps material attribution as separate evidence-bearing relationships, without treating proximity or participation as responsibility.
 - Optional `artifacts.md` records reference-first custody, content identity, privacy limits, recovery and retention for external evidence; exact retained copies may live under `artifacts/`.
@@ -29,7 +29,7 @@ The folder
 The flow
 
 - Investigate, write `plan.md` and show the plan Digest, then stop until the human answers.
-- Implement only inside the agreed plan; a write outside it is refused before it runs.
+- Implement only inside the agreed plan.
 - Plan material non-file state with explicit before and after values, bind its exact task operation, and keep resulting-state evidence separate from operation success.
 - Plan material advisory work as a deliverable paired with its strongest relevant boundary; a reframe leaves independent reads available but requires renewed agreement before dependent effects or final delivery.
 - Require an actionable verification plan before Standard or High implementation; verify with claims the human can read, complete the agent audit and any required review, then hand over a complete Test Digest at the final human acceptance boundary.
@@ -37,7 +37,7 @@ The flow
 - Trace a material value across producers, transformations, boundaries, consumers, variants and precedence only when that lifecycle can change the solution or its evidence.
 - Standard and High implementation now records either a concise local impact rationale or a transitive ledger in `impact.md`; unresolved nodes, untouched placeholders, duplicate identities and contradictory boundary declarations block the plan Digest, while Light and state-only work avoid an empty graph ceremony.
 - Final audit derives impact roots again from the actual changed surface, challenges omissions separately from plan conformance and records dynamic and non-functional dispositions against the current verification fingerprint.
-- Agreeing to the implementation plan alone is not a yes to commit, push, tag or publish. An exact operation in the permission forecast may receive authority with that agreement; otherwise each needs its own yes at the time or a human-owned rule, and native host controls still apply.
+- Agreeing to the implementation plan alone is not a yes to commit, push, tag or publish. An exact operation in the permission forecast may receive authority with that agreement; otherwise each needs its own yes at the time or a human-owned rule, and native host controls still apply. The brake does not read the forecast. It still stops each covered destructive or sensitive operation for the human's exact token or, in Claude Code, the host's own prompt.
 
 Rules
 
@@ -46,7 +46,24 @@ Rules
 - A standalone approved rule write may end without an artificial implementation Digest; rule writes inside broader work do not waive its normal gates.
 - Audit-time curation promotes only corroborated reusable knowledge, records task-local dispositions, reloads canonical files before writing and checks concurrency, overlap, contradiction, audience and overfitting.
 
-Guards
+Destructive-operation brake
+
+- Both plugins register one dependency-free Node.js hook, on tool calls and on the human's prompts. It classifies each covered operation as safe, sensitive or destructive.
+- Deterministic rules recognize deletions, overwrites, history rewrites, service stops and restarts, publication, datastore drops and deletions, plugin changes and reads of credential files, including when they are hidden in wrappers, substitutions, heredocs or local scripts.
+- Anything that runs other code is classified by what it runs: local and sourced scripts by content, package scripts by their manifest entry, make targets by their recipes, `find -exec`, `trap` and `awk` by the command they carry, and a literal container exec by its visible inner operation. Test runners stay ordinary project work.
+- MCP tools are placed by name. Every tool of semantic-js-mcp, by the same authors, is known and safe, except a tool named for destruction. It is matched by the exact server names the hosts give it; a name is all the hook sees, so a server registered under one of those names would get the same trust. Any other MCP server runs without the judge only after the human sends the exact prompt `PMNM-ALLOW-MCP <server>`, which the agent cannot send; the entry is sealed, `PMNM-REVOKE-MCP <server>` removes it, and a tool named for destruction still stops.
+- Approval tokens are `PMNM-` and four random characters without look-alikes, such as `PMNM-7K2Q`, accepted in any letter case, bound to one operation and session, and spent by their use. A reply that matches no open token says it expired, was used or belongs to another session. Approvals are re-read under a lock before each write, so concurrent sessions do not erase each other's tokens, and an open token is never evicted: past 8 open tokens in a session, or 128 across sessions, the operation stops with no token and says so. An event without a session id cannot be approved in-band.
+- What the rules cannot place goes to the judge model the human confirmed with the prompt `PMNM-CONFIRM-JUDGE <host> <model>`, through the host's own command-line client with plugins and hooks off. Its answer carries a safety and a confidence.
+- The brake never picks the judge model. As soon as no judge is confirmed the agent proposes, before continuing its task, the cheapest model the host can run, from each provider's current published documentation with its URLs and never from local caches; when PMNM cannot list a host's models, it asks the human which ones they can use. The human confirms the proposal or names another model with that prompt, and the brake keeps the confirmation sealed. For Codex the brake checks the model against Codex's catalog and asks for a re-evaluation when the offer changes. For Claude Code, which keeps no catalog, the confirmation alone names the judge. `models.json` holds the agent's proposal and grants nothing. Without a confirmed model, or when it stops answering, what the rules cannot place needs approval; no other model is tried in its place.
+- Only a safe verdict with high confidence runs without asking. Every other operation stops until the human replies with the exact operation-bound `PMNM-<code>` token; in Claude Code a deterministic sensitive operation uses the host's own permission prompt.
+- `commands.json` keeps model and human verdicts by a hash of the exact operation, with a seal made with a key kept in the host's plugin data; it never stores the command or any free text from the judge, which answers only with a safety and a confidence. An unsealed or copied entry grants nothing. A stored safe verdict runs without the model; a stored sensitive or destructive one asks directly. Deterministic rules always win over stored verdicts, and an edited script invalidates its verdict.
+- A failed or unavailable classification asks; an error inside the brake blocks.
+- On the first prompt of each session the brake adds one line asking the agent to load the PMNM skill before reading the project: with the Skill tool in Claude Code, from its `SKILL.md` in Codex. Sessions are remembered only as hashes.
+- Edits inside the PMNM folder are ordinary editing, like edits inside the working directory. A folder that holds the home directory or overlaps the host configuration, the brake's data or its code frees nothing, and secret files, configuration files and deletions there still stop. Every edit is judged by the real path where it lands, a patch's move destination included, so a symlink cannot lead it out of the working directory or the folder or onto a secret or configuration file. Secret and configuration names match in any letter case, and paths are compared in the letter case stored on disk.
+
+Retired procedural interlock
+
+The interlock below is no longer registered by either plugin. Its source stays in the package for rollback, and [architecture decisions](docs/architecture-decisions.md) records why each part was retired, what may get worse and how to restore it.
 
 - Twelve receipts; two-line cards in English or Spanish with one literal `NEXT:` action; three levels: Blocked, Ask, Note.
 - Predictable exact sensitive operations may be approved together with task or project scope; changed and unlisted operations still ask, and one-off authority remains exact and single-use.
@@ -88,6 +105,7 @@ Guards
 - Task start records `work=implementation`, `work=advisory` or `work=verification`. Advisory plans reject file and changing state objectives before agreement.
 - Native project reads still route to `start` before execution. Opaque operations declare their boundary first, and only a declared project read then routes to `start`.
 - The Codex adapter is split into a bounded state-machine entrypoint and an independently reviewable shell classifier, with an exact packaged module graph and aggregate size budget.
+- The guard reference matches the engine: the exact approval token applies to `allow`, a project read before `start` is blocked on its first attempt, and each host reaches one shared engine through its own adapter. The Claude adapter also runs when its plugin directory is a symbolic link, including under `--preserve-symlinks-main`.
 
 Package
 

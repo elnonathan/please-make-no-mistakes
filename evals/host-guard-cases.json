@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "adapter": "codex-lifecycle-hooks",
-  "contract": "Synthetic contracts for the optional Codex interlock. They test procedural behavior, not semantic correctness or cross-host conformance.",
+  "contract": "Synthetic contracts for the retired Codex procedural interlock, unregistered and kept for rollback. They test procedural behavior, not semantic correctness or cross-host conformance.",
   "cases": [
     {
       "id": "HG-109",

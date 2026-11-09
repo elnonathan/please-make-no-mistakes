@@ -97,19 +97,20 @@ test("the packed plugin root carries no conventional hooks/hooks.json", (t) => {
   );
 });
 
-test("a Claude plugin root registers only the Claude adapter", (t) => {
+test("a Claude plugin root registers only the brake, on PreToolUse and UserPromptSubmit", (t) => {
   const {where, root} = packArtifact();
   t.after(() => fs.rmSync(where, {recursive: true, force: true}));
 
   const rows = registration(discoveredSources(root));
   assert.ok(rows.length > 0, "the packed artifact registered no hook at all");
 
-  const foreign = rows.filter((row) => !String(row.command).includes("pmnm-claude.mjs"));
+  const foreign = rows.filter((row) => !String(row.command).includes("pmnm-brake.mjs") || !String(row.command).includes("--host claude"));
   assert.deepEqual(
     foreign,
     [],
-    "a Claude installation would also register commands that are not the Claude adapter:\n  " + describe(foreign),
+    "a Claude installation would also register commands that are not the brake for Claude:\n  " + describe(foreign),
   );
+  assert.deepEqual([...new Set(rows.map((row) => row.event))].sort(), ["PreToolUse", "UserPromptSubmit"]);
 });
 
 test("every event a Claude plugin root registers is one Claude defines", (t) => {

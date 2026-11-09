@@ -3695,8 +3695,8 @@ function rResultCard(state, pending) {
 function rUnknownCommandCard(state, payload) {
   return rCard(
     "Blocked",
-    "This shell tool has no trusted effect declaration: " + rPreview(payload) + ". `pmnm-guard` is a PMNM receipt handled by the active host adapter, not a program on PATH.",
-    "pmnm-guard declare effect=<investigation|implementation|verification|state-change> boundary=<project|pmnm|host|local-environment|network|external|mixed|unknown> persistence=<none|transient|persistent|unknown> certainty=<certain|uncertain> capability=<id|none>; then rerun the exact command",
+    "This shell tool has no trusted effect declaration: " + rPreview(payload) + ". Send the `pmnm-guard` receipt as a shell-tool command. The active host adapter intercepts it before shell execution. It is not a program on PATH.",
+    "use this shell tool to submit `pmnm-guard declare effect=<investigation|implementation|verification|state-change> boundary=<project|pmnm|host|local-environment|network|external|mixed|unknown> persistence=<none|transient|persistent|unknown> certainty=<certain|uncertain> capability=<id|none>`, then rerun the exact blocked command",
   );
 }
 function rHiddenCommandCard(state) {

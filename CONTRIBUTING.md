@@ -1,10 +1,10 @@
 # Contributing
 
-Please, Make No Mistakes keeps one portable Agent Skill and one optional Codex lifecycle guard. `skills/please-make-no-mistakes/SKILL.md` is the contract every change serves; a change that cannot name the kernel sentence it improves is not ready. Contributions should make a demonstrated failure less likely without turning one person's project, toolchain or preferences into a universal rule.
+Please, Make No Mistakes keeps one portable Agent Skill and one optional destructive-operation brake for Codex and Claude Code. `skills/please-make-no-mistakes/SKILL.md` is the contract every change serves; a change that cannot name the kernel sentence it improves is not ready. Contributions should make a demonstrated failure less likely without turning one person's project, toolchain or preferences into a universal rule.
 
 ## Requirements
 
-- Node.js 22 or 24 for the Codex guard and JavaScript tests
+- Node.js 22 or 24 for the brake and JavaScript tests
 - Python 3.9 through 3.13 for dependency free release validators
 - no runtime registry dependencies
 
@@ -17,17 +17,18 @@ Do not solve a model communication problem only by adding another guard. Improve
 ## Writing Rules For Models
 
 - State the pattern, never a worked example. Public prose and cards use shapes with placeholders; an example teaches the instance, not the rule.
-- A card's `NEXT:` line is an order: one verb in the imperative or a short sequence joined by "then", its limit, and who acts next. No explanation on that line, no alternatives the model must weigh, no "wait", no "turn". Stopping is written as: stop here; no more actions until the human answers.
-- A claim the guard cannot observe is not written on a card. The guard states what it recorded, not what the model meant.
+- A card's `NEXT:` line is an order: one verb in the imperative or a short sequence joined by "then", its limit, and who acts next. It names the one next action and may name what the human can do instead. No explanation beyond its limit, no alternatives the model must weigh, no "wait", no "turn". Stopping is written as: stop here; no more actions until the human answers.
+- A claim the hook cannot observe is not written on a card. The hook states what it recorded, not what the model meant.
 - A small model must be able to read the sentence and act on it. When it cannot, the sentence is wrong, not the reader.
 
 ## Source Of Truth
 
 - `skills/please-make-no-mistakes/SKILL.md` owns the portable kernel and reference routing.
 - `skills/please-make-no-mistakes/references/` owns condition specific procedures.
-- `hooks/pmnm-guard.mjs` owns Codex procedural state and cards.
-- `evals/host-guard-cases.json` owns stable guard claims.
-- `evals/host-guard-action-oracle.json` owns normalized Codex event sequences and expected actions.
+- `hooks/pmnm-brake.mjs` owns classification, approval tokens, sealed state and cards for both hosts; `scripts/test_brake.mjs` owns its tests.
+- `hooks/pmnm-guard.mjs`, `hooks/pmnm-shell.mjs` and `hooks/claude/pmnm-claude.mjs` are the retired interlock, unregistered and kept for rollback.
+- `evals/host-guard-cases.json` owns the retired interlock's stable guard claims, kept for rollback.
+- `evals/host-guard-action-oracle.json` owns the retired interlock's normalized Codex event sequences and expected actions, kept for rollback.
 - `evals/activation-cases.json` and `evals/agent-evaluation-cases.json` own model selection and blind routing fixtures.
 - `evals/behavior-cases.md` owns observable portable behavior cases.
 - `scripts/documentation_contract.py` owns public documentation invariants.
@@ -35,18 +36,31 @@ Do not solve a model communication problem only by adding another guard. Improve
 
 Private coordination under `.ai/` can explain intent and preserve evidence. It never changes public behavior by itself.
 
-## Host Adapter Isolation
+## Host Isolation
 
-Do not share a hook implementation between hosts by resemblance. Preserve the portable receipt meanings and behavioral outcomes, then implement each adapter against documented native events and test it independently.
+Do not extend the brake to a host by resemblance. Preserve the brake's behavioral outcomes, then implement each host's input and output against its documented native events and test them independently.
 
-Changes to the Codex guard must not silently redefine the portable skill. Changes to the portable skill must not claim enforcement that no host provides.
+Changes to the brake must not silently redefine the portable skill. Changes to the portable skill must not claim enforcement that no host provides.
 
 ## Focused Checks
 
 Run the narrow check while iterating:
 
 ```text
+npm run test:brake
+```
+
+For the retired interlock source:
+
+```text
 npm run test:host-guard
+npm run test:claude-adapter
+```
+
+For the Claude Code hook registration:
+
+```text
+npm run test:claude-discovery
 ```
 
 For documentation changes:

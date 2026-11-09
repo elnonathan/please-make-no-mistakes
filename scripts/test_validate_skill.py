@@ -338,6 +338,7 @@ class HostRuntimeValidationTests(unittest.TestCase):
             mock.patch.object(VALIDATOR, "HOOK_RUNTIME_FILE", guard),
             mock.patch.object(VALIDATOR, "HOOK_SHELL_FILE", shell),
             mock.patch.object(VALIDATOR, "HOOK_RUNTIME_FILES", (guard, shell)),
+            mock.patch.object(VALIDATOR, "BRAKE_FILE", hooks / "pmnm-brake.mjs"),
         ):
             errors: list[str] = []
             VALIDATOR.validate_host_hooks(errors)
@@ -403,13 +404,176 @@ class HostRuntimeValidationTests(unittest.TestCase):
             root = self.copied_hooks(raw)
             hooks = root / "hooks"
             shell = hooks / "pmnm-shell.mjs"
-            current_total = sum(path.stat().st_size for path in hooks.glob("*.mjs"))
+            # The aggregate budget covers the two legacy engine modules; the brake has its own.
+            current_total = sum((hooks / name).stat().st_size for name in ("pmnm-guard.mjs", "pmnm-shell.mjs"))
             shell.write_text(
                 shell.read_text(encoding="utf-8") + (" " * max(1, 260_001 - current_total)),
                 encoding="utf-8",
             )
             errors = self.validate_copy(root)
             self.assertTrue(any("aggregate inspectable size budget" in item for item in errors))
+
+    def test_rejects_the_retired_interlock_registration(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-validator-old-registration-") as raw:
+            root = self.copied_hooks(raw)
+            config_file = root / "hooks" / "codex" / "hooks.json"
+            old = json.loads(config_file.read_text(encoding="utf-8"))
+            old["hooks"]["SessionStart"] = old["hooks"]["PreToolUse"]
+            config_file.write_text(json.dumps(old), encoding="utf-8")
+            errors = self.validate_copy(root)
+            self.assertTrue(any("register only the brake" in item for item in errors))
+
+    def test_rejects_a_brake_that_reaches_the_network(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-validator-brake-network-") as raw:
+            root = self.copied_hooks(raw)
+            brake = root / "hooks" / "pmnm-brake.mjs"
+            brake.write_text(brake.read_text(encoding="utf-8") + '\nfetch("https://example.com");\n', encoding="utf-8")
+            errors = self.validate_copy(root)
+            self.assertTrue(any("brake" in item and "forbidden" in item for item in errors))
+
+    def test_rejects_a_brake_that_runs_another_program(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-validator-brake-spawn-") as raw:
+            root = self.copied_hooks(raw)
+            brake = root / "hooks" / "pmnm-brake.mjs"
+            brake.write_text(brake.read_text(encoding="utf-8").replace('spawn("codex", [', 'spawn("sh", [', 1), encoding="utf-8")
+            errors = self.validate_copy(root)
+            self.assertTrue(any("brake may run only" in item for item in errors))
+
+
+class SkillCoreTests(unittest.TestCase):
+    """SKILL.md is the core an agent holds before any action, and what survives compaction."""
+
+    def copied_skill(self, raw: str) -> Path:
+        root = Path(raw) / "skill"
+        shutil.copytree(PACKAGE_ROOT / "skills" / "please-make-no-mistakes", root)
+        return root
+
+    def errors_for(self, root: Path) -> list[str]:
+        errors: list[str] = []
+        VALIDATOR.validate_skill_core(errors, root)
+        return errors
+
+    def order_line(self, root: Path, order: str) -> tuple[Path, str]:
+        for path in [root / "SKILL.md", *sorted((root / "references").glob("*.md"))]:
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if line.startswith("- " + order + ". "):
+                    return path, line
+        raise AssertionError(order + " not found")
+
+    def replace(self, path: Path, old: str, new: str) -> None:
+        text = path.read_text(encoding="utf-8")
+        self.assertIn(old, text)
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+    def test_the_packaged_core_passes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            self.assertEqual(self.errors_for(self.copied_skill(raw)), [])
+
+    def test_a_missing_order_fails(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            path, line = self.order_line(root, "IN-1")
+            self.replace(path, line + "\n", "")
+            self.assertTrue(any("IN-1 is missing" in item for item in self.errors_for(root)))
+
+    def test_a_changed_order_fails(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            path, line = self.order_line(root, "VE-3")
+            self.replace(path, line, line.replace("fail", "pass", 1))
+            self.assertTrue(any("VE-3 changed" in item for item in self.errors_for(root)))
+
+    def test_a_duplicated_order_fails(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            _, line = self.order_line(root, "SE-1")
+            flow = root / "references" / "flow.md"
+            flow.write_text(flow.read_text(encoding="utf-8") + "\n" + line + "\n", encoding="utf-8")
+            self.assertTrue(any("SE-1 appears 2 times" in item for item in self.errors_for(root)))
+
+    def test_an_essential_order_outside_the_core_fails(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            path, line = self.order_line(root, "SE-5")
+            self.assertEqual(path.name, "SKILL.md")
+            self.replace(path, line + "\n", "")
+            target = root / "references" / "review-and-security.md"
+            target.write_text(target.read_text(encoding="utf-8") + "\n" + line + "\n", encoding="utf-8")
+            self.assertTrue(any("Essential order SE-5" in item for item in self.errors_for(root)))
+
+    def test_a_reading_map_path_that_does_not_exist_fails(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            self.replace(root / "SKILL.md", "(references/verification.md)", "(references/verifying.md)")
+            errors = self.errors_for(root)
+            self.assertTrue(any("references/verifying.md" in item and "does not exist" in item for item in errors))
+            self.assertTrue(any("does not name references/verification.md" in item for item in errors))
+
+    def test_the_reading_map_must_come_first(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            skill = root / "SKILL.md"
+            text = skill.read_text(encoding="utf-8")
+            skill.write_text(text.replace(VALIDATOR.SKILL_MAP_HEADING, "## Map", 1), encoding="utf-8")
+            self.assertTrue(any("must open with" in item for item in self.errors_for(root)))
+
+    def test_a_personal_or_absolute_skill_path_fails(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            home = "Users"
+            for spelling in ("/" + home + "/someone/.claude/skills/please-make-no-mistakes", "~/.claude/skills/please-make-no-mistakes", "C:\\" + home + "\\someone\\skills"):
+                skill = root / "SKILL.md"
+                original = skill.read_text(encoding="utf-8")
+                skill.write_text(original + "\nReload it from " + spelling + ".\n", encoding="utf-8")
+                self.assertTrue(any("personal or absolute path" in item for item in self.errors_for(root)), spelling)
+                skill.write_text(original, encoding="utf-8")
+
+    def test_the_core_cap_fails_when_exceeded(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            skill = root / "SKILL.md"
+            text = skill.read_text(encoding="utf-8")
+            body = VALIDATOR.skill_body(text)
+            skill.write_text(text + "x" * (VALIDATOR.SKILL_CORE_CAP - len(body) + 1), encoding="utf-8")
+            self.assertTrue(any("core cap" in item for item in self.errors_for(root)))
+            self.assertEqual(VALIDATOR.SKILL_CORE_CAP, 12_000)
+            self.assertNotIn("name: please-make-no-mistakes", VALIDATOR.skill_body(text), "the cap counted the frontmatter")
+
+    def test_a_critical_map_row_must_say_before_its_step(self) -> None:
+        for old, new in (("| verifying |", "| after verifying |"), ("| investigating, planning, implementing |", "| after implementing |"), ("| Before | Read |", "| After | Read |")):
+            with self.subTest(old=old), tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+                root = self.copied_skill(raw)
+                self.replace(root / "SKILL.md", old, new)
+                self.assertTrue(any("before" in item and "reading map" in item for item in self.errors_for(root)), old)
+
+    def test_the_reload_reads_the_core_and_only_the_next_reference(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            skill = root / "SKILL.md"
+            skill.write_text(skill.read_text(encoding="utf-8") + "\nReread this file and the references it names.\n", encoding="utf-8")
+            self.assertTrue(any("every reference" in item for item in self.errors_for(root)))
+
+    def test_the_verification_only_exception_is_in_the_core(self) -> None:
+        exception = "A verification-only task may skip the plan Digest only for an exact non-mutating check the human asked for"
+        self.assertTrue(any(exception in phrase for phrase in VALIDATOR.CORE_PHRASES))
+        with tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+            root = self.copied_skill(raw)
+            skill = root / "SKILL.md"
+            text = skill.read_text(encoding="utf-8")
+            start = text.index(exception)
+            sentence = text[start:text.index("full flow.", start) + len("full flow.")]
+            skill.write_text(text.replace(sentence, "", 1), encoding="utf-8")
+            self.assertNotIn(exception, skill.read_text(encoding="utf-8"), "the mutation did not remove the exception")
+            flow = root / "references" / "flow.md"
+            flow.write_text(flow.read_text(encoding="utf-8") + "\n" + sentence + "\n", encoding="utf-8")
+            self.assertTrue(any("essential sentence" in item for item in self.errors_for(root)))
+
+    def test_the_essential_sentences_are_required(self) -> None:
+        for phrase in VALIDATOR.CORE_PHRASES:
+            with self.subTest(phrase=phrase[:40]), tempfile.TemporaryDirectory(prefix="pmnm-core-") as raw:
+                root = self.copied_skill(raw)
+                self.replace(root / "SKILL.md", phrase, "")
+                self.assertTrue(any("essential sentence" in item for item in self.errors_for(root)))
 
 
 if __name__ == "__main__":

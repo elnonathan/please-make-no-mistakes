@@ -1,5 +1,25 @@
 # Review and security
 
+## Orders moved from SKILL.md
+
+These orders moved here unchanged when SKILL.md became a short core. Read them before the audit, before forecasting permissions and before touching a datastore; AU-5, SE-1, SE-2 and SE-5 stay in SKILL.md.
+
+### Audit
+
+End state: the human holds the evidence, its limits and exact test steps.
+
+- AU-1. Walk `plan.md`: every file target materially changed or excluded with its reason, every state objective supported by a successful bound operation and current evidence, every deliverable tested against its boundary, and nothing material outside the plan. Every changed line belongs to a plan line or is a finding. When you cannot read the whole change in one pass, group it into logical units and say what each serves and what breaks without it.
+- AU-2. Run a separate omission audit from the changed surface, not the plan. A plan cannot validate its own completeness. A requested capability missing from the change is a finding. No word of your working process belongs in a publishable artifact.
+- AU-3. State the comparison you had: version control, direct comparison of planned paths with their recorded baseline, or no project-file comparison. A state- or deliverable-only plan still says no project-file comparison. When version control is unavailable or forbidden, use the recorded baseline where one exists and name the limitation instead of inventing a version-control fingerprint. State the baseline, current source, changed and untracked artifacts, material evidence and time.
+- AU-4. Get a review from someone who did not write the change; roles may swap between tasks. Without one, run an author audit: reread the files, not the conversation, and attack your own claims; at High effort it closes as partial. Report blocking findings, residual risk and `ready for commit: yes|no`, adding `(author audit)` when no one else reviewed.
+
+### Sensitive actions
+
+Intent: what the human answers for stays in the human's hands.
+
+- SE-3. During investigation, forecast every predictable exact operation together, state whether each permission lasts for this task or project, and put the list in the plan Digest; a changed or unlisted operation asks again. Split compound operations with an unknown segment or more than one sensitive effect.
+- SE-4. Find out whether a project has a database and how it connects before using it, and ask for read-only access. Each write needs approval for that exact operation and the package in [review and security](#migrations-and-irreversible-work).
+
 Load this reference for final audit, submitted-change review, security or authorization work, destructive or externally visible effects, migrations, public contracts, sensitive data or unknown blast radius.
 
 ## Establish the reviewed state

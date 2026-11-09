@@ -134,4 +134,4 @@ When a review finds a material branch the audit missed, reopen the closure rathe
 
 ## Epistemic boundary
 
-The Codex guard can validate the file's shape, freshness, dispositions and binding to an observed verification fingerprint. It can observe current bytes returned by a covered read. It cannot prove that a model understood those bytes, that the graph is complete, that a reviewer is independent or that a disposition is true. Keep those limits explicit in the final claim.
+No hook validates `impact.md`. Check its shape, freshness, dispositions and binding to the current verification fingerprint yourself. No check proves that a model understood the bytes it read, that the graph is complete, that a reviewer is independent or that a disposition is true. Keep those limits explicit in the final claim.

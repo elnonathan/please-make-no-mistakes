@@ -24,13 +24,13 @@ The first repository adds one more question: its project name, with the reposito
 
 The only other folder questions are whether a possibly matching task folder is the same work, and whether an always or never should become a project rule or general rule. No storage schema, per task approval or file layout decision belongs to the user.
 
-## When The Codex Guard Is Active
+## When The Brake Is Active
 
-The Codex plugin includes an optional lifecycle guard. After you review and trust its current definition through `/hooks`, covered events can make a skipped transition observable. In Claude Code, enabling the plugin runs its adapter without a separate trust step.
+The Codex and Claude Code plugins include an optional guard: a destructive-operation brake. In Codex it runs after you review and trust its current definition through `/hooks`. In Claude Code, enabling the plugin runs it without a separate trust step.
 
-A card has two lines: what happened, and `NEXT:` with one exact action. Its first word is the level. Blocked means the action did not run. Ask means you answer next. Note means continue. A card is not a question for you: the agent reports it in one sentence and takes the `NEXT:` action; after an Ask it stops until you answer.
+The brake stops deletions, overwrites, history rewrites, service restarts, publication and other irreversible or sensitive operations before they run. Ordinary reads and project edits pass. A stop prints a card with two lines: what happened, and `NEXT:` with one exact action. Its first word is the level. Blocked means a destructive operation did not run. Ask means another stopped operation did not run. Either way the agent shows you the exact operation and stops; it runs only if you reply with the exact `PMNM-<code>` token the card names, in any letter case, or you run it yourself. In Claude Code, some sensitive operations use the host's own permission prompt instead of a card.
 
-The guard is intentionally partial. It can enforce declared order for events Codex sends it, but it cannot establish product intent, evidence quality, complete tool coverage or semantic correctness. When it is absent, disabled, untrusted, unsupported or bypassed, PMNM continues as a portable advisory skill.
+The guard is intentionally partial. It can stop the destructive or sensitive operations its host sends it, but it cannot establish product intent, evidence quality, complete tool coverage or semantic correctness. When it is absent, disabled, untrusted, unsupported or bypassed, PMNM continues as a portable advisory skill.
 
 ## Shared Understanding
 
@@ -58,7 +58,7 @@ Do you agree?
 
 You answer in a later turn; the agent stops there. Agreement authorizes implementation inside that Digest. A correction, changed direction, wider surface or new evidence that breaks it requires a revised Digest and fresh agreement.
 
-The Digest may group predictable exact sensitive operations into one decision when the host can bind them. Task permissions end with the task or a withdrawn Digest. Project permissions survive only for the same project and exact operations, and can be replaced or revoked. A changed or unlisted ordinary sensitive operation asks again. An unlisted state-changing operation requires a revised Digest because it changes the outcome contract. Native host approval remains controlling. A compound operation with an unknown part or several sensitive effects is split before authority is presented.
+The Digest may group predictable exact sensitive operations into one decision. Task permissions end with the task or a withdrawn Digest. Project permissions survive only for the same project and exact operations, and can be replaced or revoked. A changed or unlisted ordinary sensitive operation asks again. An unlisted state-changing operation requires a revised Digest because it changes the outcome contract. The brake does not read the Digest: it still stops each covered destructive or sensitive operation until you reply with its exact single-use token or, in Claude Code, answer the host's own prompt. Native host approval remains controlling.
 
 ## When Direction Breaks
 
@@ -85,7 +85,7 @@ Cleanup: <what to restore or why none is needed>
 Can run: <yes with the available capability, or no with the exact limitation>
 ```
 
-Before handing the run to you, the agent checks whether the host and project expose interface automation, a real entry route, safe data access and the needed environment. When it cannot run the check, it names the missing capability instead of presenting instructions as executed evidence. The final audit requires current passed verification and walks `plan.md`: every file materially changed or excluded for its reason, every state objective supported by its exact operation and current evidence, nothing material outside it. A no-op or a file restored to baseline is not a completed target. The audit tests the completion claim and names file comparison and state evidence separately. A state-only task says no project-file comparison occurred. Under the guard it also names the fingerprint of the observed source and state boundaries.
+Before handing the run to you, the agent checks whether the host and project expose interface automation, a real entry route, safe data access and the needed environment. When it cannot run the check, it names the missing capability instead of presenting instructions as executed evidence. The final audit requires current passed verification and walks `plan.md`: every file materially changed or excluded for its reason, every state objective supported by its exact operation and current evidence, nothing material outside it. A no-op or a file restored to baseline is not a completed target. The audit tests the completion claim and names file comparison and state evidence separately. A state-only task says no project-file comparison occurred.
 
 ## Resuming Work
 
@@ -101,6 +101,6 @@ Explicit invocation still activates the skill. A small implementation can use Li
 
 ## Reading Evaluation Evidence
 
-Source validators can prove that declared files resolve, package identities agree, public boundaries hold and covered guard transitions match their executable fixtures. Artifact checks can prove exact packaged and installed bytes. Neither proves that a particular model followed the skill, that a host trusted or invoked a hook, or that the implementation is correct.
+Source validators can prove that declared files resolve, package identities agree, public boundaries hold and covered brake classifications match their tests. Artifact checks can prove exact packaged and installed bytes. Neither proves that a particular model followed the skill, that a host trusted or invoked a hook, or that the implementation is correct.
 
 Behavioral confidence requires a fresh session using the exact candidate, representative positive and negative prompts, recorded source state and explicit comparison across relevant model and host configurations. See the [evaluation guide](../evals/README.md) and [distribution boundaries](distribution.md).

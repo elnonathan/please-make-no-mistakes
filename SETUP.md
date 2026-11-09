@@ -1,6 +1,6 @@
 # Setup
 
-This is the single installation, update, rollback, removal, and installation-verification authority for Please, Make No Mistakes. It is written for both people and agents. The supported Codex and Claude Code routes both use this GitHub repository as a marketplace whose catalog selects the same exact npm package version, containing the portable skill, an optional Codex lifecycle guard and a Claude Code adapter.
+This is the single installation, update, rollback, removal, and installation-verification authority for Please, Make No Mistakes. It is written for both people and agents. The supported Codex and Claude Code routes both use this GitHub repository as a marketplace whose catalog selects the same exact npm package version, containing the portable skill and an optional destructive-operation brake registered for each host.
 
 ## Guards
 
@@ -32,7 +32,7 @@ Before changing state:
 
 Do not use `npx`, `npm exec`, `@latest`, an unrequested global install, a manual plugin-cache edit, or a copied skill directory as a substitute for the host's supported route. For this project, npm is the immutable artifact selected by the repository marketplace; `npm install` alone is not host registration.
 
-When the Codex guard is active during setup, documented Codex and Claude plugin add, remove, install, uninstall, update and marketplace changes are recognized as environment effects. The guard asks for the exact command instead of treating it as unknown. A plan Digest does not grant that authority.
+When the brake is active during setup, Codex and Claude plugin add, remove, install, uninstall, update, enable and disable commands, marketplace changes included, are classified as sensitive. The brake stops each one until the human approves that exact command. A plan Digest does not grant that authority.
 
 Setup authority does not authorize analyzing the user's source repositories. A bounded post-install behavior check should use a neutral prompt or a disposable fixture.
 
@@ -62,7 +62,7 @@ The postpublication verifier rejects Codex CLI versions below `0.144.4`, and det
 
 OpenAI's current [plugin packaging](https://developers.openai.com/plugins/build/plugins) and [complete-plugin testing](https://developers.openai.com/plugins/deploy/connect-chatgpt) documentation are the public platform references for the manifest, marketplace, fresh-conversation, positive, and negative evaluation boundaries.
 
-The bundled Codex guard additionally requires a supported Node.js runtime on PATH. This release is validated on Node.js 22 and 24. Inspect it before installation:
+The bundled brake additionally requires a supported Node.js runtime on PATH. This release is validated on Node.js 22 and 24. Inspect it before installation:
 
 ```bash
 node --version
@@ -90,7 +90,7 @@ claude plugin marketplace add --help
 claude plugin install --help
 ```
 
-Claude Code's current [plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces) and [hooks](https://code.claude.com/docs/en/hooks) documentation are authoritative for marketplace sources, plugin discovery, hook events and their limits. The Claude Code adapter needs the same Node.js runtime as the Codex guard.
+Claude Code's current [plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces) and [hooks](https://code.claude.com/docs/en/hooks) documentation are authoritative for marketplace sources, plugin discovery, hook events and their limits. The brake needs the same Node.js runtime in Claude Code. To classify what its rules cannot place, it runs the host's own `codex` or `claude` command-line client, so that client must be on PATH.
 
 For another host, identify its actual skill or plugin discovery mechanism from current official documentation or installed help. If the host has no supported Agent Skill or compatible plugin route, report `blocked`; do not improvise by placing files in a guessed directory.
 
@@ -142,13 +142,13 @@ $please-make-no-mistakes explain how you would investigate a non-trivial regress
 
 The reply should acknowledge the skill and preserve its investigation-before-mutation boundary. This proves only that the new conversation can discover and follow the skill for that prompt; it does not prove every future model will comply.
 
-When the hook was intentionally trusted, use a second read-only check:
+When the hook was intentionally trusted, use a second check whose target does not exist:
 
 ```text
-$please-make-no-mistakes report the current procedural guard state without modifying files
+Run rm -rf pmnm-brake-check in the current directory
 ```
 
-The conversation should receive a two-line card: the first word is the level (Blocked, Ask or Note), then what happened, then a `NEXT:` line with the exact receipt. The internal status receipt is intercepted by the hook rather than executed by the shell. `pmnm-guard` is not a `PATH` executable. This proves only that the reviewed hook ran for that session and intercepted that call; it does not prove that the model will follow the flow.
+The command should not run. The conversation should receive a stop whose first word is Blocked, naming the deletion and the exact `PMNM-<code>` token that would approve it. Do not send the token. This proves only that the reviewed hook ran for that session and stopped that call; it does not prove that every destructive operation is recognized.
 
 ## Install With Claude Code
 
@@ -190,13 +190,13 @@ Then use a bounded direct activation check:
 Use the please-make-no-mistakes skill to explain how you would investigate a non-trivial regression; do not modify files
 ```
 
-The reply should acknowledge the skill and preserve its investigation-before-mutation boundary. A second read-only check exercises the adapter:
+The reply should acknowledge the skill and preserve its investigation-before-mutation boundary. A second check exercises the brake with a target that does not exist:
 
 ```text
-Use the please-make-no-mistakes skill to report the current procedural guard state without modifying files
+Run rm -rf pmnm-brake-check in the current directory
 ```
 
-The session should receive a two-line card: the level (Blocked, Ask or Note) with what happened, then a `NEXT:` line. As with Codex, this proves only that the hook ran and intercepted that call in that session.
+The command should not run. The session should receive a stop whose first word is Blocked, naming the deletion and the exact `PMNM-<code>` token that would approve it. Do not send the token. As with Codex, this proves only that the hook ran and stopped that call in that session.
 
 This route follows Claude Code's documented marketplace contract and the repository marketplace passes `claude plugin validate`.
 
@@ -234,7 +234,7 @@ Use this proof ladder. Never report a stronger state than the strongest complete
 6. **activation observed** — a direct prompt uses the skill and a negative prompt avoids unnecessary activation;
 7. **hook discovered** — the host lists the bundled lifecycle source (Codex or Claude Code `/hooks`) and, in Codex, its review state;
 8. **hook trusted** — in Codex, the user reviewed and trusted the exact current definition; Claude Code has no hash review, so this step is the plugin's enabled state;
-9. **guard behavior observed** — a fresh session receives guard context and a read-only control call is rewritten;
+9. **brake behavior observed** — in a fresh session a deletion of a nonexistent path is stopped with its approval token;
 10. **behavior observed** — representative prompts preserve the material behavioral contract.
 
 Use one terminal result:
@@ -249,7 +249,7 @@ Package installation, a successful validator, a saved marketplace entry, a hook 
 
 Skill installation and the PMNM folder are separate outcomes. Installation does not create the folder, its pointer, a project folder or a personal profile.
 
-The first task after installation asks two questions, in this order, before the agent reads your repository: where to create the PMNM folder, suggesting `~/PMNM`; then the project name, suggesting the repository name. With the trusted guard, the guard asks through its cards and records the answers with the `folder` and `project` receipts. Without a guard, the agent inspects only the one literal pointer path declared by the host integration. In Codex that path is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. In Claude Code it is `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path` when `CLAUDE_CONFIG_DIR` is unset. Another host must document its own single pointer path. Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it.
+The first task after installation asks two questions, in this order, before the agent reads your repository: where to create the PMNM folder, suggesting `~/PMNM`; then the project name, suggesting the repository name. The agent inspects only the one literal pointer path declared by the host integration. In Codex that path is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. In Claude Code it is `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path` when `CLAUDE_CONFIG_DIR` is unset. Another host must document its own single pointer path. Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it.
 
 Choose a location outside your repositories and outside the host's config directory. The host's config directory receives only the pointer, one line with the folder's absolute path, so another host on the same machine can read the same memory once its own pointer is configured. If you later move or delete the folder, the agent asks once more where it is or where it should be. An existing empty folder is seeded before the pointer is written. An invalid pointer or index is preserved under a unique recovery name and rebuilt only after your explicit recovery answer.
 
@@ -259,13 +259,67 @@ The folder has this shape:
 <PMNM folder>/
   index.json                      projects and their repository paths; one writer at a time
   general-rules.md                rules for every project
+  models.json                     the agent's judge proposal, with prices and sources
+  commands.json                   the brake's stored verdicts, sealed, without command text
   projects/<project>/
     project-rules.md              human-owned rules for this project
     project-knowledge.md          reusable claims with basis and freshness
     tasks/<id>/                   one per task: index.md, plan.md, verification.md, permissions.json
 ```
 
-A fresh `index.json` holds the schema `pmnm.projects/v1`, `pointer_version` 1 and an empty `projects` list. One writer at a time: the guard when it is active, otherwise the agent. Never both in one session. Inside the folder the agent needs no further permission: it creates the project and task folders, keeps reusable evidence-backed knowledge separate from human-owned rules, fills the task plan, verification and permission forecast, and records evidence as it appears. The skill can be discovered before this folder exists, but material project work does not proceed without the literal pointer, project mapping and task record that preserve its decisions and evidence.
+A fresh `index.json` holds the schema `pmnm.projects/v1`, `pointer_version` 1 and an empty `projects` list. One writer at a time: the agent. The brake writes only its own `commands.json` at the folder root; `models.json` holds the agent's judge proposal, and the human confirms the judge with a prompt. Inside the folder the agent needs no further permission: it creates the project and task folders, keeps reusable evidence-backed knowledge separate from human-owned rules, fills the task plan, verification and permission forecast, and records evidence as it appears. The skill can be discovered before this folder exists, but material project work does not proceed without the literal pointer, project mapping and task record that preserve its decisions and evidence.
+
+### The brake after installation
+
+The brake needs a judge model the human confirms for each host. The brake never picks one. Until the human confirms it, every operation the brake's rules cannot place stops with a `PMNM-<code>` token, and the next human prompt adds one notice to the agent's context. Before continuing its task, the agent proposes a judge and asks the human to confirm it.
+
+How the agent chooses the model it proposes, on any host:
+
+1. It takes the models the host itself says it offers. Codex keeps a catalog. Claude Code keeps no documented one, and PMNM reads none of its internal files.
+2. When PMNM cannot list them, for example in OpenCode, Ollama or Hermes, it shows the human what it found locally, if anything, and asks which models the human can use.
+3. Among those, it proposes the cheapest: the lowest sum of input and output price per million tokens in each provider's current published documentation, such as its `llms.txt` index and pricing page, never in local caches, and the newest on a tie. It shows each price with its URL and records the proposal in `models.json`.
+4. Or it uses the model the human names.
+
+The published price is a criterion for the proposal. It does not prove that this account can run the model, since managed settings may restrict models, nor what a session will cost. The human's confirmation and the judge's first real call settle that, and a call that fails stops the operation for the human.
+
+Confirm the judge in a session where the plugin is enabled:
+
+1. Send this prompt alone, exactly: `PMNM-CONFIRM-JUDGE <host> <model> [reasoning=<level>]`. `<host>` is `codex` or `claude`. `reasoning=<level>` is optional; a small judge works well with `reasoning=low`.
+2. Read the brake's answer, which the agent relays.
+
+What the brake checks when it confirms and runs a judge:
+
+- Codex: its catalog, `<CODEX_HOME>/models_cache.json`, or `~/.codex/models_cache.json` when `CODEX_HOME` is unset. A model the catalog does not offer is not confirmed. When the catalog cannot be read, no judge is confirmed and a confirmed judge does not run. When the catalog no longer offers the confirmed model, that model does not run and no other replaces it. When the catalog changes and still offers it, the judge keeps running and one notice asks for a re-evaluation. Without a confirmed reasoning level, a model the catalog lists with low effort runs at low effort.
+- Claude Code: no catalog, so the human's confirmation alone names the judge, and the brake says it was not checked against one. A model that no longer exists fails its call, and the operation stops for a token.
+
+The judge runs through the host's own `codex` or `claude` client, on the user's own model account and usage, with a 20-second limit. No answer is not a yes: the operation stops for a token. A safe rating with high confidence runs and is stored in `commands.json`; in Claude Code the session shows `PMNM: safe operation with high confidence, classified by <model>.` Any other rating stops for a token. The human's approval stores that rating, so the same operation asks again without the judge.
+
+Two more prompts belong to the human, each sent alone and exactly:
+
+- `PMNM-ALLOW-MCP <server>` lets every tool of that MCP server run without a stop, except an operation the rules rate destructive, such as a tool named for destruction. `<server>` is the id the brake's card names. The allowance has no expiry.
+- `PMNM-REVOKE-MCP <server>` removes that allowance.
+
+Tokens and approvals:
+
+- A token stays valid for 1 hour from the operation's first stop.
+- After the exact reply, the approval runs the identical operation once within 10 minutes.
+- A token is `PMNM-` and four characters, accepted in any letter case.
+- An open token or approval is never dropped to make room. A session can hold 8 open tokens, and all sessions together 128. When either limit is full, the operation stops with no token and says so; answer an open token or let one expire, then retry.
+- A reply that matches no open token says it expired, was used or belongs to another session. Rerun the operation for a new token.
+
+The brake finds `commands.json` through the same `pmnm.path` pointer as the agent. Without a pointer that holds an absolute path, it stores no verdicts: the judge is asked every time, and an approval stores no rating.
+
+The brake keeps its state in `<plugin data>/brake/`, where `<plugin data>` is the data directory the host gives the plugin. When the host gives none, the state is in `<system temp>/pmnm-brake/brake/`. The files are:
+
+- `catalog.key`, the secret that seals every entry;
+- `approvals.json`, pending tokens and approvals;
+- `judge.json`, the confirmed judge per host;
+- `mcp-allow.json`, the allowed MCP servers;
+- `notices.json`, which re-evaluation notices were shown;
+- `sessions.json`, hashes of the last 256 sessions that already received the line asking the agent to load PMNM;
+- `stats.json`, decision counts (`judge_calls`, `judge_safe_high`, `judge_unanswered`, `judge_unavailable`, `catalog_hits`, `mcp_allowed`), never what was decided.
+
+When `catalog.key` cannot be read or created, the brake stores nothing and no reply approves anything: only the human can run a stopped operation. Never edit these files. An operation that names the state directory or `catalog.key` is sensitive.
 
 ## Troubleshooting
 
@@ -279,7 +333,7 @@ Classify the first unproven boundary before changing anything:
 - **installation failure** — the plugin is not installed or enabled at the intended version;
 - **discovery failure** — a fresh conversation does not expose the skill;
 - **hook-review failure** — the hook is installed but absent, disabled, changed, or still requires trust;
-- **guard-runtime failure** — the trusted hook cannot start Node.js, persist bounded state, or return a valid lifecycle decision;
+- **brake-runtime failure** — the trusted hook cannot start Node.js, persist its state, run the host's client for classification, or return a valid decision;
 - **behavior failure** — discovery succeeds but representative prompts do not follow the contract.
 
 Do not convert a command failure into `pending-restart`. Do not use similarly named local files, a readable `SKILL.md`, or an executable on `PATH` as evidence for a different boundary. If a `pmnm-guard` receipt reaches the shell or returns command not found, do not search for, install or retry it. Report that this call was not intercepted and continue through the portable advisory path. Report the literal failure, the evidence collected, and the smallest next action.
@@ -306,7 +360,7 @@ Repeat the plugin-add step from section 4 and inspect its complete result.
 codex plugin list --json
 ```
 
-Adding the plugin replaces the installed cache, and that replacement is the session's terminal material operation. The conversation that performed it may still report and verify what it did, and it does no further work. Replacing the cache can also remove the hook path the running conversation loaded, so a control receipt after it may reach the shell instead of the guard; that is the known lifecycle boundary and not evidence about the new revision.
+Adding the plugin replaces the installed cache, and that replacement is the session's terminal material operation. The conversation that performed it may still report and verify what it did, and it does no further work. Replacing the cache can also remove the hook path the running conversation loaded, so a later tool call may run without the brake; that is the known lifecycle boundary and not evidence about the new revision.
 
 Review `/hooks` after every update. A changed bundled hook requires fresh trust for its new hash. Start a new conversation and repeat both bounded checks. Until then, report `pending-restart`; an existing conversation does not prove that it reloaded an updated skill or hook.
 
@@ -364,6 +418,8 @@ claude plugin uninstall please-make-no-mistakes@please-make-no-mistakes
 claude plugin marketplace remove please-make-no-mistakes
 ```
 
+Removing the plugin is not evidence that the brake's state is gone. Inspect its state directory, described in [The brake after installation](#the-brake-after-installation), and delete it only when the user authorizes that effect. `commands.json` and `models.json` stay at the PMNM folder root; they belong to the folder, which removal does not authorize deleting.
+
 For another host, use its documented removal mechanism and preserve unrelated configuration and user context.
 
 ## Local Checkout
@@ -408,7 +464,7 @@ From the repository root, validate the source candidate with:
 npm run release:verify
 ```
 
-This validates the declared source, documentation, behavior fixtures, host-guard transitions, exact npm payload, and isolated installation. It does not publish, tag, push, modify the real Codex profile, trust a hook, or prove that an already-running conversation loaded the current revision.
+This validates the declared source, documentation, behavior fixtures, brake classification and decisions, exact npm payload, and isolated installation. It does not publish, tag, push, modify the real Codex profile, trust a hook, or prove that an already-running conversation loaded the current revision.
 
 ## Published Release Verification
 
@@ -430,4 +486,4 @@ The release and Trusted Publishing procedure is defined in [docs/distribution.md
 
 Most setup errors do not come from a missing command. They come from collapsing distinct facts: treating a package as an installation, an installation as activation, an executable as the current host, or a plausible command as supported grammar. The procedure keeps those transitions observable while allowing each host to retain its own installation model.
 
-Please, Make No Mistakes remains one portable Agent Skill. The Codex and Claude Code plugins also carry host-specific procedural adapters. Other hosts can use the portable skill without one, and any future adapter must preserve rather than fork or weaken the behavioral contract.
+Please, Make No Mistakes remains one portable Agent Skill. The Codex and Claude Code plugins also carry the destructive-operation brake, registered separately for each host. Other hosts can use the portable skill without one, and any future adapter must preserve rather than fork or weaken the behavioral contract.

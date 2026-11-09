@@ -6089,9 +6089,11 @@ test("the shared receipt card names the active host adapter, not one host", (t) 
   const result = v2RawPre(state, where, "turn-3", "ls", "unknown-op");
   const card = JSON.stringify(result.output);
   assert.ok(
-    card.includes("is a PMNM receipt handled by the active host adapter, not a program on PATH."),
+    card.includes("Send the `pmnm-guard` receipt as a shell-tool command. The active host adapter intercepts it before shell execution."),
     "card: " + card,
   );
+  assert.ok(card.includes("use this shell tool to submit `pmnm-guard declare"), "card: " + card);
+  assert.ok(card.includes("then rerun the exact blocked command"), "card: " + card);
   assert.equal(/Codex/i.test(card), false, "card names a single host: " + card);
 });
 

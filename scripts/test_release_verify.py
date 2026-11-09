@@ -45,6 +45,7 @@ class ReleaseVerifyTests(unittest.TestCase):
         self.assertEqual(full_names - portable_names, {"installed-tree"})
         self.assertIn("package-and-skill", portable_names)
         self.assertIn("source-validator-adversarial", portable_names)
+        self.assertIn("brake", portable_names)
         self.assertIn("host-guard", portable_names)
         self.assertIn("agent-evaluation", portable_names)
         self.assertIn("distribution-artifact", portable_names)

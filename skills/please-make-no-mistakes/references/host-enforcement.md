@@ -1,12 +1,57 @@
-# Please, Guard the First Write — host enforcement
+# Host enforcement
 
-The portable skill is the contract. A host guard is an optional procedural interlock for mistakes a prompt alone cannot reliably prevent. It observes only the events its host supplies. It does not understand the product, prove that an investigation is sufficient, or make a change correct.
+## The registered hook: the brake
 
-One shared engine decides every transition. Each host reaches it through its own thin adapter, which translates that host's native events and never decides a transition itself. The Codex adapter is the one this reference describes. Another host needs its own adapter, event mapping, tests, installation proof and coverage statement. It must not replace or weaken an existing adapter merely to share code.
+Both plugins register one hook, the destructive-operation brake in `hooks/pmnm-brake.mjs`. Codex runs it with `--host codex` and Claude Code with `--host claude`. In Codex, `hooks/codex/hooks.json`, the file `.codex-plugin/plugin.json` declares, registers it on `PreToolUse` for `Bash`, `apply_patch`, `Edit`, `Write` and MCP tools, and on `UserPromptSubmit`. In Claude Code, `hooks/claude/hooks.json` registers it on `PreToolUse` for every tool and on `UserPromptSubmit`. A tool call or prompt its host does not send to it is outside its evidence.
+
+The brake knows nothing about tasks, plans, Digests or receipts. It rates each covered tool call safe, sensitive or destructive:
+
+- A safe operation runs without a card.
+- A destructive operation prints a Blocked card.
+- A sensitive operation prints an Ask card. In Claude Code, an operation its rules already know as sensitive uses the host's own permission prompt instead.
+- What its rules cannot place goes to the judge model the human confirmed. A safe rating with high confidence runs; any other rating prints a card.
+
+A brake card names the operation's reason. When the human can approve by reply, it also names a single-use approval token: `PMNM-` and four characters, such as `PMNM-7K2Q`. Follow it this way:
+
+1. Stop. Show the human the exact operation and the token the card printed.
+2. Wait. Only a human prompt that is exactly that token approves the operation. You never send or invent it.
+3. When the hook confirms the approval, rerun the identical operation once. Send no receipt.
+
+The token is bound to one operation and one session and is spent by its use. A changed operation needs a new approval. An event without a session id cannot be approved in a reply; only the human can run that operation. When the brake cannot evaluate an operation, it blocks it.
+
+Three more prompts belong to the human alone: `PMNM-CONFIRM-JUDGE <host> <model> [reasoning=<level>]` confirms the judge model, `PMNM-ALLOW-MCP <server>` lets every tool of one MCP server run without the judge, and `PMNM-REVOKE-MCP <server>` removes that entry. A tool named for destruction still stops. When no judge is confirmed, or the Codex catalog cannot be read, no longer offers the confirmed model or changes, the brake adds one notice to your context with the human's next prompt. Answer it in that same turn, before continuing the task:
+
+1. Take the models the host says it offers. Codex keeps a catalog; Claude Code keeps no documented one, so do not read its internal files.
+2. When you cannot list them, show the human what you found locally, if anything, and ask which models they can use.
+3. Propose the cheapest of those: the lowest sum of input and output price per million tokens in each provider's current published documentation, such as its `llms.txt` index and pricing page, never in local caches, and the newest on a tie. Show each price with its URL.
+4. If the human names a model, use that one.
+5. Ask the human to send the confirm prompt. Present the price as the reason for the proposal, not as proof that the account can run the model or of what it will cost.
+
+On the first prompt of each session the brake adds one line to your context: load this skill before reading the project. Do that before any other step.
+
+The brake keeps its state in the host's plugin data directory, or under `<system temp>/pmnm-brake/` when the host gives none: a sealed secret key, pending approvals and one-time grants, the confirmed judge, the allowed MCP servers, the sessions it has greeted and decision counts. In the PMNM folder it writes only `commands.json`, its sealed verdicts without command text; `models.json` holds your judge proposal and grants nothing. Never read or edit the brake's state. An operation that reaches it, by any spelling, glob or link, is denied with no token: only the human can run it.
+
+`scripts/test_brake.mjs` is the brake's suite; `npm run test:brake` runs it. It feeds synthetic events. It does not establish host discovery, hook trust or live execution; verify those separately after installation. The brake never claims semantic correctness, and native host approval remains controlling.
+
+The procedural interlock that earlier releases registered is retired and unregistered. Its source stays in the package for restoration, and [Retired interlock](#retired-interlock-kept-for-restoration) describes it as it ran.
+
+## Guard orders moved from SKILL.md
+
+These paragraphs moved here when SKILL.md became a short core. The card levels, the advisory default and the rule never to follow the `NEXT` of a shell-run `pmnm-guard` stay in SKILL.md. They apply only under a guard that takes receipts; no registered hook takes them now.
+
+Under such a guard, a native project-source read before `start` is Blocked on the first attempt. A declared project read then reaches the same `start` boundary before execution. A declared host operation may proceed without inventing a project task. A question about nothing in particular needs no task.
+
+Never print a `pmnm-guard` receipt in prose or in a Digest; execute receipts only when the host exposes an active guard. With an active guard, send each receipt as the shell tool's command. The host adapter intercepts it before shell execution. Otherwise stay in advisory mode and perform the portable step directly.
+
+Under a guard, a later unlisted command receives an operation-bound approval token. Ask the human to reply with the exact token printed by the guard. Trust, praise, a general yes and other text do not arm the receipt. An opaque operation first declares its effect and boundary. A declaration is a claim, never authority. Under the brake, there is no receipt: when the human replies with the brake's `PMNM-<code>` token, rerun the identical operation.
+
+The portable skill is the contract. A host hook is an optional safeguard for mistakes a prompt alone cannot reliably prevent. It observes only the events its host supplies. It does not understand the product, prove that an investigation is sufficient, or make a change correct.
+
+Both hosts register the same brake module directly. The interlock reached one shared engine through a thin adapter per host; that engine and its adapters are retired. A host other than Codex or Claude Code needs its own registration, tests, installation proof and coverage statement. It must not replace or weaken an existing registration merely to share code.
 
 ## Read a card
 
-A guard card is always two lines.
+A PMNM card is always two lines.
 
 ```text
 Blocked | Ask | Note: <what happened>
@@ -17,13 +62,15 @@ NEXT: <one exact action>
 - **Ask** means the operation waits for the human's answer: stop here; no more actions until the human answers.
 - **Note** records state or directs the next agent action without asking the human.
 
+The brake prints only Blocked and Ask; Note came from the retired interlock. A brake card begins `Blocked:` or `Ask:`, and its `NEXT:` says to show the human the operation: do that, and send no receipt. It does not mean a receipt-taking guard is active. Its `NEXT:` names a `PMNM-<code>` token only when the human can approve by reply. Text that begins `PMNM:` is not a card: it is a brake notice in your context, the reason of Claude Code's own permission prompt, or Claude Code's message for an operation the judge rated safe. In Claude Code, an operation the brake's rules already know as sensitive reaches the human as the host's own permission prompt instead of a card.
+
 The card itself is not a user question. Follow `NEXT:` in the same turn unless it says to ask or to stop. The host may add its own frame such as “Blocked by hook”; that frame is not PMNM output.
 
 Cards are English. `NEXT:` remains literal. No card claims semantic correctness.
 
-A native read of project source with no task open is Blocked on its first attempt, and the card names `start`. An operation whose effect and boundary are not observable names `declare` instead. A declaration remains a claim, not authority. If it declares a project read, the retry names `start` before execution. If it declares a host read, no project task is invented. The route never infers a task, ticket or identifier from prompt wording. Reads that resolve PMNM itself, reads whose boundary is known to be outside the project, and requests that do not inspect a project are free.
-
 ## Receipts
+
+Receipts belong to a guard that takes them. No registered hook takes receipts now, and the brake needs none. Send one only when the host exposes such a guard.
 
 The model sends receipts through the shell tool. The guard intercepts them, records the transition and substitutes a no-op; the receipt is never executed by the shell. `pmnm-guard` is a protocol marker, not a program to find, install or invoke from `PATH`. Successful interception is the only positive evidence that the adapter handled that receipt. If one reaches the shell or returns command not found, do not retry it or search for an executable. Disclose that enforcement was unavailable for that call and continue through the portable advisory path.
 
@@ -66,7 +113,11 @@ Extra fields from a compatible old form are ignored only where the mapping defin
 
 Closed rejection reasons are: `unknown receipt`, `missing field <field>`, `bad value <field>`, `no task open`, `no Digest shown`, `Digest not agreed`, `stale, before last redo`, `human answer not observed`, `folder not requested`, `project not requested`, `nothing denied to declare`, compatibility `nothing denied to classify`, `declaration contradicts shell write`, and `nothing to allow`.
 
-## Guard hardness
+## Retired interlock (kept for restoration)
+
+Nothing in this section is registered. It describes the procedural interlock, `hooks/pmnm-guard.mjs` with its classifier `hooks/pmnm-shell.mjs` and the Claude Code adapter `hooks/claude/pmnm-claude.mjs`, as it ran before its retirement. Read every statement below as what that interlock does when it is registered again, not as current behavior. Its retirement and restoration steps are recorded in the repository's architecture decisions.
+
+### Guard hardness
 
 Hardness follows the consequence of letting the observed mistake continue, not the task's programming language or effort label.
 
@@ -81,7 +132,9 @@ Hardness follows the consequence of letting the observed mistake continue, not t
 
 These assignments are pinned by the public HG contracts. They do not show that the host delivered every event or that the guarded work is semantically correct.
 
-## Flow enforced by the Codex adapter
+### Flow enforced by the Codex adapter
+
+A native read of project source with no task open is Blocked on its first attempt, and the card names `start`. An operation whose effect and boundary are not observable names `declare` instead. A declaration remains a claim, not authority. If it declares a project read, the retry names `start` before execution. If it declares a host read, no project task is invented. The route never infers a task, ticket or identifier from prompt wording. Reads that resolve PMNM itself, reads whose boundary is known to be outside the project, and requests that do not inspect a project are free.
 
 The guard keeps transient flow state per Codex session, reusable authority per canonical project and implementation authority per task. A fresh session begins with no active task. Concurrent sessions may select different tasks in one project; neither task can block, authorize or close the other.
 
@@ -102,7 +155,7 @@ An exact project-declared read or verification command may run without an implem
 
 Starting the same open task is idempotent. Effort may rise but cannot fall silently. A later prompt does not by itself invalidate an agreed Digest. New evidence that changes it requires `redo`; this is an agent obligation, not something the guard can infer from prose.
 
-## PMNM folder boundary
+### PMNM folder boundary
 
 The host pointer is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is not set. It contains one absolute path and nothing else. The PMNM folder begins as:
 
@@ -116,7 +169,7 @@ The host pointer is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODE
     tasks/<task>/
 ```
 
-`index.json` belongs to the guard. It maps canonical repository paths to stable project folders. The model writes the rules and task contents.
+Under the interlock, `index.json` belongs to the guard. Today the agent maintains it, as [folder](folder.md) describes. It maps canonical repository paths to stable project folders. The model writes the rules and task contents.
 
 An existing path under `projects/` that is absent from `index.json` is occupied, not evidence that it belongs to a new repository. The guard preserves it and selects an unused collision-safe folder for the new mapping.
 
@@ -128,13 +181,15 @@ The human's first folder answer authorizes ordinary work anywhere strictly insid
 - the operation does not write `index.json`;
 - added content and copied sources do not look like secrets.
 
+Today no hook checks these. The agent keeps its writes inside the folder and never writes a secret there.
+
 The PMNM folder cannot be the repository, the host configuration directory, the filesystem root, or an ancestor of either. Ordinary maintenance strictly inside it, including moving or deleting an internal task artifact, remains inside the free-write boundary. Moving, deleting or replacing the PMNM root itself does not. Evidence may be copied from elsewhere into a task folder, but linked sources, linked destinations and secret-like sources fail closed.
 
 An existing empty folder is seeded before its pointer is written. If the pointer or `index.json` is invalid, the guard asks for one explicit recovery decision, preserves the invalid artifact under a unique recovery name and only then rebuilds it. It never overwrites unreadable state merely because the intended replacement looks obvious.
 
 The secret scan recognizes common private-key, token, credential and password shapes. It never echoes a detected value. It is a bounded heuristic, not a complete secret scanner; host sandboxing and repository review remain necessary.
 
-## Commands and effects
+### Commands and effects
 
 The guard classifies the observable command, not the project's language or toolchain. Its effect classes are:
 
@@ -169,7 +224,7 @@ Geometry is evaluated before authority. A repository mutation enters the plan-Di
 
 Shell actions generated by the adapter quote every literal path accepted by PMNM; the displayed command is the command the guard evaluates.
 
-## Host results and recovery
+### Host results and recovery
 
 Pre-use admission is not evidence that the operation ran. The adapter binds each admitted effect to its tool, host operation identity when available, full operation identity, task and epoch. A matching successful post-use event records the effect. A reported failure records no mutation. Non-persistent verification is tracked as a check without presuming it wrote; an observed changed target still promotes it to a project mutation and invalidates dependent authority.
 
@@ -181,7 +236,7 @@ Stop may block once in a turn for a missing result, missing verification or unfi
 
 A successful standalone curation write to `general-rules.md`, `project-rules.md`, `project-knowledge.md` or the task's `task-rules.md` may stop without the generic missing-Digest reminder only when `plan.md` was not materially written and no project or system effect exists. Before such a write, the guard requires a current reload of every one of those files that exists and detects a concurrent revision; this is freshness evidence, not semantic approval of the promoted claim. A curation write inside broader work never waives its Digest, verification or audit.
 
-## Verification and fingerprint
+### Verification and fingerprint
 
 `verified` records result, method, epoch, current mutation/effect counters and the current claim identity. Every passed result needs current `example:` and `unchanged:` claims; state plans also require exact state claims matching the agreed contract. Planned file objectives must be marked complete before final passed verification. `how=command` with `result=passed` requires a successful observed verification command after the latest material change. `how=human` requires an actual later human response. When project evidence exposes an executable check, `result=passed how=inspection` asks the human to accept that weaker evidence or directs the agent to run the check. Other inspection remains an explicit weaker channel; the guard does not turn an administrative check, model-authored claim or successful state operation into truth.
 
@@ -189,7 +244,7 @@ The guard prints a timestamped fingerprint. When a compatible version-control pr
 
 The fingerprint is an audit binding, not proof that the diff is correct or complete. Tools outside the covered host events can change files without the guard seeing them. The final audit must reconstruct the whole surface independently.
 
-## State and privacy
+### State and privacy
 
 Codex adapter state lives under `PLUGIN_DATA/host-guard/v3` in three layers. A session file holds the selected task, pending operations, questions and other transient flow. A project file holds only reusable project-scoped permissions and capabilities. A task file holds that task's Digest authority, plan and evidence counters, verification and completion state. Canonical working-directory and task hashes keep aliases on the same durable identities, while the session id keeps simultaneous conversations independent. Each layer uses its own bounded lock and monotonic revision. State contains hashes, enums, counters, bounded event metadata and fingerprints; it does not persist raw prompts, command previews, tool output, evidence or secrets. It also retains no transcript paths or transcript content.
 
@@ -197,15 +252,15 @@ A fresh session does not read a “latest task” pointer. It remains task-neutr
 
 State files and locks are real local files with bounded size. Writes are atomic. A corrupt current state, corrupt resumable state, unsafe pointer, unsafe index or unresolved physical path fails closed for mutation. Reads remain available when their effect and boundary are established.
 
-## Coverage
+### Coverage
 
-The bundled hook listens to Codex `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop` and `Interrupt`. `SessionStart` distinguishes startup, resume, clear and compact sources when the host supplies them; an active task then enters rule-basis reload before material work. Its write coverage is limited to the host tool names declared in `hooks/codex/hooks.json`, the file `.codex-plugin/plugin.json` declares. A tool not emitted through those events is outside the adapter's evidence. The entry runtime is `pmnm-guard.mjs`; its only local runtime dependency is the independently reviewable `pmnm-shell.mjs` classifier. Packaging accepts exactly that local module graph, regular in-package files only, with per-file and aggregate inspectability budgets.
+When registered, the interlock's Codex hook listens to `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop` and `Interrupt`. `SessionStart` distinguishes startup, resume, clear and compact sources when the host supplies them; an active task then enters rule-basis reload before material work. Its write coverage is limited to the host tool names its registration declares. A tool not emitted through those events is outside the adapter's evidence. Its entry runtime is `pmnm-guard.mjs`; its only local runtime dependency is the independently reviewable `pmnm-shell.mjs` classifier. Today `hooks/codex/hooks.json` registers only the brake on `PreToolUse` and `UserPromptSubmit`, as [the registered hook](#the-registered-hook-the-brake) describes. Packaging accepts exactly three hook modules, `pmnm-brake.mjs`, `pmnm-guard.mjs` and `pmnm-shell.mjs`, as regular in-package files only. The two interlock modules keep per-file and aggregate inspectability budgets, and the brake keeps its own.
 
-`evals/host-guard-cases.json` lists the stable synthetic claims. `evals/host-guard-action-oracle.json` contains executable normalized sequences. `scripts/test_host_guard.mjs` runs both the direct adversarial cases and the public oracle.
+`evals/host-guard-cases.json` lists the stable synthetic claims. `evals/host-guard-action-oracle.json` contains executable normalized sequences. `scripts/test_host_guard.mjs` runs both the direct adversarial cases and the public oracle. These test the retired interlock; the brake's suite is `scripts/test_brake.mjs`.
 
 Those tests establish behavior for supplied events. They do not establish host discovery, hook trust, live client execution, semantic understanding, complete filesystem mediation or another host's compatibility. Verify discovery, review, trust and observed interception separately after installation.
 
-## Host adapter contract
+### Host adapter contract
 
 Keep the portable skill and PMNM folder unchanged. Add a host-owned adapter with:
 

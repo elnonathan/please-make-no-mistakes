@@ -1,13 +1,33 @@
 # The PMNM folder
 
+## Orders moved from SKILL.md
+
+These orders and their intent moved here unchanged when SKILL.md became a short core. FO-1 to FO-7, RU-2 and RU-3 stay in SKILL.md.
+
+Intent: files are evidence; the conversation is not.
+
+End state: pointer, project and task folder exist before any project read.
+
+End state: a reader with only the folder knows what you read, decided, rejected, verified and where you stopped.
+
+Intent: what must always or never happen survives the task, in layers the human controls.
+
+Intent: the human always knows what was checked and what was only believed.
+
+- RU-1. A decision belongs to the task folder. Reusable factual knowledge belongs in `project-knowledge.md`. A rule is a human-owned instruction that must always or never happen. A one-round permission is not a rule.
+- RU-4. A new rule that contradicts an old one replaces it; move the old one to `Retired` with the replacing id. Never reuse an id. Cite rules by id, never by line.
+- RU-5. At audit, move reusable project facts to `project-knowledge.md`; make a rule general only when it holds in another project. When a failure recurs despite a rule, change the lever: a file shape or a guard, not new wording.
+
 Where you write. One folder per machine, one folder per project inside it, one folder per task inside each project. You need no permission for anything inside; you never write a secret there.
 
 ## Layout
 
 ```
 <PMNM folder>/                       asked once per machine; ~/PMNM suggested
-  index.json                         projects and their repository paths; one runtime owner
+  index.json                         projects and their repository paths; written only by the agent
   general-rules.md                   rules for every project and for this human
+  models.json                        your judge proposal for the brake, with prices and sources
+  commands.json                      the brake's sealed verdicts; never edit it
   projects/<project>/
     project-rules.md                 human-owned always and never instructions
     project-knowledge.md             reusable claims, each with its own basis
@@ -15,17 +35,17 @@ Where you write. One folder per machine, one folder per project inside it, one f
       task-rules.md                  optional rules the human limited to this task
 ```
 
-The host's config directory (`.codex`, `.claude`, another host's) holds only a pointer to the PMNM folder. Any host reads the same folder. Let one host write to it at a time until concurrent writing between hosts is supported. The Codex adapter uses `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. The Claude Code adapter uses `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path` when `CLAUDE_CONFIG_DIR` is unset. Another integration must declare its one literal pointer path.
+The host's config directory (`.codex`, `.claude`, another host's) holds only a pointer to the PMNM folder. Any host reads the same folder. Let one host write to it at a time until concurrent writing between hosts is supported. In Codex the pointer is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. In Claude Code it is `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path` when `CLAUDE_CONFIG_DIR` is unset. Another integration must declare its one literal pointer path.
 
 Session entry follows FO-1 to FO-4 in SKILL.md. A missing pointer never means search for a plausible old folder or create one at a guessed path.
 
-Without a guard, once the pointer resolves, inspect `index.json` before source. A missing index or missing canonical working-directory mapping means ask the project name, recommend the working-directory name and stop here; no more actions until the human answers. Do not inspect the repository until that later answer establishes the mapping. With a guard, follow its project card instead.
+Once the pointer resolves, inspect `index.json` before source. A missing index or missing canonical working-directory mapping means ask the project name, recommend the working-directory name and stop here; no more actions until the human answers. Do not inspect the repository until that later answer establishes the mapping.
 
 With the mapping established, load `general-rules.md`, then the mapped `project-rules.md` and the relevant claims from `project-knowledge.md`. Resolve the current task id, create its task folder when absent and seed the current understanding there before reading source. This write is automatic and cannot wait until the final summary. A session selects one task at a time, but the project does not: concurrent sessions may select different task folders without sharing task authority or transient state.
 
 ## Project index
 
-`index.json` has one writer at a time. With a guard, the guard alone maintains `index.json`; the agent never edits it. Without a guard, the portable agent maintains the same `pmnm.projects/v1` schema after the human answers the project-name question. Never let both maintain it for the same operation.
+`index.json` has one writer at a time: the agent. Maintain its `pmnm.projects/v1` schema after the human answers the project-name question. No hook writes it.
 
 ```json
 {
@@ -56,7 +76,7 @@ These are the only questions you ask about the folder. Everything else you decid
 
 The task folder is what you know about what you are doing. It is the evidence behind every line you change, the record a human audits, and the way you explain the human's own process back to them. It survives a context compaction; your memory does not.
 
-Create it before investigating. Every task folder has `index.md` as its stable retrieval surface. The guard also seeds `plan.md`, `verification.md` and `permissions.json`, plus `impact.md` for Standard and High work and `expectations.md` and `review.md` for High work. Fill them and never rename them. The remaining responsibility files are optional. Add or drop them as the task needs. Write to the folder as things happen, before a dependent step could make them costly to reconstruct.
+Create it before investigating. Every task folder has `index.md` as its stable retrieval surface. Create `plan.md`, `verification.md` and `permissions.json` yourself, plus `impact.md` for Standard and High implementation with repository file targets, and `expectations.md` and `review.md` for High work. Fill them and never rename them. The remaining responsibility files are optional. Add or drop them as the task needs. Write to the folder as things happen, before a dependent step could make them costly to reconstruct.
 
 ```
 tasks/<id>/
@@ -69,7 +89,7 @@ tasks/<id>/
   review.md         High-effort non-author review bound to the plan and verification
   permissions.json  exact sensitive operations; state changes bind to task objectives
   environment.md    current operational preflight when persistent local resources may change
-  preflight.md       guard-owned aggregate metadata diagnosis, created when a Digest is attempted
+  preflight.md      retired interlock only: its aggregate metadata diagnosis of a Digest attempt
   context.md        the request as understood, files that matter, constraints found
   decisions.md      one line per decision and per autonomy grant, in the shape below
   handoff.md        the test Digest and where to resume
@@ -79,13 +99,13 @@ tasks/<id>/
   artifacts/        exact copies deliberately retained with the task, when any
 ```
 
-Keep these canonical names when their responsibilities exist; do not invent spelling variants. The agent fills the canonical task files; an active guard owns `preflight.md` and replaces it with the latest complete validation result. Add another file only when it has a distinct task-specific responsibility, and link its actual name from `index.md`.
+Keep these canonical names when their responsibilities exist; do not invent spelling variants. The agent creates and fills the canonical task files. `preflight.md` belongs to the retired interlock: once restored, an active guard owns `preflight.md` and replaces it with the latest complete validation result. No registered hook writes it now. Add another file only when it has a distinct task-specific responsibility, and link its actual name from `index.md`.
 
 `operation.md`, `provenance.md`, `artifacts.md` and `artifacts/` are optional. Their names are canonical when those responsibilities exist; their absence does not make a task incomplete. Load the evidence-artifact reference before copying or moving external evidence.
 
 `impact.md` is required for Standard and High implementation with repository file targets. It contains either a concise local rationale or the transitive worklist, ledger, dynamic-boundary dispositions and six-dimension review defined in [impact analysis](impact-analysis.md). Light work and tasks with no implementation file target do not need an empty impact artifact. The plan Digest binds its pre-implementation contract. Final closure adds the current verification fingerprint and an independently derived omission review without changing that bound contract.
 
-`plan.md` is read by the guard at `digest`, at every covered material operation and at `done`. Order of lines does not matter. The task runtime separately persists `work_type` as `implementation`, `advisory` or `verification`. A file target uses `- [ ] <path> — <what changes>` and a preserved file uses `- [ ] excluded: <path> — <why>`. A material result outside repository files uses `- [ ] state: <stable-id> — <before> => <after>`. Preserved state uses `- [ ] unchanged-state: <stable-id> — <invariant>`. A material advisory result uses `- [ ] deliverable: <stable-id> — <result>` and pairs with `- [ ] boundary: <same-id> — <strongest relevant alternative, exclusion or uncertainty and its disposition>`. Advisory work rejects file and changing state objectives. Verification work is non-mutating and may plan only preserved `excluded:` and `unchanged-state:` scope. Its first project or external mutation returns to `work=implementation`, a revised plan and a new Digest. Two lines for one path or objective id are one line. Write it once. A directory is never a file target. List the files. A safe absolute path inside the repository and its repository-relative spelling have the same identity. State before and after must differ. An excluded path, unchanged-state or boundary line is a promise to preserve its contract. A changing state already marked `[x]` when the Digest is shown is historical. It needs present evidence but no invented future operation.
+You and the human read `plan.md` at the plan Digest, before each material operation and at the audit. Order of lines does not matter. Record the work type, `implementation`, `advisory` or `verification`, in `index.md`. A file target uses `- [ ] <path> — <what changes>` and a preserved file uses `- [ ] excluded: <path> — <why>`. A material result outside repository files uses `- [ ] state: <stable-id> — <before> => <after>`. Preserved state uses `- [ ] unchanged-state: <stable-id> — <invariant>`. A material advisory result uses `- [ ] deliverable: <stable-id> — <result>` and pairs with `- [ ] boundary: <same-id> — <strongest relevant alternative, exclusion or uncertainty and its disposition>`. Advisory work rejects file and changing state objectives. Verification work is non-mutating and may plan only preserved `excluded:` and `unchanged-state:` scope. Its first project or external mutation returns to `work=implementation`, a revised plan and a new Digest. Two lines for one path or objective id are one line. Write it once. A directory is never a file target. List the files. A safe absolute path inside the repository and its repository-relative spelling have the same identity. State before and after must differ. An excluded path, unchanged-state or boundary line is a promise to preserve its contract. A changing state already marked `[x]` when the Digest is shown is historical. It needs present evidence but no invented future operation.
 
 Every changing state objective has at least one exact task operation in `permissions.json`, identified by the host tool and its complete input. The operation is authority to attempt the transition, not evidence that its result is true. Record current state evidence in `verification.md`, keep the result checked in `plan.md`, and revise the Digest before using an unlisted or differently bound state operation.
 
@@ -117,9 +137,8 @@ Required at High effort, optional at Standard, absent at Light. The unit is the 
 change, so a plan derived from the intended work cannot replace it: an omission has no target and
 only this file can hold it.
 
-At High effort its exact rows are part of the Digest agreement. The guard validates them with the
-other task metadata, binds their hash to agreement, reloads the file after lifecycle discontinuities
-and withdraws authority when the rows change.
+At High effort its exact rows are part of the Digest agreement. Reload the file after compaction,
+resume or a new session. Changing its rows withdraws the agreement and needs a revised Digest.
 
 ```
 | Expectation | Coverage | Source | Blast | Evidence or open boundary |

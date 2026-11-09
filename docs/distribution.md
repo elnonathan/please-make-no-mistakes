@@ -2,7 +2,7 @@
 
 ## Contract
 
-Please, Make No Mistakes uses two repository marketplaces, one for Codex and one for Claude Code. Both select the same exact npm package version, which contains the portable skill, the optional Codex lifecycle guard and the Claude Code adapter:
+Please, Make No Mistakes uses two repository marketplaces, one for Codex and one for Claude Code. Both select the same exact npm package version, which contains the portable skill and the optional destructive-operation brake for both hosts:
 
 ```text
 GitHub repository marketplace
@@ -10,15 +10,15 @@ GitHub repository marketplace
   -> Codex or Claude Code plugin installation
 ```
 
-The repository is the marketplace source users add to Codex or to Claude Code. Its marketplace identity is also `please-make-no-mistakes` in both hosts, which avoids colliding with another repository owned by the same maintainer. `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` each pin the same immutable npm version and are not packaged themselves. `.claude-plugin/plugin.json` exposes the Claude Code plugin, whose hooks are `hooks/claude/hooks.json`; `.codex-plugin/plugin.json` exposes the packaged `skills/` directory, and its `hooks` field declares `./hooks/codex/hooks.json`, which replaces Codex's default discovery. No conventional `hooks/hooks.json` ships, because Claude Code merges that file into any plugin root that carries one. A release changes the package, plugin, marketplace, skill, and guard artifact together.
+The repository is the marketplace source users add to Codex or to Claude Code. Its marketplace identity is also `please-make-no-mistakes` in both hosts, which avoids colliding with another repository owned by the same maintainer. `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` each pin the same immutable npm version and are not packaged themselves. `.claude-plugin/plugin.json` exposes the Claude Code plugin, whose hooks are `hooks/claude/hooks.json`; `.codex-plugin/plugin.json` exposes the packaged `skills/` directory, and its `hooks` field declares `./hooks/codex/hooks.json`, which replaces Codex's default discovery. No conventional `hooks/hooks.json` ships, because Claude Code merges that file into any plugin root that carries one. A release changes the package, plugin, marketplace, skill, and brake artifact together.
 
-The npm package is also the canonical transport artifact for future compatible hosts. It does not imply universal activation: each host still needs a documented and tested registration adapter. The host-specific routes are Codex and Claude Code; [SETUP.md](../SETUP.md) fails closed rather than inventing commands for another host.
+The npm package is also the canonical transport artifact for future compatible hosts. It does not imply universal activation: each host still needs a documented and tested registration route. The host-specific routes are Codex and Claude Code; [SETUP.md](../SETUP.md) fails closed rather than inventing commands for another host.
 
 This route does not depend on a listing in the OpenAI Plugins Directory. A future directory submission would be a separate release and trust boundary.
 
 ## Artifact
 
-The npm package contains the portable skill, the dependency-free Codex guard, public documentation, blind behavior and host-guard evaluation definitions, and verification utilities. It declares no runtime registry dependency and no npm lifecycle script. The explicit `files` allowlist excludes repository workflows, marketplace metadata, maintainer state, PMNM folders, and generated output.
+The npm package contains the portable skill, the dependency-free brake, the retired interlock source (unregistered, kept for rollback), public documentation, blind behavior evaluation definitions, the retired interlock's host-guard evaluation definitions, and verification utilities. It declares no runtime registry dependency and no npm lifecycle script. The explicit `files` allowlist excludes repository workflows, marketplace metadata, maintainer state, PMNM folders, and generated output.
 
 Run the artifact check with:
 
@@ -42,7 +42,7 @@ The validators reject version drift and a marketplace that points to a mutable o
 
 ## Local Release Verification
 
-`npm run release:verify` runs every configured package, documentation, evaluation, host-guard, installed-tree, and distribution check under the declared Node.js envelope. It reports an aggregate result after every check has run instead of hiding later failures behind the first non-zero exit.
+`npm run release:verify` runs every configured package, documentation, evaluation, brake, retired-interlock, installed-tree, and distribution check under the declared Node.js envelope. It reports an aggregate result after every check has run instead of hiding later failures behind the first non-zero exit.
 
 The documentation gate checks ownership and semantic setup boundaries. Its adversarial suite removes or changes those boundaries and requires each mutation to fail. The blind evaluation smoke verifies that model-facing cases omit expected answers and that incorrect routing decisions are rejected deterministically. These are source-level claims; model execution and clean-session host behavior remain separate evidence.
 
@@ -102,4 +102,4 @@ The result is `passed` (exit `0`), `failed` (`1`), `invalid` (`2`), or `blocked`
 
 ## Continuous Integration
 
-Repository CI runs the complete aggregate gate on Linux across the oldest and newest declared Node.js and Python versions and on current macOS. Windows runs the portable profile, which omits symlink-oriented installed-tree tests while retaining documentation, host-guard, evaluation, package, and distribution checks. These deterministic checks validate configuration and covered state transitions, not host trust or real lifecycle delivery. A local pass establishes only the current machine; hosted support remains unverified until those jobs pass on the exact committed candidate.
+Repository CI runs the complete aggregate gate on Linux across the oldest and newest declared Node.js and Python versions and on current macOS. Windows runs the portable profile, which omits symlink-oriented installed-tree tests while retaining documentation, brake, retired-interlock, evaluation, package, and distribution checks. These deterministic checks validate configuration, covered brake decisions and the retired interlock's covered transitions, not host trust or real hook delivery. A local pass establishes only the current machine; hosted support remains unverified until those jobs pass on the exact committed candidate.

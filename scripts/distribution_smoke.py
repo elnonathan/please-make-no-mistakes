@@ -224,6 +224,31 @@ CODEX_HOOK_MANIFEST_PATH = "./hooks/codex/hooks.json"
 CONVENTIONAL_HOOK_CONFIG = Path("hooks") / "hooks.json"
 
 
+BRAKE_NAME = "pmnm-brake.mjs"
+BRAKE_EVENTS = {"PreToolUse", "UserPromptSubmit"}
+BRAKE_MAX_BYTES = 120_000
+BRAKE_EXECUTABLES = ["claude", "codex"]
+
+
+def validate_brake_text(brake_file: Path) -> None:
+    """Keep in step with validate_skill.py: the brake reads files and runs only the host CLI as its judge."""
+    if brake_file.is_symlink() or not brake_file.is_file():
+        raise SmokeFailure("bundled brake pmnm-brake.mjs is missing or linked")
+    if brake_file.stat().st_size > BRAKE_MAX_BYTES:
+        raise SmokeFailure("bundled brake exceeds its inspectable size budget")
+    text = brake_file.read_text(encoding="utf-8")
+    imports = re.findall(r'(?:from\s+|import\s*\()\s*["\']([^"\']+)["\']', text)
+    if any(not item.startswith("node:") for item in imports):
+        raise SmokeFailure("bundled brake may import only Node.js built-in modules")
+    for forbidden in ("fetch(", "http://", "https://", "execSync(", "execFile(", "XMLHttpRequest", "WebSocket("):
+        if forbidden in text:
+            raise SmokeFailure(f"bundled brake contains forbidden data or execution dependency: {forbidden}")
+    if text.count('import {spawnSync} from "node:child_process";') != 1:
+        raise SmokeFailure("bundled brake must import spawnSync once and nothing else from node:child_process")
+    if sorted(re.findall(r'\bspawn\("([^"]+)"', text)) != sorted(BRAKE_EXECUTABLES):
+        raise SmokeFailure("bundled brake may run only the host CLIs claude and codex as its judge")
+
+
 def validate_codex_hook_tree(root: Path) -> dict[str, str]:
     if (root / CONVENTIONAL_HOOK_CONFIG).exists():
         raise SmokeFailure("the artifact must not carry a conventional hooks/hooks.json")
@@ -234,18 +259,10 @@ def validate_codex_hook_tree(root: Path) -> dict[str, str]:
     if set(config) != {"description", "hooks"}:
         raise SmokeFailure("hook config must contain exactly description and hooks")
     hooks = config.get("hooks")
-    expected_events = {
-        "SessionStart",
-        "UserPromptSubmit",
-        "PreToolUse",
-        "PostToolUse",
-        "Stop",
-        "Interrupt",
-    }
-    if not isinstance(hooks, dict) or set(hooks) != expected_events:
-        raise SmokeFailure("hook config lifecycle event set is incomplete or unexpected")
-    expected_command = 'node "${PLUGIN_ROOT}/hooks/pmnm-guard.mjs"'
-    expected_windows = 'node "${PLUGIN_ROOT}\\hooks\\pmnm-guard.mjs"'
+    if not isinstance(hooks, dict) or set(hooks) != BRAKE_EVENTS:
+        raise SmokeFailure("hook config must register only the brake, on PreToolUse and UserPromptSubmit")
+    expected_command = 'node "${PLUGIN_ROOT}/hooks/pmnm-brake.mjs" --host codex'
+    expected_windows = 'node "${PLUGIN_ROOT}\\hooks\\pmnm-brake.mjs" --host codex'
     for event_name, groups in hooks.items():
         if not isinstance(groups, list) or len(groups) != 1 or not isinstance(groups[0], dict):
             raise SmokeFailure(f"hook event {event_name} must contain one group")
@@ -258,12 +275,14 @@ def validate_codex_hook_tree(root: Path) -> dict[str, str]:
             or handler.get("command") != expected_command
             or handler.get("commandWindows") != expected_windows
         ):
-            raise SmokeFailure(f"hook event {event_name} does not resolve the bundled runtime")
-    runtime_names = ("pmnm-guard.mjs", "pmnm-shell.mjs")
+            raise SmokeFailure(f"hook event {event_name} does not run the bundled brake")
     hook_root = root / "hooks"
+    validate_brake_text(hook_root / BRAKE_NAME)
+    # The two legacy interlock modules stay in the package, unregistered, for rollback.
+    runtime_names = ("pmnm-guard.mjs", "pmnm-shell.mjs")
     actual_runtime_names = tuple(sorted(path.name for path in hook_root.iterdir() if path.suffix == ".mjs"))
-    if actual_runtime_names != tuple(sorted(runtime_names)):
-        raise SmokeFailure("bundled host guard module set is missing or unexpected")
+    if actual_runtime_names != tuple(sorted([*runtime_names, BRAKE_NAME])):
+        raise SmokeFailure("bundled hook module set is missing or unexpected")
     runtimes = {name: hook_root / name for name in runtime_names}
     for name, runtime in runtimes.items():
         if runtime.is_symlink() or not runtime.is_file():
@@ -311,19 +330,13 @@ def validate_codex_hook_tree(root: Path) -> dict[str, str]:
 CLAUDE_ENTRY = "hooks/claude/pmnm-claude.mjs"
 CLAUDE_CONFIG = "hooks/claude/hooks.json"
 CLAUDE_MANIFEST = ".claude-plugin/plugin.json"
-CLAUDE_COMMAND = 'node "${CLAUDE_PLUGIN_ROOT}/hooks/claude/pmnm-claude.mjs"'
-CLAUDE_EVENTS = {
-    "SessionStart",
-    "UserPromptSubmit",
-    "PreToolUse",
-    "PostToolUse",
-    "PostToolUseFailure",
-    "Stop",
-}
-CLAUDE_CATCH_ALL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure", "UserPromptSubmit", "Stop"}
+# Claude registers the brake; the legacy adapter below stays in the package, unregistered, for rollback.
+CLAUDE_COMMAND = 'node "${CLAUDE_PLUGIN_ROOT}/hooks/pmnm-brake.mjs" --host claude'
+CLAUDE_EVENTS = {"PreToolUse", "UserPromptSubmit"}
+CLAUDE_CATCH_ALL_EVENTS = {"PreToolUse", "UserPromptSubmit"}
 CLAUDE_SESSION_MATCHER = "startup|resume|clear|compact|fork"
 # Events whose spinner names the acting capability, mirroring the Codex convention.
-CLAUDE_NAMED_EVENTS = {"SessionStart", "PreToolUse"}
+CLAUDE_NAMED_EVENTS = {"PreToolUse"}
 CLAUDE_ENTRY_MAX_BYTES = 40_000
 CLAUDE_CONFIG_MAX_BYTES = 16_000
 CLAUDE_MANIFEST_MAX_BYTES = 16_000

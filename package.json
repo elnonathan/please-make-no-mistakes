@@ -49,13 +49,15 @@
     "scripts/test_agent_evaluation.py",
     "scripts/release_verify.py",
     "scripts/test_release_verify.py",
+    "scripts/test_brake.mjs",
     "scripts/test_host_guard.mjs",
     "scripts/test_claude_adapter.mjs",
     "scripts/test_claude_discovery.mjs"
   ],
   "scripts": {
     "validate": "python3 scripts/validate_skill.py",
-    "test": "python3 scripts/test_validate_skill.py && node --test scripts/test_host_guard.mjs && node --test scripts/test_claude_adapter.mjs && node --test scripts/test_claude_discovery.mjs && python3 scripts/test_documentation_gate.py && python3 scripts/test_agent_evaluation.py && python3 scripts/test_release_verify.py && python3 scripts/test_install_smoke.py && python3 scripts/test_distribution_smoke.py",
+    "test": "python3 scripts/test_validate_skill.py && node --test scripts/test_brake.mjs && node --test scripts/test_host_guard.mjs && node --test scripts/test_claude_adapter.mjs && node --test scripts/test_claude_discovery.mjs && python3 scripts/test_documentation_gate.py && python3 scripts/test_agent_evaluation.py && python3 scripts/test_release_verify.py && python3 scripts/test_install_smoke.py && python3 scripts/test_distribution_smoke.py",
+    "test:brake": "node --test scripts/test_brake.mjs",
     "test:host-guard": "node --test scripts/test_host_guard.mjs",
     "check:documentation": "python3 scripts/documentation_gate.py",
     "test:documentation": "python3 scripts/test_documentation_gate.py",

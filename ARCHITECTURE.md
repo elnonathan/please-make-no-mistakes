@@ -2,13 +2,13 @@
 
 ## Goal
 
-Please, Make No Mistakes is one portable Agent Skill packaged with an optional Codex procedural adapter and an optional Claude Code procedural adapter. The skill has four parts: the PMNM folder, the flow, rules born from an always or a never, and guards. Each adapter enforces a small set of observable ordering rules for the lifecycle events its host actually sends it.
+Please, Make No Mistakes is one portable Agent Skill packaged with an optional destructive-operation brake, registered for Codex and for Claude Code. The skill has four parts: the PMNM folder, the flow, rules born from an always or a never, and guards. The brake stops covered destructive and sensitive operations in the tool calls its host actually sends it, until the human approves them.
 
 The architecture keeps four claims separate:
 
 1. The portable skill describes how an agent works.
 2. The PMNM folder preserves what the agent learned, decided and verified.
-3. A host adapter may enforce covered transitions.
+3. The brake may stop covered destructive or sensitive operations.
 4. Tests establish only the behavior and boundary they directly exercise.
 
 None proves semantic truth or guarantees an error-free result. `SKILL.md` states what the product asks of the agent and what it does not promise; every change is checked against it.
@@ -22,10 +22,12 @@ please-make-no-mistakes/
 ├── .claude-plugin/plugin.json        public Claude Code plugin manifest
 ├── .claude-plugin/marketplace.json   repository marketplace catalog for Claude Code
 ├── hooks/
-│   ├── codex/hooks.json              Codex lifecycle registration
-│   ├── claude/                       Claude Code lifecycle registration and adapter
-│   ├── pmnm-guard.mjs                optional Codex state and lifecycle guard
-│   └── pmnm-shell.mjs                bounded shell envelope and hard-stop classifier
+│   ├── codex/hooks.json              Codex brake registration
+│   ├── claude/hooks.json             Claude Code brake registration
+│   ├── claude/pmnm-claude.mjs        retired interlock adapter for Claude Code, unregistered
+│   ├── pmnm-brake.mjs                destructive-operation brake for both hosts
+│   ├── pmnm-guard.mjs                retired interlock engine, unregistered
+│   └── pmnm-shell.mjs                retired interlock shell classifier, unregistered
 ├── skills/please-make-no-mistakes/
 │   ├── SKILL.md                      portable kernel and reference router
 │   ├── agents/openai.yaml            Codex presentation metadata
@@ -60,6 +62,8 @@ The installed plugin is replaceable. User knowledge is not. PMNM stores task kno
 <PMNM folder>/
 ├── index.json
 ├── general-rules.md
+├── commands.json               the brake's sealed verdicts
+├── models.json                 the agent's judge proposal; grants nothing
 └── projects/<project>/
     ├── project-rules.md
     ├── project-knowledge.md
@@ -68,6 +72,7 @@ The installed plugin is replaceable. User knowledge is not. PMNM stores task kno
         ├── plan.md
         ├── verification.md
         ├── impact.md           required for Standard or High implementation with file targets
+        ├── expectations.md     required for High effort
         ├── permissions.json
         ├── environment.md      optional operational preflight for persistent local resources
         ├── review.md           required for High-effort passed closure
@@ -77,45 +82,93 @@ The installed plugin is replaceable. User knowledge is not. PMNM stores task kno
         └── artifacts/          optional deliberately retained copies
 ```
 
-The host configuration contains only a pointer to this folder. Codex uses its config location. Another host must use its own supported configuration surface. Both can point to the same folder.
+The host configuration contains only a pointer to this folder. Codex and Claude Code each use their own config location. Another host must use its own supported configuration surface. All can point to the same folder.
 
-Startup has two explicit routes. With an active host guard, the agent starts the task with an effort and a work type, then follows the guard's folder and project cards. The durable work type is `implementation`, `advisory` or `verification`. In advisory mode, the portable skill reads only the host's documented literal pointer, stops for the missing folder or project answer, and performs the equivalent setup without emitting guard receipts. The two routes share the folder contract and never compete for ownership in one session.
+Startup follows one route. The agent reads only the host's documented literal pointer, stops for the missing folder or project answer, and performs the setup itself. It starts each task with an effort and a work type. The durable work type is `implementation`, `advisory` or `verification`. The retired interlock had a second route through guard receipts; it returns only if the interlock is restored.
 
-Task selection belongs to a session, not to the repository. A fresh session starts task-neutral. Several sessions may work on different task folders in the same project; task-scoped Digests, permissions, counters and completion remain isolated. Shared project authority is serialized separately. If sessions intentionally share a task, its monotonic revision exposes stale state before another material write and requires explicit reload and reconciliation.
+Task selection belongs to a session, not to the repository. A fresh session starts task-neutral. Several sessions may work on different task folders in the same project; each task keeps its own Digest, permissions and completion. No hook serializes two sessions that share a task, so each reloads the task files before writing to them.
 
-`index.json` has one runtime owner. The guard alone maintains it when active. In advisory mode the portable agent maintains the same `pmnm.projects/v1` schema, so another host does not lose repository-to-project continuity. An unindexed path already present under `projects/` is preserved and treated as occupied; a new repository receives another collision-safe path rather than silently adopting it. The guard seeds four base task files and adds canonical `impact.md` when Standard or High implementation has file targets; the agent fills them, adds whatever else the task needs and never renames them. Optional provenance and artifact records have canonical names when their responsibilities arise, but their absence does not make an unrelated task incomplete. Everything else inside the folder is the agent's to organize.
+`index.json` has one writer: the agent, using the `pmnm.projects/v1` schema, so another host does not lose repository-to-project continuity. An unindexed path already present under `projects/` is preserved and treated as occupied; a new repository receives another collision-safe path rather than silently adopting it. The agent seeds four base task files and adds canonical `impact.md` when Standard or High implementation has file targets; it fills them, adds whatever else the task needs and never renames them. Optional provenance and artifact records have canonical names when their responsibilities arise, but their absence does not make an unrelated task incomplete. Everything else inside the folder is the agent's to organize, except the brake's `commands.json`.
 
 The folder asks the human exactly four things: where it goes, the project name, whether a candidate task folder is this task, and whether a new rule belongs to the project or applies generally. The task question appears only when an existing folder shares the id or a name that contains or normalizes to it.
 
-Physical containment and secret detection remain boundaries. A path or symbolic link that escapes the folder is not an internal PMNM write. Content that looks like a secret is refused; the agent keeps a reference to where the secret lives instead. An empty folder is seeded before its pointer is written. Invalid pointer or index state is preserved under a unique recovery name and rebuilt only after the human chooses that recovery. The folder is a continuity aid, not a secret manager or access control system.
+Containment and secrets are agent obligations; no hook enforces them. A path or symbolic link that escapes the folder is not an internal PMNM write. The agent never writes a secret there; it keeps a reference to where the secret lives instead. An empty folder is seeded before its pointer is written. Invalid pointer or index state is preserved under a unique recovery name and rebuilt only after the human chooses that recovery. The folder is a continuity aid, not a secret manager or access control system.
 
 External evidence is reference-first. Copying or moving an artifact is a custody decision with an exact source, destination, purpose, privacy result, identity method, recovery and retention. Full-content digests can establish byte identity; visual or semantic similarity cannot. Provenance is relational as well: authorship, operation, observation, discovery, review, approval and causality keep independent evidence and status.
 
 ## Plan authority
 
-The plan Digest is the human checkpoint before material work. Before showing it, the agent writes `plan.md`: one line per repository file the implementation will write, one per file that must stay as it is, one per material non-file state transition or preserved state invariant, or a paired advisory `deliverable` and `boundary`. The boundary records the strongest relevant alternative, exclusion or uncertainty and its disposition. File lines name paths and reasons. State lines name stable ids and explicit before and after values. Advisory work accepts only paired deliverables and boundaries. Standard or High implementation with file targets also writes `impact.md`: either a bounded local rationale or a transitive ledger whose roots were derived independently of the proposed plan. A persistent local-environment operation gets an `environment.md` preflight covering command indirection, current resources, ownership, health, conflicts, the reuse-or-start-only-missing decision and cleanup. One preflight validates the work type, complete plan, verification contract, applicable impact contract, required environment preflight and permission forecast before agreement. The Codex adapter writes every issue and safe canonicalization to guard-owned `preflight.md`. The Digest text repeats that promise for the human: understanding, current state, change, impact, verification with the wrong result each check can expose, ambiguities, trade-offs and one question. Then the agent stops. No more actions until the human answers.
+The plan Digest is the human checkpoint before material work. Before showing it, the agent writes `plan.md`: one line per repository file the implementation will write, one per file that must stay as it is, one per material non-file state transition or preserved state invariant, or a paired advisory `deliverable` and `boundary`. The boundary records the strongest relevant alternative, exclusion or uncertainty and its disposition. File lines name paths and reasons. State lines name stable ids and explicit before and after values. Advisory work accepts only paired deliverables and boundaries. Standard or High implementation with file targets also writes `impact.md`: either a bounded local rationale or a transitive ledger whose roots were derived independently of the proposed plan. A persistent local-environment operation gets an `environment.md` preflight covering command indirection, current resources, ownership, health, conflicts, the reuse-or-start-only-missing decision and cleanup. One preflight validates the work type, complete plan, verification contract, applicable impact contract, required environment preflight and permission forecast before agreement. The agent reports every defect it finds together. The Digest text repeats that promise for the human: understanding, current state, change, impact, verification with the wrong result each check can expose, ambiguities, trade-offs and one question. Then the agent stops. No more actions until the human answers.
 
-Agreement binds the canonical set of file, state and deliverable objectives, in any order, with the actionable verification plan and permission forecast. Checking a box is progress, not a change of agreement. Safe absolute and relative spellings of the same repository path share one identity. A state already complete when its Digest is shown is historical: current evidence remains necessary, but the old operation is not replayed. A material reframe is recorded immediately; unrelated read-only investigation may continue, but dependent effects and final delivery wait for renewed agreement. The first write to an absent or excluded file, the first state-changing operation not bound to its objective, or stale deliverable closure is refused before it runs.
+Agreement binds the canonical set of file, state and deliverable objectives, in any order, with the actionable verification plan and permission forecast. Checking a box is progress, not a change of agreement. Safe absolute and relative spellings of the same repository path share one identity. A state already complete when its Digest is shown is historical: current evidence remains necessary, but the old operation is not replayed. A material reframe is recorded immediately; unrelated read-only investigation may continue, but dependent effects and final delivery wait for renewed agreement. No hook refuses a write to an absent or excluded file, a state-changing operation not bound to its objective, or stale deliverable closure. The agent must not make them, and the audit compares the actual changes with `plan.md`.
 
-The guard tracks ordering, freshness, target geometry and scope. A repository mutation enters the Digest path. An ordinary write contained within PMNM uses the folder authority. An external-only effect uses its own exact authority without inventing a repository plan. Lifecycle discontinuities make the session's durable basis stale until the agent reloads the canonical files that exist: general rules, project rules, project knowledge and active-task context. A covered successful read correlates through host operation identity when available and counts only when the result returns the current file bytes; naming a path is not evidence that its contents were read. Even then, the guard cannot establish comprehension. Canonical rule and knowledge curation requires that basis again immediately before writing so a concurrent revision cannot be overwritten silently. On Codex Stop events the guard inspects only the latest assistant message for the current Test Digest. If Codex omits that Stop event, the next human prompt may recover only the latest assistant message from a fixed-size tail of the literal host-provided transcript path. That transcript schema is unstable: unreadable, linked, oversized, malformed, unsupported, stale or unrelated evidence fails closed, and neither the path nor the message is retained. Both routes check only shape and freshness. They cannot establish the message's truth, judge whether the investigation was sufficient, know whether the rules were understood or know whether the human understood the plan.
+A repository mutation enters the Digest path. An ordinary write inside the PMNM folder needs no approval. An external-only effect uses its own exact authority without inventing a repository plan. After startup, resume, clear or compaction, the agent reloads the canonical files that exist before material work on an active task: general rules, project rules, project knowledge and active-task context. It reloads canonical rules and project knowledge again immediately before curating them, so a concurrent revision is not overwritten silently. No hook checks that reload, the order of the steps or the shape of the Test Digest.
 
-Sensitive effects remain separate outside ordinary contained PMNM maintenance. Predictable exact operations and bounded reusable capabilities appear together in the plan Digest and can receive task or project scoped authority. A capability is described by effect, boundary, persistence, operation shape and constraints rather than supplied by an executable catalog. A state transition is task scoped and binds its exact operation to a planned objective. An unlisted state operation requires a revised Digest; other newly discovered sensitive effects retain the one-operation path. Native host approval remains controlling. Unknown compound segments and multiple sensitive effects are split first.
+Sensitive effects remain separate outside ordinary contained PMNM maintenance. Predictable exact operations and bounded reusable capabilities appear together in the plan Digest and can receive task or project scoped authority. A capability is described by effect, boundary, persistence, operation shape and constraints rather than supplied by an executable catalog. A state transition is task scoped and binds its exact operation to a planned objective. An unlisted state operation requires a revised Digest; other newly discovered sensitive effects need their own yes. The brake does not read the forecast: it still stops each covered destructive or sensitive operation until the human replies with its exact single-use token or, in Claude Code, answers the host's own prompt. Native host approval remains controlling.
 
 ## Verification and closure
 
-Before claiming any passed verification, the agent writes two current lines in `verification.md`: the request's own case and what was observed, and the thing that must stay the same and what was observed. A state plan repeats each agreed state contract; an advisory plan records each deliverable and boundary observation. After a material change or reframe the claims must postdate it. Those lines are claims the human can read. The guard checks identity, shape, order and freshness; it never checks that they are true. A successful state operation proves only that the operation reported success, so resulting-state evidence remains separate. A non-persistent verification follows the read path until an observed result shows a project mutation. Command verification also needs an observed successful check against the current state, and human verification needs a later human turn. A syntax, metadata or documentation check remains investigation evidence while planned objectives are open; it cannot become final verification. A check that changes the project invalidates the prior Digest and returns to investigation.
+Before claiming any passed verification, the agent writes two current lines in `verification.md`: the request's own case and what was observed, and the thing that must stay the same and what was observed. A state plan repeats each agreed state contract; an advisory plan records each deliverable and boundary observation. After a material change or reframe the claims must postdate it. Those lines are claims the human can read. No hook checks them, and nothing checks that they are true. A successful state operation proves only that the operation reported success, so resulting-state evidence remains separate. Command verification also needs an observed successful check against the current state, and human verification needs a later human turn. A syntax, metadata or documentation check remains investigation evidence while planned objectives are open; it cannot become final verification. A check that changes the project invalidates the prior Digest and returns to investigation.
 
-Closure always needs a current passed verification. It walks `plan.md`: every objective checked, every file target materially changed, every changing state objective supported by its exact successful operation and current evidence, every advisory deliverable tested against its boundary, every exclusion preserved and nothing material outside the plan. It separately re-derives impact roots from the actual changed surface or delivered claim, asks what material path or contract the plan omitted, completes dynamic-boundary and non-functional dispositions, and binds that omission audit to the current verification fingerprint when applicable. Plan conformance cannot validate its own completeness. A no-op or a file restored to baseline is not complete. Across revised Digests, a direct-comparison baseline retains earlier path identities and adds newly planned paths, so removing a path can neither hide nor manufacture a change. The closing card names file comparison and other evidence separately. A state- or deliverable-only task reports no project-file comparison instead of inventing one. It also names how many canonical rules or knowledge files the task wrote.
+Closure always needs a current passed verification. It walks `plan.md`: every objective checked, every file target materially changed, every changing state objective supported by its exact successful operation and current evidence, every advisory deliverable tested against its boundary, every exclusion preserved and nothing material outside the plan. It separately re-derives impact roots from the actual changed surface or delivered claim, asks what material path or contract the plan omitted, completes dynamic-boundary and non-functional dispositions, and binds that omission audit to the current verification fingerprint when applicable. Plan conformance cannot validate its own completeness. A no-op or a file restored to baseline is not complete. Across revised Digests, a direct-comparison baseline retains earlier path identities and adds newly planned paths, so removing a path can neither hide nor manufacture a change. The final audit names file comparison and other evidence separately. A state- or deliverable-only task reports no project-file comparison instead of inventing one. It also names how many canonical rules or knowledge files the task wrote.
 
-A reviewer who did not write the change is a source of evidence at High effort or on request. The review packet binds the contract, changed surface and impact roots to the current plan hash and verification fingerprint, then records a concrete counterexample, a distinct check, an omission challenge, non-functional dispositions, disagreement and residual limit. Passed closure rejects a stale packet, repeated evidence or unresolved disagreement. The guard validates those observable properties only; it cannot prove reviewer independence or semantic correctness and does not inherit the reviewer's verdict. If no non-author is available, an adversarial self-review remains explicitly partial and cannot claim independence or completeness.
+A reviewer who did not write the change is a source of evidence at High effort or on request. The review packet binds the contract, changed surface and impact roots to the current plan hash and verification fingerprint, then records a concrete counterexample, a distinct check, an omission challenge, non-functional dispositions, disagreement and residual limit. Passed closure rejects a stale packet, repeated evidence or unresolved disagreement. No hook validates the packet. It cannot prove reviewer independence or semantic correctness, and the agent does not inherit the reviewer's verdict. If no non-author is available, an adversarial self-review remains explicitly partial and cannot claim independence or completeness.
 
-The Test Digest follows current verification, required review and the agent's final audit. It is the final human acceptance handoff, normally immediately before commit, submit or close. A passed or partial final audit can request that handoff; a blocked audit keeps the task open and does not arm acceptance. The later human response and repeated `done` close the task. Intermediate verification never triggers it.
+The Test Digest follows current verification, required review and the agent's final audit. It is the final human acceptance handoff, normally immediately before commit, submit or close. A passed or partial final audit can request that handoff; a blocked audit keeps the task open and does not arm acceptance. The later human response closes the task. Intermediate verification never triggers it.
 
-## Codex adapter
+## Brake
 
-`hooks/codex/hooks.json`, declared by `.codex-plugin/plugin.json`, registers the supported Codex lifecycle events. The package carries no conventional `hooks/hooks.json`, because Claude Code would merge that file into the Claude plugin. `hooks/pmnm-guard.mjs` owns bounded host-provided state and imports one local pure module, `hooks/pmnm-shell.mjs`, for shell structure, target evidence and narrow hard stops. The module contains no positive executable catalog. Operation admission keeps classification evidence, human authority and host execution or result as independent stages. Ordinary operations use a structured model declaration, then a separate human-agreed capability or exact authority when needed; satisfying one stage does not erase or manufacture another. Neither module has a registry dependency. Distribution validation accepts exactly this two-file local graph, rejects links and escaping or unlisted modules, and enforces explicit per-file and aggregate inspectability budgets. Its cards have two lines: `Blocked`, `Ask` or `Note` with what happened, and one exact `NEXT:` action. A NEXT line is an order: one verb, its limit, and who acts next.
+`hooks/codex/hooks.json`, declared by `.codex-plugin/plugin.json`, and `hooks/claude/hooks.json`, declared by `.claude-plugin/plugin.json`, register one module, `hooks/pmnm-brake.mjs`, with `--host codex` or `--host claude`. Both register it on `PreToolUse` and `UserPromptSubmit`. In Codex the tool matcher is `Bash|apply_patch|Edit|Write|mcp__.*`; in Claude Code it covers every tool. The package carries no conventional `hooks/hooks.json`, because Claude Code would merge that file into the Claude plugin. The brake knows nothing about tasks, plans or Digests.
 
-The adapter may:
+The brake imports only Node.js built-in modules and runs no program except the host's own command-line client as its judge. Package validation enforces that boundary and an inspectable size budget.
+
+For each covered tool call it decides in two layers:
+
+1. Deterministic rules place known shapes as safe, sensitive or destructive, including commands inside wrappers, substitutions and heredocs. A compound command takes its most severe segment. Code that runs other code is classified by what it runs.
+2. What the rules cannot place goes first to a sealed stored verdict, then to the judge model the human confirmed. Only a safe verdict with high confidence runs without asking.
+
+A stop prints a two-line card: `Blocked:` for a destructive operation or `Ask:` for any other stop, with what happened, and one `NEXT:` line. The `NEXT:` line tells the agent to show the human the exact operation; it runs only if the human replies with its exact `PMNM-<code>` token, or runs it themselves. In Claude Code a deterministic sensitive operation uses the host's own permission prompt instead of a card. A failed or unavailable classification asks; an error inside the brake blocks.
+
+On `UserPromptSubmit` the brake recognizes the human's exact prompts: an approval token grants one rerun of that operation in that session, and the judge confirmation and MCP allowlist prompts change sealed state. The agent cannot send a prompt. When the judge needs a confirmation or a re-evaluation, the brake adds one notice to the agent's context, once per change, and the agent relays it to the human.
+
+Under the host's plugin data directory the brake keeps a secret key, pending approvals and one-time grants, the confirmed judge, the MCP allowlist and decision counts. Every entry carries a seal made with that key. In the PMNM folder it writes only `commands.json`. Nothing in the PMNM folder grants authority by itself.
+
+It cannot:
+
+- understand product intent or check the flow
+- prove a model statement true
+- prove that a safe verdict makes an operation harmless
+- catch every obfuscated command
+- intercept an event the host does not deliver
+- replace the host sandbox, operating system permissions or native approval controls
+
+Disabled, untrusted, unsupported, failed, or bypassed paths leave the portable skill in advisory mode. This is a disclosed reduction in enforcement, not permission to claim the brake ran.
+
+## Host port contract
+
+Another host may run the brake through its own lifecycle API. The port must be designed, tested, installed and documented independently. Similar event names do not establish equivalent semantics.
+
+A port must preserve:
+
+- deterministic rules that take precedence over stored verdicts
+- two card levels, `Blocked` and `Ask`, each with one `NEXT:` action, or the host's own permission prompt where it has one
+- the human's exact operation-bound, session-bound and single-use approval token, which the agent cannot send
+- sealed state outside the PMNM folder
+- a failed classification that asks and an internal error that blocks
+- one PMNM folder and a host-local pointer
+- disclosure of uncovered paths
+
+Both hosts register one brake module, `hooks/pmnm-brake.mjs`, selected by `--host`. The module owns each host's output shape and has host decision tests for both. Codex has no native ask, so it always uses the token. Portable behavior lives in the skill and the PMNM folder.
+
+## Retired interlock
+
+Earlier releases shipped one portable Agent Skill packaged with an optional Codex procedural adapter and an optional Claude Code procedural adapter instead of the brake. Each adapter enforced a small set of observable ordering rules for the lifecycle events its host sent it. Their source stays in the package, unregistered: the engine `hooks/pmnm-guard.mjs`, its shell module `hooks/pmnm-shell.mjs` and the Claude Code adapter `hooks/claude/pmnm-claude.mjs`. None of it runs now. This section describes how the interlock works once restored; [Restoring the interlock](docs/architecture-decisions.md#restoring-the-interlock) lists the steps and the defects to fix first.
+
+`hooks/pmnm-guard.mjs` owns bounded host-provided state and imports one local pure module, `hooks/pmnm-shell.mjs`, for shell structure, target evidence and narrow hard stops. The module contains no positive executable catalog. Operation admission keeps classification evidence, human authority and host execution or result as independent stages. Ordinary operations use a structured model declaration, then a separate human-agreed capability or exact authority when needed; satisfying one stage does not erase or manufacture another. Neither module has a registry dependency. For the interlock, distribution validation accepts exactly this two-file local graph beside the brake, rejects links and escaping or unlisted modules, and enforces explicit per-file and aggregate inspectability budgets. Its cards have two lines: `Blocked`, `Ask` or `Note` with what happened, and one exact `NEXT:` action. A NEXT line is an order: one verb, its limit, and who acts next.
+
+The guard tracks ordering, freshness, target geometry and scope. It owns `index.json`, seeds the task files and writes every preflight issue and safe canonicalization to guard-owned `preflight.md`. Lifecycle discontinuities make the session's durable basis stale until the agent reloads the canonical files that exist. A covered successful read correlates through host operation identity when available and counts only when the result returns the current file bytes. On Codex Stop events the guard inspects only the latest assistant message for the current Test Digest. If Codex omits that Stop event, the next human prompt may recover only the latest assistant message from a fixed-size tail of the literal host-provided transcript path. That transcript schema is unstable: unreadable, linked, oversized, malformed, unsupported, stale or unrelated evidence fails closed, and neither the path nor the message is retained. Both routes check only shape and freshness. They cannot establish the message's truth, judge whether the investigation was sufficient, know whether the rules were understood or know whether the human understood the plan.
+
+The interlock adapter may:
 
 - establish a PMNM folder pointer and project mapping
 - block the first project read without an open task
@@ -138,22 +191,7 @@ The adapter may:
 - require a complete operational preflight before persistent local-environment authority enters a Digest
 - print a bounded source fingerprint and name file comparison and state evidence separately
 
-It cannot:
-
-- understand product intent
-- prove a model statement true
-- decide that investigation or test coverage is sufficient
-- prove the meaning, correctness or completeness of human or model prose
-- intercept an event the host does not deliver
-- replace the host sandbox, operating system permissions or native approval controls
-
-Disabled, untrusted, unsupported, failed, or bypassed paths leave the portable skill in advisory mode. This is a disclosed reduction in enforcement, not permission to claim the adapter ran.
-
-## Host adapter contract
-
-Another host may implement the same portable transitions through its own lifecycle API. It must be designed, tested, installed and documented independently. Similar event names do not establish equivalent semantics.
-
-A host adapter must preserve:
+A host adapter for the interlock must preserve:
 
 - the twelve public receipt meanings and the three card levels
 - two-line cards with one `NEXT:` action
@@ -164,7 +202,7 @@ A host adapter must preserve:
 - current verification claims, a passed verification and a complete audit before closure
 - disclosure of uncovered paths
 
-The Codex and Claude adapters call one shared transition engine. Each adapter owns host event parsing, output shape and its own conformance tests. Portable behavior lives in the skill and the PMNM folder.
+The Codex and Claude Code adapters call one shared transition engine. Each adapter owns host event parsing, output shape and its own conformance tests.
 
 ## Evidence and evaluation
 
@@ -173,17 +211,17 @@ Evaluation is layered:
 1. Activation cases test whether the skill is selected for the right requests.
 2. Blind decision cases test routing without exposing expected answers to the model.
 3. Behavior cases test observable collaboration, investigation, verification and continuity.
-4. Guard cases and the action oracle test deterministic Codex lifecycle transitions.
+4. Brake tests cover classification, approval tokens, sealed state and host decisions. The retired interlock keeps its guard cases, action oracle and adapter tests for rollback.
 5. Install smoke compares exact source and installed skill bytes.
 6. Live trials test discovery, trust, model behavior and real host delivery.
 
-Passing a lower layer does not prove a higher one. A syntax validator does not prove behavior. A synthetic lifecycle event does not prove Codex delivered it. A passing test does not prove the entire product contract.
+Passing a lower layer does not prove a higher one. A syntax validator does not prove behavior. A synthetic hook event does not prove the host delivered it. A passing test does not prove the entire product contract.
 
 The release gate runs every deterministic package check and reports all failures. Live acceptance follows against the exact installed candidate. Any material change invalidates the checks whose subject changed.
 
 ## Distribution boundary
 
-The npm artifact contains the portable skill, the optional Codex guard, public documentation, reusable evaluations and deterministic validators. It declares no runtime registry dependency and no npm lifecycle script.
+The npm artifact contains the portable skill, the optional destructive-operation brake for Codex and Claude Code, the retired interlock source (unregistered), public documentation, reusable evaluations and deterministic validators. It declares no runtime registry dependency and no npm lifecycle script.
 
 The package excludes repository automation, marketplace source metadata, private coordination, user PMNM folders, generated test output and credentials. npm transports exact bytes; it does not register a plugin, activate a skill, trust a hook or prove a conversation loaded that revision.
 
