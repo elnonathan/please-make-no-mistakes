@@ -281,8 +281,9 @@ How the agent chooses the model it proposes, on any host:
 
 1. It takes the models the host itself says it offers. Claude Code keeps no documented catalog, and PMNM reads none of its internal files. Codex keeps a catalog.
 2. When PMNM cannot list them, for example in OpenCode, Ollama or Hermes, it shows the human what it found locally, if anything, and asks which models the human can use.
-3. Among those, it proposes the cheapest: the lowest sum of input and output price per million tokens in each provider's current published documentation, such as its `llms.txt` index and pricing page, never in local caches, and the newest on a tie. It shows each price with its URL and can record the proposal in `models.json`.
-4. Or it uses the model the human names.
+3. Among those, it proposes the cheapest: the lowest sum of input and output price per million tokens in each provider's current published documentation, such as its `llms.txt` index and pricing page, never in local caches, and the newest on a tie. It shows each price with its URL.
+4. Or it uses the model the human names, with its official provider ID.
+5. Either way, before asking for confirmation, it records the current proposal and sources in `models.json` under `hosts.<host>`, replacing only that host's previous proposal. This file grants no authority.
 
 The published price is a criterion for the proposal. It does not prove that this account can run the model, since managed settings may restrict models, nor what a session will cost. The human's confirmation and the judge's first real call settle that, and a call that fails stops the operation for the human.
 

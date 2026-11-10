@@ -276,7 +276,8 @@ test("with no confirmed judge model the brake picks none: it asks and lists what
   assert.equal(calls, 0, "the brake chose a judge model by itself");
   assert.equal(decision(output), "deny");
   assert.match(output.hookSpecificOutput.permissionDecisionReason, /gpt-small/);
-  assert.match(output.hookSpecificOutput.permissionDecisionReason, /before continuing any task, propose the judge model: the cheapest model this host can run, with the lowest sum of input and output price per million tokens in the provider's current published documentation, never in local caches, and the newest on a tie/);
+  assert.match(output.hookSpecificOutput.permissionDecisionReason, /before continuing any task, propose the judge model: the cheapest this host can run, by the lowest input plus output price per million tokens in the provider's current published documentation, never local caches, newest on a tie/);
+  assert.match(output.hookSpecificOutput.permissionDecisionReason, /record its official provider ID and sources under this host in models\.json, replacing its previous proposal/);
   assert.doesNotMatch(output.hookSpecificOutput.permissionDecisionReason, /gpt-hidden/);
 });
 
@@ -296,11 +297,12 @@ test("a reasoning level the human confirmed is the one used", (t) => {
   assert.deepEqual(asked, ["medium"]);
 });
 
-test("models.json is the agent's proposal: writing it chooses no judge", (t) => {
+test("models.json holds one proposal per host and grants no judge", (t) => {
   const {folder, env} = setup(t, {choose: false});
-  fs.writeFileSync(path.join(folder, "models.json"), JSON.stringify({schema: "pmnm.models/v1", hosts: {codex: {model: "gpt-small", catalog_models: CODEX_MODELS}}}));
+  fs.writeFileSync(path.join(folder, "models.json"), JSON.stringify({schema: "pmnm.models/v1", hosts: {codex: {model: "gpt-small", catalog_models: CODEX_MODELS}, claude: {model: "claude-small"}}}));
   let calls = 0;
   handle(pre("./bin/one"), {host: "codex", env, judge: () => { calls += 1; return null; }, folder});
+  handle(pre("./bin/one"), {host: "claude", env, judge: () => { calls += 1; return null; }, folder});
   assert.equal(calls, 0, "a model written into models.json was used without the human's confirmation");
 });
 
@@ -387,8 +389,24 @@ test("a changed host catalog keeps the confirmed model and asks for a re-evaluat
   assert.deepEqual(asked, ["gpt-small"], "a catalog change switched the judge without the human");
   const first = handle(reply("hola"), {host: "codex", env, folder});
   assert.match(String(first?.hookSpecificOutput?.additionalContext), /new: gpt-newer/);
-  assert.match(String(first?.hookSpecificOutput?.additionalContext), /before continuing any task, propose the judge model: the cheapest model this host can run, with the lowest sum of input and output price per million tokens in the provider's current published documentation, never in local caches, and the newest on a tie/);
+  assert.match(String(first?.hookSpecificOutput?.additionalContext), /before continuing any task, propose the judge model: the cheapest this host can run, by the lowest input plus output price per million tokens in the provider's current published documentation, never local caches, newest on a tie/);
   assert.equal(handle(reply("otra cosa"), {host: "codex", env, folder}), null, "the re-evaluation notice repeated");
+});
+
+test("the re-evaluation notice puts the action before a long model catalog", (t) => {
+  const {folder, env} = setup(t);
+  const longCatalog = Array.from({length: 80}, (_value, index) => "gpt-catalog-" + (index + 1));
+  codexCatalog(env.CODEX_HOME, longCatalog);
+  handle(pre("./bin/one"), {host: "codex", env, judge: () => ({safety: "safe", confidence: "high", reason: "prints"}), folder});
+
+  const notice = String(handle(reply("hola"), {host: "codex", env, folder})?.hookSpecificOutput?.additionalContext);
+  const action = notice.indexOf("NEXT: before continuing any task");
+  const record = notice.indexOf("models.json, replacing its previous proposal");
+  const confirm = notice.indexOf("PMNM-CONFIRM-JUDGE codex <model> [reasoning=<level>]");
+  const catalog = notice.indexOf("The codex catalog offers:");
+  assert.ok(action >= 0 && action < record && record < confirm && confirm < catalog,
+    "the current action must precede the catalog regardless of how Codex previews long context");
+  assert.match(notice, /gpt-catalog-80/);
 });
 
 test("a judge model that does not answer gets no automatic fallback", (t) => {
@@ -397,8 +415,8 @@ test("a judge model that does not answer gets no automatic fallback", (t) => {
   const output = handle(pre("./bin/one"), {host: "claude", env, judge: (_host, model) => { asked.push(model); return null; }, folder});
   assert.deepEqual(asked, ["claude-small"]);
   assert.equal(decision(output), "deny");
-  assert.match(output.hookSpecificOutput.permissionDecisionReason, /propose the judge model: the cheapest model this host can run, with the lowest sum of input and output price per million tokens in the provider's current published documentation/);
-  assert.match(output.hookSpecificOutput.permissionDecisionReason, /sending the prompt PMNM-CONFIRM-JUDGE claude <model> \[reasoning=<level>\]/);
+  assert.match(output.hookSpecificOutput.permissionDecisionReason, /propose the judge model: the cheapest this host can run, by the lowest input plus output price per million tokens in the provider's current published documentation/);
+  assert.match(output.hookSpecificOutput.permissionDecisionReason, /by sending PMNM-CONFIRM-JUDGE claude <model> \[reasoning=<level>\]/);
   assert.doesNotMatch(output.hookSpecificOutput.permissionDecisionReason, /\[redacted\]/, "the brake masked its own notice");
 });
 

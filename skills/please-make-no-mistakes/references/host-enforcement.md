@@ -24,8 +24,9 @@ Three more prompts belong to the human alone: `PMNM-CONFIRM-JUDGE <host> <model>
 1. Take the models the host says it offers. Codex keeps a catalog; Claude Code keeps no documented one, so do not read its internal files.
 2. When you cannot list them, show the human what you found locally, if anything, and ask which models they can use.
 3. Propose the cheapest of those: the lowest sum of input and output price per million tokens in each provider's current published documentation, such as its `llms.txt` index and pricing page, never in local caches, and the newest on a tie. Show each price with its URL.
-4. If the human names a model, use that one.
-5. Ask the human to send the confirm prompt. Present the price as the reason for the proposal, not as proof that the account can run the model or of what it will cost.
+4. If the human names a model, use its official provider ID.
+5. Before asking for confirmation, write the current proposal and its sources to `models.json` under `hosts.<host>`, replacing only that host's previous proposal. Keep one current proposal per host, not an append-only list. This file grants no authority.
+6. Ask the human to send the confirm prompt. Present the price as the reason for the proposal, not as proof that the account can run the model or of what it will cost.
 
 On the first prompt of each session the brake adds one line to your context: load this skill before reading the project. Do that before any other step. In Claude Code, if you do not, the first tool call that can touch the project is stopped once with `Blocked: load PMNM before working on the project.` Load the skill with the Skill tool, as its NEXT says, then retry the same operation; only the Skill tool counts as loading it, not reading its files. The human can send `PMNM-SKIP` to turn this stop off for one session. Codex is not stopped; load the skill as the line says.
 

@@ -980,7 +980,7 @@ function writeJson(file, value) {
   fs.renameSync(temporary, file);
 }
 
-const REEVALUATE = "before continuing any task, propose the judge model: the cheapest model this host can run, with the lowest sum of input and output price per million tokens in the provider's current published documentation, never in local caches, and the newest on a tie, show the human each price with its URL, record the proposal and its sources in models.json if useful, and ask them to confirm by sending the prompt";
+const REEVALUATE = "before continuing any task, propose the judge model: the cheapest this host can run, by the lowest input plus output price per million tokens in the provider's current published documentation, never local caches, newest on a tie; show each price with its URL; record its official provider ID and sources under this host in models.json, replacing its previous proposal; then ask the human to confirm by sending";
 
 // The confirmed judge lives in the brake's data, sealed, and only the human's exact prompt writes it.
 // models.json in the PMNM folder is the agent's proposal and grants nothing: the agent writes that
@@ -1047,11 +1047,15 @@ export function judgeModel(host, {env = process.env, codexHome} = {}) {
   return {model: entry.model, reasoning, review: null};
 }
 
-/** One line for the human and the agent: why, what the host offers now, and how to re-evaluate. */
+/**
+ * One line for the human and the agent: why, how to re-evaluate, then what the host offers now.
+ * The catalog list comes last so the action precedes any host preview of long added context.
+ * Codex's additionalContextLimit is an approximate token threshold, not a character count.
+ */
 function reviewText(review) {
   const added = review.added.length ? " (new: " + review.added.join(", ") + ")" : "";
-  const offered = review.offered.length ? " The " + review.host + " catalog offers: " + review.offered.join(", ") + "." : " The " + review.host + " catalog could not be read.";
-  return "PMNM: " + review.why + added + "." + offered + " NEXT: " + REEVALUATE + " PMNM-CONFIRM-JUDGE " + review.host + " <model> [reasoning=<level>].";
+  const offered = review.offered.length ? " The " + review.host + " catalog offers: " + review.offered.join(", ") + added + "." : " The " + review.host + " catalog could not be read.";
+  return "PMNM: " + review.why + ". NEXT: " + REEVALUATE + " PMNM-CONFIRM-JUDGE " + review.host + " <model> [reasoning=<level>]." + offered;
 }
 
 // ---------------------------------------------------------------- the catalog of judged operations
