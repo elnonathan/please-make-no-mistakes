@@ -24,7 +24,7 @@ The agent should begin with the result it is trying to establish, not a recital 
 
 ## The First PMNM Folder
 
-On first use, PMNM inspects only the literal pointer path declared by the host integration. It never searches the machine, history or unrelated work for a plausible PMNM folder. If the pointer is absent, PMNM asks where its folder should live, suggests `~/PMNM`, and stops there: no more actions until you answer, no repository inspection before that. The host stores only a pointer in its own configuration area. The folder itself stays outside repositories and installed packages.
+On first use, PMNM checks the folder location recorded by the host. It does not search the machine, history or unrelated work for a plausible folder. If no location is recorded, it asks where the folder should live, suggests `~/PMNM`, and waits for your answer before reading the repository. The host stores only a pointer in its configuration. Your folder stays outside repositories and installed packages.
 
 The first repository adds one more question: its project name, with the repository name as the suggestion. The agent then creates task folders as work begins without requesting permission for each file.
 
@@ -34,7 +34,9 @@ The only other folder questions are whether a possibly matching task folder is t
 
 The Claude Code and Codex plugins include an optional guard: a destructive-operation brake. In Claude Code, enabling the plugin runs it without a separate trust step. In Codex it runs after you review and trust its current definition through `/hooks`.
 
-The brake stops deletions, overwrites, history rewrites, service restarts, publication and other irreversible or sensitive operations before they run. Ordinary reads and project edits pass. A stop prints a card: what happened, `NEXT:` with one exact action, and, when you can approve by reply, the `PMNM-<code>` token alone on a last line, ready to copy. Its first word is the level. Blocked means a destructive operation did not run, or one the brake keeps for you alone. Ask means another stopped operation did not run. Either way the agent shows you the exact operation and stops; it runs only if you reply with the exact `PMNM-<code>` token the card names, in any letter case, or you run it yourself. A card with no token means only you can run that operation, or its `NEXT:` line names another action. In Claude Code, some sensitive operations use the host's own permission prompt instead of a card.
+The brake stops deletions, overwrites, history rewrites, service restarts, publication and other irreversible or sensitive operations before they run. Ordinary reads and project edits pass.
+
+When it stops an action, the card says what happened and gives one `NEXT:` action. If you can approve by reply, its last line holds the `PMNM-<code>` token for that exact operation. `Blocked` means a destructive action did not run, or that only you may run it. `Ask` means another action was stopped. The agent shows you the operation and waits. It runs only after you reply with the exact token, in any letter case, or run the operation yourself. A card without a token gives a different next action or leaves execution to you. In Claude Code, some sensitive actions use the host's own permission prompt instead.
 
 On first use the brake has no judge model. The agent proposes the cheapest model the host offers, with its published prices, and asks you to confirm it with a prompt you send yourself; [SETUP](../SETUP.md#the-brake-after-installation) gives its exact form. Until you confirm one, every operation the brake's rules cannot place stops for your token.
 
@@ -52,7 +54,7 @@ A task folder starts with `index.md`, `plan.md`, `verification.md` and `permissi
 
 ## Before A Material Change
 
-Before showing the Digest, the agent writes `plan.md`: one line per file the implementation will write, one per file that must stay as it is, and one per material non-file state transition or invariant. A state transition names explicit before and after values and an exact task operation in `permissions.json`. The agent also writes an actionable verification plan and lists every predictable exact sensitive operation by task or project scope. The Digest reads that combined contract aloud. The agent shows one plan Digest after investigation and before changing the project or external state:
+Before changing code or other project state, the agent shows what it found, what it intends to change, how it will check the result, and which operations need your approval. It records those details with the task and presents them in a Digest for you to review:
 
 ```text
 Digest — <task>
@@ -78,7 +80,9 @@ If the correction changes the plan, the next implementation starts only after a 
 
 ## Verification
 
-Verification is selected by the changed contract, not by the name of a test layer. Every passed result needs two current claims: the request's own case and the thing that must not change. A state plan also repeats its exact state contracts there. After a material change, the agent writes them in `verification.md` after its last change, then obtains the evidence against that state. A successful state operation proves only that it ran, not that the resulting state is correct. Human verification waits for the human's later report. A check that changes the project returns the work to investigation and a revised Digest. The agent runs the strongest sufficient accessible check and says exactly what it proves and does not prove. Product failures remain separate from environment, fixture and tool failures.
+The agent chooses checks for the behavior that changed. Every passed result needs current evidence for the case you asked about and for something that must keep working. A state change also needs evidence of the resulting state. A successful command proves only that the command ran, not that the intended state exists.
+
+The agent records these claims in `verification.md` after its last material change and runs the strongest suitable check it can access. It says what each check proves and what remains unknown. Your own verification counts only after you report the result. If a check changes the project, the work returns to investigation and a revised Digest. Product failures stay separate from environment, fixture and tool failures.
 
 After implementation, the test Digest gives the human an exact handoff:
 

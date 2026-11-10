@@ -4,7 +4,7 @@ All notable user-visible changes are recorded here.
 
 ## 0.1.0 - 2026-11-09
 
-First public release. Epistemic integrity for software engineering with AI: one portable Agent Skill, one PMNM folder, one flow, rules born from an always or a never, and an optional destructive-operation brake for Claude Code and Codex.
+First public release. PMNM brings a portable Agent Skill, a folder for task context and rules, and an optional brake to Claude Code and Codex. Together they help an agent keep evidence and decisions attached to the work.
 
 Orders and rule layers
 

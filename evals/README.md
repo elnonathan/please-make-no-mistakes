@@ -1,6 +1,6 @@
 # Evaluation guide
 
-Evaluate what the agent and host make observable. Hidden reasoning, a confident explanation and a passing syntax check are not substitutes for evidence.
+Evaluate what the agent and host actually show. A confident explanation or passing syntax check cannot establish behavior the check never observed.
 
 Keep four layers separate:
 

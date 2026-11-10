@@ -1,6 +1,6 @@
 # Contributing
 
-Please, Make No Mistakes keeps one portable Agent Skill and one optional destructive-operation brake for Claude Code and Codex. `skills/please-make-no-mistakes/SKILL.md` is the contract every change serves; a change that cannot name the kernel sentence it improves is not ready. Contributions should make a demonstrated failure less likely without turning one person's project, toolchain or preferences into a universal rule.
+Please, Make No Mistakes has one portable Agent Skill and an optional destructive-operation brake for Claude Code and Codex. Start with the behavior you want to improve in `skills/please-make-no-mistakes/SKILL.md`. A contribution should make a demonstrated failure less likely without turning one person's project or tools into a rule for everyone.
 
 ## Requirements
 
@@ -12,12 +12,12 @@ Please, Make No Mistakes keeps one portable Agent Skill and one optional destruc
 
 Start from an observable failure, an accepted design decision or a bounded compatibility requirement. Record what currently happens and which check would distinguish the desired behavior. Add the smallest failing evaluation before changing the runtime when a deterministic surface exists.
 
-Do not solve a model communication problem only by adding another guard. Improve the shortest portable instruction first. A guard is justified when a real trial shows that prose alone is skipped and the host exposes a reliable event boundary.
+When a model misses an instruction, improve the instruction first. Add a guard only when a real trial shows that the instruction alone does not hold and the host provides a reliable event to check.
 
 ## Writing Rules For Models
 
 - State the pattern, never a worked example. Public prose and cards use shapes with placeholders; an example teaches the instance, not the rule.
-- A card's `NEXT:` line is an order: one verb in the imperative or a short sequence joined by "then", its limit, and who acts next. It names the one next action and may name what the human can do instead. No explanation beyond its limit, no alternatives the model must weigh, no "turn". Waiting is never the agent's action; a card names it only as the human's alternative. A brake card stops by naming the human's part: stop and show the human this exact operation, then the exact token they may reply with, or that only the human can run it. The skill's own orders write stopping as: stop here; no more actions until the human answers.
+- A card's `NEXT:` line is an order. It uses one imperative verb, or a short sequence joined by "then", and names the limit and who acts next. It gives the agent one action, with no alternatives to weigh or extra explanation. Waiting belongs to the human, never to the agent. A brake card tells the agent to show the exact operation and approval token, or says that only the human can run it. The skill's own stopping order is literal: `stop here; no more actions until the human answers`.
 - A claim the hook cannot observe is not written on a card. The hook states what it recorded, not what the model meant.
 - A small model must be able to read the sentence and act on it. When it cannot, the sentence is wrong, not the reader.
 

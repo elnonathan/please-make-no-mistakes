@@ -708,8 +708,8 @@ class DocumentationGateTests(unittest.TestCase):
         cases = (
             (
                 "README.md",
-                "optional lifecycle guard",
-                "mandatory infallibility guard",
+                "include a safety brake",
+                "include a mandatory infallibility guard",
                 "readme-bundled-guard",
             ),
             (
@@ -812,21 +812,33 @@ class DocumentationGateTests(unittest.TestCase):
         cases = (
             (
                 "README.md",
-                "The sections below describe portable PMNM. Host enforcement, the brake for Claude Code and Codex, is named explicitly.",
-                "The sections below describe Codex unless noted otherwise.",
+                "plugins also include a safety brake.",
+                "The Codex plugin includes a safety brake.",
                 "readme-portable-default",
             ),
             (
                 "README.md",
-                "stops deletions, overwrites, service restarts and other irreversible operations until you approve them",
+                "pauses destructive operations, such as deleting or overwriting files and restarting services, so you can approve them first",
                 "stops every mistake before it happens",
                 "readme-brake-boundary",
             ),
             (
                 "README.md",
-                "only a safe, high-confidence verdict runs without you",
+                "only a safe verdict with high confidence from the model you chose lets it proceed without asking",
                 "every verdict the model returns runs without you",
                 "readme-brake-boundary",
+            ),
+            (
+                "README.md",
+                "A passing check, a confident model answer, or an empty search is evidence with limits, not proof that the work is complete.",
+                "A confident model answer proves that the work is complete.",
+                "readme-hook-proof-boundary",
+            ),
+            (
+                "README.md",
+                "Approval from the brake lets a specific operation proceed. It does not prove that the investigation or result is sound.",
+                "Approval from the brake proves that the investigation and result are sound.",
+                "readme-approval-proof-boundary",
             ),
             (
                 "README.md",
@@ -956,8 +968,8 @@ class DocumentationGateTests(unittest.TestCase):
         cases = (
             (
                 "README.md",
-                "two moments of your attention per task, one to agree the plan and one to read the audit, plus the questions only you can answer",
-                "exactly two moments of your attention per task and no other questions",
+                "You review the plan before the work begins and the audit before accepting the result. The agent asks for your input whenever a decision needs your judgment.",
+                "You review the plan before the work begins and the audit before accepting the result. The agent never asks for other decisions.",
             ),
             (
                 "skills/please-make-no-mistakes/SKILL.md",
@@ -986,7 +998,7 @@ class DocumentationGateTests(unittest.TestCase):
         cases = (
             (
                 "README.md",
-                "agreeing to the plan is not a yes to commit, push, tag or publish.",
+                "A plan is not permission to commit, push, tag or publish unless you approve that exact action.",
                 "The plan Digest authorizes every version-control and publication effect.",
             ),
             (
@@ -1037,7 +1049,7 @@ class DocumentationGateTests(unittest.TestCase):
 
         self.mutate(
             "SETUP.md",
-            "The brake writes only its own `commands.json` at the folder root; `models.json` holds the agent's judge proposal, and the human confirms the judge with a prompt.",
+            "The brake writes only `commands.json` at the folder root.",
             "The brake writes anywhere in the folder.",
         )
         self.assert_rejected("setup-index-runtime-owner")
@@ -1061,15 +1073,15 @@ class DocumentationGateTests(unittest.TestCase):
     def test_public_entry_points_do_not_overclaim_questions_or_other_hosts(self) -> None:
         cases = (
             (
-                "README.md",
-                "Other questions are reserved for product intent, priority, risk, or authority that evidence cannot settle.",
-                "Every other question is about your product.",
-                "readme-human-question-boundary",
+                "skills/please-make-no-mistakes/references/collaboration.md",
+                "Ask only for what you cannot discover: product intent, priority, risk appetite, authority.",
+                "Ask about every technical detail before investigating.",
+                "collaboration-human-question-boundary",
             ),
             (
                 "README.md",
-                "does not yet claim their complete PMNM folder workflow",
-                "claims a complete PMNM folder workflow for every host",
+                "A complete setup for another agent still needs a documented way to find the PMNM folder and testing on that host.",
+                "A complete setup for every agent is already verified.",
                 "cross-host-durable-folder-boundary",
             ),
             (

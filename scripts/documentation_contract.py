@@ -370,7 +370,7 @@ def validate_repository(root: Path) -> list[Finding]:
     _require(
         "enters at two points at every effort level: the plan Digest and the final audit" in skill
         and "Those two points are the floor, not the ceiling" in skill
-        and "two moments of your attention per task, one to agree the plan and one to read the audit, plus the questions only you can answer"
+        and "You review the plan before the work begins and the audit before accepting the result. The agent asks for your input whenever a decision needs your judgment."
         in readme
         and "## Two human moments" in architecture_decisions
         and "Those two are the floor, not the ceiling." in architecture_decisions
@@ -382,8 +382,7 @@ def validate_repository(root: Path) -> list[Finding]:
     )
 
     version_control_authority = (
-        "agreeing to the plan is not a yes to commit, push, tag or publish." in readme
-        and "An exact operation named in the permission forecast may receive that authority with your agreement." in readme
+        "A plan is not permission to commit, push, tag or publish unless you approve that exact action." in readme
         and "Agreeing to the implementation plan alone is not a yes to commit, push, tag or publish." in changelog
         and "Agreeing to the implementation plan alone is not a yes to commit, push, tag or publish." in security
         and "Agreeing to the plan alone is not a yes to commit, push, tag or publish." in skill
@@ -399,7 +398,8 @@ def validate_repository(root: Path) -> list[Finding]:
 
     _require(
         "One writer at a time: the agent." in setup
-        and "The brake writes only its own `commands.json` at the folder root; `models.json` holds the agent's judge proposal, and the human confirms the judge with a prompt." in setup,
+        and "The brake writes only `commands.json` at the folder root." in setup
+        and "`models.json` holds the agent's judge proposal, which grants nothing until the human confirms it with a prompt." in setup,
         findings,
         "setup-index-runtime-owner",
         "SETUP.md",
@@ -437,11 +437,11 @@ def validate_repository(root: Path) -> list[Finding]:
         "A mocked minimum-version fixture must not be reported as live client compatibility evidence.",
     )
     _require(
-        "Other questions are reserved for product intent, priority, risk, or authority that evidence cannot settle." in readme,
+        "Ask only for what you cannot discover: product intent, priority, risk appetite, authority." in collaboration,
         findings,
-        "readme-human-question-boundary",
-        "README.md",
-        "README must distinguish bookkeeping questions from material product, risk and authority decisions.",
+        "collaboration-human-question-boundary",
+        "skills/please-make-no-mistakes/references/collaboration.md",
+        "Collaboration must reserve questions for material product, risk and authority decisions.",
     )
     _require(
         "`index.json` has one writer at a time: the guard when it is active, otherwise the agent." in evals_readme,
@@ -451,8 +451,7 @@ def validate_repository(root: Path) -> list[Finding]:
         "Task-folder evaluation must preserve the same index owner in guarded and advisory modes.",
     )
     _require(
-        "does not yet claim their complete PMNM folder workflow" in readme
-        and "needs one documented literal pointer" in readme
+        "A complete setup for another agent still needs a documented way to find the PMNM folder and testing on that host." in readme
         and "will not claim the complete PMNM folder workflow until it documents and verifies one literal pointer" in roadmap,
         findings,
         "cross-host-durable-folder-boundary",
@@ -492,8 +491,9 @@ def validate_repository(root: Path) -> list[Finding]:
         )
     for code, phrase in (
         ("readme-portable-skill", "portable agent skill"),
-        ("readme-bundled-guard", "optional lifecycle guard"),
-        ("readme-hook-proof-boundary", "Turn a brake approval or a judge verdict into proof"),
+        ("readme-bundled-guard", "include a safety brake"),
+        ("readme-hook-proof-boundary", "A passing check, a confident model answer, or an empty search is evidence with limits, not proof that the work is complete."),
+        ("readme-approval-proof-boundary", "Approval from the brake lets a specific operation proceed. It does not prove that the investigation or result is sound."),
     ):
         _require(
             phrase in readme,
@@ -504,15 +504,16 @@ def validate_repository(root: Path) -> list[Finding]:
         )
 
     _require(
-        "The sections below describe portable PMNM. Host enforcement, the brake for Claude Code and Codex, is named explicitly." in readme,
+        "is a portable agent skill" in readme
+        and "plugins also include a safety brake." in readme,
         findings,
         "readme-portable-default",
         "README.md",
         "README must treat portable PMNM as the default and name host enforcement explicitly.",
     )
     _require(
-        "stops deletions, overwrites, service restarts and other irreversible operations until you approve them" in readme
-        and "only a safe, high-confidence verdict runs without you" in readme,
+        "pauses destructive operations, such as deleting or overwriting files and restarting services, so you can approve them first" in readme
+        and "only a safe verdict with high confidence from the model you chose lets it proceed without asking" in readme,
         findings,
         "readme-brake-boundary",
         "README.md",

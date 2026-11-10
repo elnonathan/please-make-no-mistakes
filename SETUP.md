@@ -1,6 +1,6 @@
 # Setup
 
-This is the single installation, update, rollback, removal, and installation-verification authority for Please, Make No Mistakes. It is written for both people and agents. PMNM supports Claude Code and Codex. Both routes use this GitHub repository as a marketplace whose catalog selects the same exact npm package version, containing the portable skill and an optional destructive-operation brake registered for each host. Integration with other coding agents is possible but not officially supported.
+Use this guide to install, update, verify, roll back or remove Please, Make No Mistakes. It is the single detailed setup procedure for people and agents. Claude Code and Codex each use this repository as a marketplace. Both marketplaces select the same exact npm package, which contains the portable skill and an optional brake registered for each host. Support for other coding agents is in progress and is not official yet.
 
 ## Guards
 
@@ -253,7 +253,9 @@ Package installation, a successful validator, a saved marketplace entry, a hook 
 
 Skill installation and the PMNM folder are separate outcomes. Installation does not create the folder, its pointer, a project folder or a personal profile.
 
-The first task after installation asks two questions, in this order, before the agent reads your repository: where to create the PMNM folder, suggesting `~/PMNM`; then the project name, suggesting the repository name. The agent inspects only the one literal pointer path declared by the host integration. In Claude Code that path is `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path` when `CLAUDE_CONFIG_DIR` is unset. In Codex it is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. Another host must document its own single pointer path. Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it.
+The first task after installation asks two questions before the agent reads your repository. First, where should the PMNM folder live? It suggests `~/PMNM`. Second, what should the project be called? It suggests the repository name.
+
+The agent inspects only the one literal pointer path declared by the host integration. In Claude Code that path is `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path` when `CLAUDE_CONFIG_DIR` is unset. In Codex it is `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path` when `CODEX_HOME` is unset. Another host must document its own single pointer path. Never search the home directory, temporary directories, conversation history or unrelated repositories to discover it.
 
 Choose a location outside your repositories and outside the host's config directory. The host's config directory receives only the pointer, one line with the folder's absolute path, so another host on the same machine can read the same memory once its own pointer is configured. If you later move or delete the folder, the agent asks once more where it is or where it should be. An existing empty folder is seeded before the pointer is written. An invalid pointer or index is preserved under a unique recovery name and rebuilt only after your explicit recovery answer.
 
@@ -271,7 +273,11 @@ The folder has this shape:
     tasks/<id>/                   one per task: index.md, plan.md, verification.md, permissions.json
 ```
 
-A fresh `index.json` holds the schema `pmnm.projects/v1`, `pointer_version` 1 and an empty `projects` list. One writer at a time: the agent. The brake writes only its own `commands.json` at the folder root; `models.json` holds the agent's judge proposal, and the human confirms the judge with a prompt. Inside the folder the agent needs no further permission for ordinary writes, although the brake still stops a deletion, a move, or an edit to a secret or configuration file there. The agent creates the project and task folders, keeps reusable evidence-backed knowledge separate from human-owned rules, fills the task plan, verification and permission forecast, and records evidence as it appears. The skill can be discovered before this folder exists, but material project work does not proceed without the literal pointer, project mapping and task record that preserve its decisions and evidence.
+A fresh `index.json` holds the schema `pmnm.projects/v1`, `pointer_version` 1 and an empty `projects` list. One writer at a time: the agent. The brake writes only `commands.json` at the folder root. `models.json` holds the agent's judge proposal, which grants nothing until the human confirms it with a prompt.
+
+Inside the folder, ordinary writes need no further permission. The brake still stops a deletion, a move, or an edit to a secret or configuration file there. The agent creates project and task folders, keeps reusable knowledge separate from human-owned rules, and records the plan, verification, permissions and evidence as work proceeds.
+
+The skill can be discovered before this folder exists. Material project work waits until the literal pointer, project mapping and task record can preserve its decisions and evidence.
 
 ### The brake after installation
 
