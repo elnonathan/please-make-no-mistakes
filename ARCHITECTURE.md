@@ -2,7 +2,7 @@
 
 ## Goal
 
-Please, Make No Mistakes is one portable Agent Skill packaged with an optional destructive-operation brake, registered for Codex and for Claude Code. The skill has four parts: the PMNM folder, the flow, rules born from an always or a never, and guards. The brake stops covered destructive and sensitive operations in the tool calls its host actually sends it, until the human approves them.
+Please, Make No Mistakes is one portable Agent Skill packaged with an optional destructive-operation brake, registered for Claude Code and for Codex. Integration with other coding agents is possible but not officially supported. The skill has four parts: the PMNM folder, the flow, rules born from an always or a never, and guards. The brake stops covered destructive and sensitive operations in the tool calls its host actually sends it, until the human approves them.
 
 The architecture keeps four claims separate:
 
@@ -17,14 +17,14 @@ None proves semantic truth or guarantees an error-free result. `SKILL.md` states
 
 ```text
 please-make-no-mistakes/
-├── .codex-plugin/plugin.json         public Codex plugin manifest
-├── .agents/plugins/marketplace.json repository marketplace catalog for Codex
 ├── .claude-plugin/plugin.json        public Claude Code plugin manifest
 ├── .claude-plugin/marketplace.json   repository marketplace catalog for Claude Code
+├── .codex-plugin/plugin.json         public Codex plugin manifest
+├── .agents/plugins/marketplace.json repository marketplace catalog for Codex
 ├── hooks/
-│   ├── codex/hooks.json              Codex brake registration
 │   ├── claude/hooks.json             Claude Code brake registration
 │   ├── claude/pmnm-claude.mjs        retired interlock adapter for Claude Code, unregistered
+│   ├── codex/hooks.json              Codex brake registration
 │   ├── pmnm-brake.mjs                destructive-operation brake for both hosts
 │   ├── pmnm-guard.mjs                retired interlock engine, unregistered
 │   └── pmnm-shell.mjs                retired interlock shell classifier, unregistered
@@ -82,7 +82,7 @@ The installed plugin is replaceable. User knowledge is not. PMNM stores task kno
         └── artifacts/          optional deliberately retained copies
 ```
 
-The host configuration contains only a pointer to this folder. Codex and Claude Code each use their own config location. Another host must use its own supported configuration surface. All can point to the same folder.
+The host configuration contains only a pointer to this folder. Claude Code and Codex each use their own config location. Another host, which is not officially supported, must use its own supported configuration surface. All can point to the same folder.
 
 Startup follows one route. The agent reads only the host's documented literal pointer, stops for the missing folder or project answer, and performs the setup itself. It starts each task with an effort and a work type. The durable work type is `implementation`, `advisory` or `verification`. The retired interlock had a second route through guard receipts; it returns only if the interlock is restored.
 
@@ -92,7 +92,7 @@ Task selection belongs to a session, not to the repository. A fresh session star
 
 The folder asks the human exactly four things: where it goes, the project name, whether a candidate task folder is this task, and whether a new rule belongs to the project or applies generally. The task question appears only when an existing folder shares the id or a name that contains or normalizes to it.
 
-Containment and secrets are agent obligations; no hook enforces them. A path or symbolic link that escapes the folder is not an internal PMNM write. The agent never writes a secret there; it keeps a reference to where the secret lives instead. An empty folder is seeded before its pointer is written. Invalid pointer or index state is preserved under a unique recovery name and rebuilt only after the human chooses that recovery. The folder is a continuity aid, not a secret manager or access control system.
+Containment and secrets are agent obligations first. A path or symbolic link that escapes the folder is not an internal PMNM write. The brake adds one check: it judges every edit by the real path where it lands, so a symbolic link cannot carry an edit out of the folder or onto a secret or configuration file, and it still stops deletions, moves and secret or configuration edits inside the folder. It does not scan content for secrets. The agent never writes a secret there; it keeps a reference to where the secret lives instead. An empty folder is seeded before its pointer is written. Invalid pointer or index state is preserved under a unique recovery name and rebuilt only after the human chooses that recovery. The folder is a continuity aid, not a secret manager or access control system.
 
 External evidence is reference-first. Copying or moving an artifact is a custody decision with an exact source, destination, purpose, privacy result, identity method, recovery and retention. Full-content digests can establish byte identity; visual or semantic similarity cannot. Provenance is relational as well: authorship, operation, observation, discovery, review, approval and causality keep independent evidence and status.
 
@@ -118,7 +118,7 @@ The Test Digest follows current verification, required review and the agent's fi
 
 ## Brake
 
-`hooks/codex/hooks.json`, declared by `.codex-plugin/plugin.json`, and `hooks/claude/hooks.json`, declared by `.claude-plugin/plugin.json`, register one module, `hooks/pmnm-brake.mjs`, with `--host codex` or `--host claude`. Both register it on `PreToolUse` and `UserPromptSubmit`. In Codex the tool matcher is `Bash|apply_patch|Edit|Write|mcp__.*`; in Claude Code it covers every tool. The package carries no conventional `hooks/hooks.json`, because Claude Code would merge that file into the Claude plugin. The brake knows nothing about tasks, plans or Digests.
+`hooks/claude/hooks.json`, declared by `.claude-plugin/plugin.json`, and `hooks/codex/hooks.json`, declared by `.codex-plugin/plugin.json`, register one module, `hooks/pmnm-brake.mjs`, with `--host claude` or `--host codex`. Both register it on `PreToolUse` and `UserPromptSubmit`. In Claude Code it covers every tool; in Codex the tool matcher is `Bash|apply_patch|Edit|Write|mcp__.*`. The package carries no conventional `hooks/hooks.json`, because Claude Code would merge that file into the Claude plugin. The brake knows nothing about tasks, plans or Digests.
 
 The brake imports only Node.js built-in modules and runs no program except the host's own command-line client as its judge. Package validation enforces that boundary and an inspectable size budget.
 
@@ -127,11 +127,15 @@ For each covered tool call it decides in two layers:
 1. Deterministic rules place known shapes as safe, sensitive or destructive, including commands inside wrappers, substitutions and heredocs. A compound command takes its most severe segment. Code that runs other code is classified by what it runs.
 2. What the rules cannot place goes first to a sealed stored verdict, then to the judge model the human confirmed. Only a safe verdict with high confidence runs without asking.
 
-A stop prints a two-line card: `Blocked:` for a destructive operation or `Ask:` for any other stop, with what happened, and one `NEXT:` line. The `NEXT:` line tells the agent to show the human the exact operation; it runs only if the human replies with its exact `PMNM-<code>` token, or runs it themselves. In Claude Code a deterministic sensitive operation uses the host's own permission prompt instead of a card. A failed or unavailable classification asks; an error inside the brake blocks.
+A stop prints a two-line card: `Blocked:` or `Ask:` with what happened, and one `NEXT:` line with one exact action. `Blocked:` covers a destructive operation, an operation that reaches the brake's own state, an operation the brake could not evaluate, and the Claude Code load stop. `Ask:` covers any other stop. For a destructive or sensitive operation, the `NEXT:` line tells the agent to show the human the exact operation; it runs only if the human replies with its exact `PMNM-<code>` token, or runs it themselves. Some cards carry no token: the brake's own state, an evaluation error, the load stop, full or busy approvals, and an event without a session id. In Claude Code a deterministic sensitive operation uses the host's own permission prompt instead of a card. A failed or unavailable classification asks. An error the brake catches while evaluating blocks. A brake that runs past its time limit or cannot start is handled by the host, which may let the operation run.
 
 On `UserPromptSubmit` the brake recognizes the human's exact prompts: an approval token grants one rerun of that operation in that session, and the judge confirmation and MCP allowlist prompts change sealed state. The agent cannot send a prompt. When the judge needs a confirmation or a re-evaluation, the brake adds one notice to the agent's context, once per change, and the agent relays it to the human.
 
-Under the host's plugin data directory the brake keeps a secret key, pending approvals and one-time grants, the confirmed judge, the MCP allowlist and decision counts. Every entry carries a seal made with that key. In the PMNM folder it writes only `commands.json`. Nothing in the PMNM folder grants authority by itself.
+On the first prompt of each session the brake adds one line asking the agent to load PMNM. In Claude Code, when the agent has not loaded the skill with the Skill tool, the brake stops the first tool call that can touch the project once per session, with a card that asks the agent to load it. The next call runs whether or not the agent did. The human's exact prompt `PMNM-SKIP` turns that stop off for the session. Codex has no load stop.
+
+An operation that reaches the brake's own state is blocked on both hosts, before any grant is spent and with no token, so only the human can run it.
+
+Under the host's plugin data directory, in `brake/`, the brake keeps a secret key, pending approvals and one-time grants, the confirmed judge, the MCP allowlist, hashes of the sessions that received the load line and of the sessions that loaded the skill, the notices already shown, and decision counts. Every entry carries a seal made with that key, except the notices and the decision counts, which grant nothing. In the PMNM folder it writes only `commands.json`. Nothing in the PMNM folder grants authority by itself.
 
 It cannot:
 
@@ -146,7 +150,7 @@ Disabled, untrusted, unsupported, failed, or bypassed paths leave the portable s
 
 ## Host port contract
 
-Another host may run the brake through its own lifecycle API. The port must be designed, tested, installed and documented independently. Similar event names do not establish equivalent semantics.
+Another host may run the brake through its own lifecycle API. Such a port is not officially supported. It must be designed, tested, installed and documented independently. Similar event names do not establish equivalent semantics.
 
 A port must preserve:
 
@@ -154,7 +158,7 @@ A port must preserve:
 - two card levels, `Blocked` and `Ask`, each with one `NEXT:` action, or the host's own permission prompt where it has one
 - the human's exact operation-bound, session-bound and single-use approval token, which the agent cannot send
 - sealed state outside the PMNM folder
-- a failed classification that asks and an internal error that blocks
+- a failed classification that asks and an evaluation error that blocks
 - one PMNM folder and a host-local pointer
 - disclosure of uncovered paths
 
@@ -221,7 +225,7 @@ The release gate runs every deterministic package check and reports all failures
 
 ## Distribution boundary
 
-The npm artifact contains the portable skill, the optional destructive-operation brake for Codex and Claude Code, the retired interlock source (unregistered), public documentation, reusable evaluations and deterministic validators. It declares no runtime registry dependency and no npm lifecycle script.
+The npm artifact contains the portable skill, the optional destructive-operation brake for Claude Code and Codex, the retired interlock source (unregistered), public documentation, reusable evaluations and deterministic validators. It declares no runtime registry dependency and no npm lifecycle script.
 
 The package excludes repository automation, marketplace source metadata, private coordination, user PMNM folders, generated test output and credentials. npm transports exact bytes; it does not register a plugin, activate a skill, trust a hook or prove a conversation loaded that revision.
 

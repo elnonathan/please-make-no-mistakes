@@ -18,7 +18,7 @@ Intent: the human always knows what was checked and what was only believed.
 - RU-4. A new rule that contradicts an old one replaces it; move the old one to `Retired` with the replacing id. Never reuse an id. Cite rules by id, never by line.
 - RU-5. At audit, move reusable project facts to `project-knowledge.md`; make a rule general only when it holds in another project. When a failure recurs despite a rule, change the lever: a file shape or a guard, not new wording.
 
-Where you write. One folder per machine, one folder per project inside it, one folder per task inside each project. You need no permission for anything inside; you never write a secret there.
+Where you write. One folder per machine, one folder per project inside it, one folder per task inside each project. You need no Digest or permission for ordinary work inside, but the brake still stops deletions, moves and secret or config edits there. You never write a secret there.
 
 ## Layout
 
@@ -173,7 +173,7 @@ Split mixed-certainty statements into separate entries. “Applies to every task
 
 A decision belongs to the task folder. A rule is a human-owned instruction about something that must always or never happen. Rules come from the human's direction ("always", "never", "from now on"), not from the agent deciding that one observed convention should become policy. A one-time answer, diagnosis, command, repository convention or permission given for one round is a decision or knowledge, not a rule.
 
-Rules come in layers. From lowest to highest: the PMNM orders in SKILL.md (ids such as `IN-2`), `general-rules.md`, `project-rules.md`, the task's `task-rules.md` when it exists, and the human's current instruction. A higher layer may extend, narrow or replace a lower rule by citing its id. Without a citation, a rule adds to the layers below it. When two rules in the same layer conflict, the newer one wins and the older one moves to `Retired`.
+Rules come in layers. From lowest to highest: the PMNM orders in SKILL.md and its references (ids such as `IN-2`), `general-rules.md`, `project-rules.md`, the task's `task-rules.md` when it exists, and the human's current instruction. A higher layer may extend, narrow or replace a lower rule by citing its id. Without a citation, a rule adds to the layers below it. When two rules in the same layer conflict, the newer one wins and the older one moves to `Retired`.
 
 Shape, one per line:
 

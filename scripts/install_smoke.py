@@ -33,7 +33,7 @@ REQUIRED_HEADINGS = {
     "4. Effort",
     "5. Claims",
     "6. Sensitive actions",
-    "7. Under a guard",
+    "7. Brake cards",
     "8. How to speak",
     "Stop and ask",
     "References",

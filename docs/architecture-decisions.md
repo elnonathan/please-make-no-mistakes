@@ -74,8 +74,8 @@ Each card names one retired element: what it did, why it was retired, what may g
 
 ### Compound command splitting
 
-- **Did:** asked the model to split a compound command that mixed an unknown segment with a sensitive effect.
-- **Why retired:** the brake classifies every segment of a compound command and takes the most severe result, so no split is needed.
+- **Did:** the interlock required the model to split a compound command that mixed an unknown segment with a sensitive effect before it would classify it.
+- **Why retired:** the brake classifies every segment of a compound command and takes the most severe result, so the brake needs no split. The skill's order SE-3 still asks for the split in the permission forecast, so each sensitive effect receives its own approval.
 - **May get worse:** nothing expected. Symptom if wrong: a compound command whose worst segment was missed.
 - **Detect:** the brake's tests for wrappers, substitutions and heredocs.
 - **Restore:** nothing to fix first.
@@ -129,7 +129,7 @@ The interlock replaces the brake; running both at once is untested. Do these ste
    - `scripts/test_claude_discovery.mjs`: only adapter commands.
    - The brake may stay in the package unregistered, or be removed together with its validator checks, `scripts/test_brake.mjs` and its `package.json` entries.
 
-4. **Skill contract.** The engine blocks any task whose agent does not send its receipts. The skill must therefore teach them again: the receipt sequence, the two-line cards, effect declarations, the approval token and the lifecycle reload. That contract lives in the guard sections of `skills/please-make-no-mistakes/SKILL.md` and in `skills/please-make-no-mistakes/references/host-enforcement.md`. In this release both still carry it. If a later release removes it, restore those texts from the last version that had them before you register the engine.
+4. **Skill contract.** The engine blocks any task whose agent does not send its receipts. The skill must therefore teach them again: the receipt sequence, the two-line cards, effect declarations, the approval token and the lifecycle reload. That contract lives in the guard sections of `skills/please-make-no-mistakes/SKILL.md` and in `skills/please-make-no-mistakes/references/host-enforcement.md`. In this release `SKILL.md` no longer teaches it, and `host-enforcement.md` keeps it only under a retired label. Restore the `SKILL.md` guard sections from the last version that had them, and move the `host-enforcement.md` contract out of its retired label, before you register the engine.
 
 5. **Public claims.** README, SETUP, SECURITY and CHANGELOG describe the brake. Restore their interlock descriptions, the SETUP activation check (a project read before `start` is blocked), and the pins in `scripts/documentation_contract.py` and `scripts/test_documentation_gate.py` that follow those texts.
 
@@ -218,14 +218,14 @@ Closure walks `plan.md`: every objective checked, every file target changed, eve
 
 The brake uses two hardness levels:
 
-- `Blocked` means a destructive operation did not run
+- `Blocked` means the operation did not run: a destructive operation, an operation that reaches the brake's own state, an operation the brake could not evaluate, or, in Claude Code, the first project tool call of a session that has not loaded PMNM
 - `Ask` means a sensitive or unclassified operation did not run and needs a human answer
 
-Both cards name the single-use `PMNM-<code>` token, four characters without look-alikes, the human may reply with; an event without a session id gets no token, and only the human can run that operation. In Claude Code a deterministic sensitive operation uses the host's own permission prompt instead of an `Ask` card. The retired interlock had a third level, `Note`, which meant work may continue; the brake has no `Note`.
+A card for a destructive, sensitive or unclassified operation names the single-use `PMNM-<code>` token, four characters without look-alikes, the human may reply with. Some cards carry no token: the stop for the brake's own state, the stop for an operation the brake could not evaluate, the Claude Code load stop, and the cards that say no token was issued because there are too many open approvals, because another session holds the approvals lock, or because the event has no session id to bind one to. In Claude Code a deterministic sensitive operation uses the host's own permission prompt instead of an `Ask` card. The retired interlock had a third level, `Note`, which meant work may continue; the brake has no `Note`.
 
 Each card has one explanation line and one `NEXT:` line. A card does not teach the workflow. It stops one operation and directs the agent to the next valid step. The retired interlock used the same shape to make a small set of procedural invariants harder to skip.
 
-A NEXT line is an order: one verb in the imperative, its limit, and who acts next. It names the one next action and may name what the human can do instead. It gives the model no alternatives to weigh, no explanation beyond its limit, and never the word wait. The retired interlock wrote waiting for the human as "stop here; no more actions until the human answers" and named paths absolutely, because the model may never have read the folder in this session. Hardness follows the evidence that prose was not enough, never the effort label.
+A NEXT line is an order: one verb in the imperative, its limit, and who acts next. It names the one next action and may name what the human can do instead. It gives the model no alternatives to weigh and no explanation beyond its limit. The agent's action is never to wait; the full-approvals card names waiting for an open approval to expire only as the human's alternative to answering one. The retired interlock wrote waiting for the human as "stop here; no more actions until the human answers" and named paths absolutely, because the model may never have read the folder in this session. Hardness follows the evidence that prose was not enough, never the effort label.
 
 No hook can prove that investigation was sufficient, a model statement was true, a human understood a plan, or every system effect was intercepted. Host trust, installation, event delivery and semantic correctness remain separate claims.
 
@@ -265,7 +265,7 @@ Every passed verification has current `example:` and `unchanged:` claims. A stat
 
 The retired Codex interlock separated transient session state, reusable project authority and task-scoped implementation state under one canonical project identity. Different sessions could select different tasks without sharing transient flow or task authority. Sessions that selected the same task observed its monotonic revision and had to reload before stale state could authorize another material write. Each layer persisted only bounded hashes, counters and event metadata, never raw prompts, command previews, tool output or evidence.
 
-The brake keeps less. Under the host's plugin data it keeps a secret key, pending approvals and one-time grants, the confirmed judge, the allowed MCP servers and decision counts; in the PMNM folder it keeps sealed verdicts by operation hash. It never stores a prompt, tool output, a transcript or a command in clear.
+The brake keeps less. Under the host's plugin data it keeps a secret key, pending approvals and one-time grants, the confirmed judge, the allowed MCP servers and sealed hashes of session ids for the first-prompt line and the Claude Code load stop, all sealed; decision counts and the marks of judge re-evaluation notices already shown are unsealed. In the PMNM folder it keeps sealed verdicts by operation hash. It never stores a prompt, tool output, a transcript or a command in clear.
 
 Unknown commands are classified conservatively. Opaque wrappers are not trusted to hide their effect. Native host approval and sandbox controls remain authoritative even after a PMNM approval token.
 

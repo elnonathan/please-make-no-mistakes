@@ -2,17 +2,17 @@
 
 ## Contract
 
-Please, Make No Mistakes uses two repository marketplaces, one for Codex and one for Claude Code. Both select the same exact npm package version, which contains the portable skill and the optional destructive-operation brake for both hosts:
+Please, Make No Mistakes uses two repository marketplaces, one for Claude Code and one for Codex. Both select the same exact npm package version, which contains the portable skill and the optional destructive-operation brake for both hosts:
 
 ```text
 GitHub repository marketplace
   -> exact npm package version
-  -> Codex or Claude Code plugin installation
+  -> Claude Code or Codex plugin installation
 ```
 
-The repository is the marketplace source users add to Codex or to Claude Code. Its marketplace identity is also `please-make-no-mistakes` in both hosts, which avoids colliding with another repository owned by the same maintainer. `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` each pin the same immutable npm version and are not packaged themselves. `.claude-plugin/plugin.json` exposes the Claude Code plugin, whose hooks are `hooks/claude/hooks.json`; `.codex-plugin/plugin.json` exposes the packaged `skills/` directory, and its `hooks` field declares `./hooks/codex/hooks.json`, which replaces Codex's default discovery. No conventional `hooks/hooks.json` ships, because Claude Code merges that file into any plugin root that carries one. A release changes the package, plugin, marketplace, skill, and brake artifact together.
+The repository is the marketplace source users add to Claude Code or to Codex. Its marketplace identity is also `please-make-no-mistakes` in both hosts, which avoids colliding with another repository owned by the same maintainer. `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json` each pin the same immutable npm version and are not packaged themselves. `.claude-plugin/plugin.json` exposes the Claude Code plugin, whose hooks are `hooks/claude/hooks.json`; `.codex-plugin/plugin.json` exposes the packaged `skills/` directory, and its `hooks` field declares `./hooks/codex/hooks.json`, which replaces Codex's default discovery. No conventional `hooks/hooks.json` ships, because Claude Code merges that file into any plugin root that carries one. A release changes the package, plugin, marketplace, skill, and brake artifact together.
 
-The npm package is also the canonical transport artifact for future compatible hosts. It does not imply universal activation: each host still needs a documented and tested registration route. The host-specific routes are Codex and Claude Code; [SETUP.md](../SETUP.md) fails closed rather than inventing commands for another host.
+The npm package is also the canonical transport artifact another host could use, but integration with other hosts is not officially supported. It does not imply universal activation: each host still needs a documented and tested registration route. The supported routes are Claude Code and Codex; [SETUP.md](../SETUP.md) fails closed rather than inventing commands for another host.
 
 This route does not depend on a listing in the OpenAI Plugins Directory. A future directory submission would be a separate release and trust boundary.
 
@@ -33,6 +33,7 @@ It packs the declared payload, rejects unsafe or undeclared entries, installs th
 For version `X.Y.Z`, all of these must agree before tagging:
 
 - `package.json` version is `X.Y.Z`;
+- `.claude-plugin/plugin.json` version is `X.Y.Z`;
 - `.codex-plugin/plugin.json` version is `X.Y.Z`;
 - `.agents/plugins/marketplace.json` selects npm package `please-make-no-mistakes` at `X.Y.Z` from `https://registry.npmjs.org`;
 - `.claude-plugin/marketplace.json` selects the same package, version and registry;

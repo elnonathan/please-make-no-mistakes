@@ -8,7 +8,13 @@ Once installed, ask your coding agent for the software work you actually need. P
 <what is wrong or wanted>. Show me the plan, implement the smallest supported change and verify it.
 ```
 
-You may invoke the skill explicitly when the host supports it:
+You may invoke the skill explicitly when the host supports it. In Claude Code:
+
+```text
+/please-make-no-mistakes:please-make-no-mistakes <the work you need>
+```
+
+In Codex:
 
 ```text
 $please-make-no-mistakes <the work you need>
@@ -26,9 +32,13 @@ The only other folder questions are whether a possibly matching task folder is t
 
 ## When The Brake Is Active
 
-The Codex and Claude Code plugins include an optional guard: a destructive-operation brake. In Codex it runs after you review and trust its current definition through `/hooks`. In Claude Code, enabling the plugin runs it without a separate trust step.
+The Claude Code and Codex plugins include an optional guard: a destructive-operation brake. In Claude Code, enabling the plugin runs it without a separate trust step. In Codex it runs after you review and trust its current definition through `/hooks`.
 
-The brake stops deletions, overwrites, history rewrites, service restarts, publication and other irreversible or sensitive operations before they run. Ordinary reads and project edits pass. A stop prints a card with two lines: what happened, and `NEXT:` with one exact action. Its first word is the level. Blocked means a destructive operation did not run. Ask means another stopped operation did not run. Either way the agent shows you the exact operation and stops; it runs only if you reply with the exact `PMNM-<code>` token the card names, in any letter case, or you run it yourself. In Claude Code, some sensitive operations use the host's own permission prompt instead of a card.
+The brake stops deletions, overwrites, history rewrites, service restarts, publication and other irreversible or sensitive operations before they run. Ordinary reads and project edits pass. A stop prints a card with two lines: what happened, and `NEXT:` with one exact action. Its first word is the level. Blocked means a destructive operation did not run, or one the brake keeps for you alone. Ask means another stopped operation did not run. Either way the agent shows you the exact operation and stops; it runs only if you reply with the exact `PMNM-<code>` token the card names, in any letter case, or you run it yourself. A card with no token means only you can run that operation, or its `NEXT:` line names another action. In Claude Code, some sensitive operations use the host's own permission prompt instead of a card.
+
+On first use the brake has no judge model. The agent proposes the cheapest model the host offers, with its published prices, and asks you to confirm it with a prompt you send yourself; [SETUP](../SETUP.md#the-brake-after-installation) gives its exact form. Until you confirm one, every operation the brake's rules cannot place stops for your token.
+
+In Claude Code, when the agent has not loaded PMNM, the first tool call of a session that can touch the project is stopped once with a card that asks it to load the skill with the Skill tool. The agent loads it and retries. Send `PMNM-SKIP` alone to turn that stop off for the session.
 
 The guard is intentionally partial. It can stop the destructive or sensitive operations its host sends it, but it cannot establish product intent, evidence quality, complete tool coverage or semantic correctness. When it is absent, disabled, untrusted, unsupported or bypassed, PMNM continues as a portable advisory skill.
 

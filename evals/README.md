@@ -237,25 +237,29 @@ It covers:
 - scripts, package scripts, make targets and other carriers classified by what they run;
 - non-shell tools: edits, secret files and MCP tools by name, the allowed and revoked MCP servers, and tools named for destruction;
 - the judge: no model picked by the brake, confirmation only by the exact human prompt, a changed host catalog, a model that does not answer, and no stored free text;
-- sealed verdicts and grants: a forged or moved entry grants nothing, an edited script invalidates its verdict, and commands that touch the brake's own state are sensitive;
+- sealed verdicts and grants: a forged or moved entry grants nothing, an edited script invalidates its verdict, and an operation that reaches the brake's own state, by any spelling, glob, hardlink or symlink, is denied on both hosts with no token;
 - single-use `PMNM-<code>` tokens bound to one operation and one session, and no in-band approval without a session id;
-- host decisions on Codex and Claude Code, including the native ask for a deterministic sensitive operation in Claude Code.
+- approval limits and the lock: an open token is never evicted, a session past 8 open tokens and all sessions past 128 get an explicit refusal, a reply that matches no open token says so, a lock that cannot be taken writes nothing and issues no token, and a stale lock does not block approvals;
+- the first-prompt line that asks the agent to load PMNM, once per session and in each host's own way;
+- the Claude Code load stop: the first project tool call of a session that has not loaded the skill with the Skill tool stops once with no token, only the exact skill identifier counts as a load, `PMNM-SKIP` lifts the stop for one session, and Codex is never stopped;
+- host decisions on Claude Code and Codex, including the native ask for a deterministic sensitive operation in Claude Code.
 
 These are synthetic hook events. Passing them does not prove the hook was discovered, trusted or executed by a host.
 
 ## Live brake evaluation
 
-Run these checks on Codex and on Claude Code. Use a clean client session and a disposable repository state. Record separately:
+Run these checks on Claude Code and on Codex. Use a clean client session and a disposable repository state. Record separately:
 
 1. the installed package identity;
 2. hook discovery in the client;
 3. human review and trust in Codex, and plugin enablement in Claude Code;
-4. a destructive command that does not run and receives a `Blocked:` card naming a `PMNM-<code>` token;
-5. the human's exact token reply, after which the agent's identical rerun runs once and a second rerun stops again;
-6. judge confirmation: an operation the rules cannot place asks until the human sends `PMNM-CONFIRM-JUDGE <host> <model>` for a model the host offers, and the next such operation is classified by that model;
-7. in Claude Code, a deterministic sensitive operation that shows the host's own permission prompt;
-8. ordinary project reads and edits that run without a stop;
-9. `npm run release:verify` against the installed tree.
+4. in Claude Code, before the skill is loaded, the first project tool call is stopped once with a `Blocked:` card that names no token and says to load the skill with the Skill tool; after the load, or after the human's `PMNM-SKIP`, it runs;
+5. a destructive command that does not run and receives a `Blocked:` card naming a `PMNM-<code>` token; in Claude Code, run it after the skill is loaded, or the load stop answers first;
+6. the human's exact token reply, after which the agent's identical rerun runs once and a second rerun stops again;
+7. judge confirmation: an operation the rules cannot place asks until the human sends `PMNM-CONFIRM-JUDGE <host> <model>` for a model the host offers, and the next such operation is classified by that model;
+8. in Claude Code, a deterministic sensitive operation that shows the host's own permission prompt;
+9. ordinary project reads and edits that run without a stop;
+10. `npm run release:verify` against the installed tree.
 
 Include a cold run with no pointer and a warm run with the same PMNM folder. Include a new test file or equivalent new artifact so the trial exercises untracked output. Include one interruption after implementation begins and resume with conversation history absent.
 
@@ -301,7 +305,7 @@ Compare observable outcomes, not phrasing:
 - same two human moments, the plan Digest and the audit, plus only the questions the human alone can answer;
 - same four folder-related questions at most;
 - same PMNM folder and task reconstruction behavior;
-- same meaning for Digest, redo, verification and audit;
+- same meaning for Digest, a withdrawn Digest, verification and audit;
 - honest disclosure where the host cannot enforce a boundary.
 
 ## Communication

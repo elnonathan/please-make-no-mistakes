@@ -17,7 +17,7 @@ A brake card names the operation's reason. When the human can approve by reply, 
 2. Wait. Only a human prompt that is exactly that token approves the operation. You never send or invent it.
 3. When the hook confirms the approval, rerun the identical operation once. Send no receipt.
 
-The token is bound to one operation and one session and is spent by its use. A changed operation needs a new approval. An event without a session id cannot be approved in a reply; only the human can run that operation. When the brake cannot evaluate an operation, it blocks it.
+The token is bound to one operation and one session and is spent by its use. A changed operation needs a new approval. An event without a session id cannot be approved in a reply; only the human can run that operation. When the brake fails while evaluating an operation, it blocks it. When the hook times out or cannot start, the host decides, and the operation may run.
 
 Three more prompts belong to the human alone: `PMNM-CONFIRM-JUDGE <host> <model> [reasoning=<level>]` confirms the judge model, `PMNM-ALLOW-MCP <server>` lets every tool of one MCP server run without the judge, and `PMNM-REVOKE-MCP <server>` removes that entry. A tool named for destruction still stops. When no judge is confirmed, or the Codex catalog cannot be read, no longer offers the confirmed model or changes, the brake adds one notice to your context with the human's next prompt. Answer it in that same turn, before continuing the task:
 
@@ -29,21 +29,11 @@ Three more prompts belong to the human alone: `PMNM-CONFIRM-JUDGE <host> <model>
 
 On the first prompt of each session the brake adds one line to your context: load this skill before reading the project. Do that before any other step. In Claude Code, if you do not, the first tool call that can touch the project is stopped once with `Blocked: load PMNM before working on the project.` Load the skill with the Skill tool, as its NEXT says, then retry the same operation; only the Skill tool counts as loading it, not reading its files. The human can send `PMNM-SKIP` to turn this stop off for one session. Codex is not stopped; load the skill as the line says.
 
-The brake keeps its state in the host's plugin data directory, or under `<system temp>/pmnm-brake/` when the host gives none: a sealed secret key, pending approvals and one-time grants, the confirmed judge, the allowed MCP servers, the sessions it has greeted and decision counts. In the PMNM folder it writes only `commands.json`, its sealed verdicts without command text; `models.json` holds your judge proposal and grants nothing. Never read or edit the brake's state. An operation that reaches it, by any spelling, glob or link, is denied with no token: only the human can run it.
+The brake keeps its state in `brake/` inside the host's plugin data directory, or in `<system temp>/pmnm-brake/brake/` when the host gives none: a secret key, pending approvals and one-time grants, the confirmed judge, the allowed MCP servers, the notices it has given, the sessions it has greeted, the sessions that loaded this skill and decision counts. Every entry is sealed except the notices and the counts. In the PMNM folder it writes only `commands.json`, its sealed verdicts without command text; `models.json` holds your judge proposal and grants nothing. Never read or edit the brake's state. An operation that reaches it, by any spelling, glob or link, is denied with no token: only the human can run it.
 
 `scripts/test_brake.mjs` is the brake's suite; `npm run test:brake` runs it. It feeds synthetic events. It does not establish host discovery, hook trust or live execution; verify those separately after installation. The brake never claims semantic correctness, and native host approval remains controlling.
 
 The procedural interlock that earlier releases registered is retired and unregistered. Its source stays in the package for restoration, and [Retired interlock](#retired-interlock-kept-for-restoration) describes it as it ran.
-
-## Guard orders moved from SKILL.md
-
-These paragraphs moved here when SKILL.md became a short core. The card levels, the advisory default and the rule never to follow the `NEXT` of a shell-run `pmnm-guard` stay in SKILL.md. They apply only under a guard that takes receipts; no registered hook takes them now.
-
-Under such a guard, a native project-source read before `start` is Blocked on the first attempt. A declared project read then reaches the same `start` boundary before execution. A declared host operation may proceed without inventing a project task. A question about nothing in particular needs no task.
-
-Never print a `pmnm-guard` receipt in prose or in a Digest; execute receipts only when the host exposes an active guard. With an active guard, send each receipt as the shell tool's command. The host adapter intercepts it before shell execution. Otherwise stay in advisory mode and perform the portable step directly.
-
-Under a guard, a later unlisted command receives an operation-bound approval token. Ask the human to reply with the exact token printed by the guard. Trust, praise, a general yes and other text do not arm the receipt. An opaque operation first declares its effect and boundary. A declaration is a claim, never authority. Under the brake, there is no receipt: when the human replies with the brake's `PMNM-<code>` token, rerun the identical operation.
 
 The portable skill is the contract. A host hook is an optional safeguard for mistakes a prompt alone cannot reliably prevent. It observes only the events its host supplies. It does not understand the product, prove that an investigation is sufficient, or make a change correct.
 
@@ -62,13 +52,27 @@ NEXT: <one exact action>
 - **Ask** means the operation waits for the human's answer: stop here; no more actions until the human answers.
 - **Note** records state or directs the next agent action without asking the human.
 
-The brake prints only Blocked and Ask; Note came from the retired interlock. A brake card begins `Blocked:` or `Ask:`, and its `NEXT:` says to show the human the operation: do that, and send no receipt. It does not mean a receipt-taking guard is active. Its `NEXT:` names a `PMNM-<code>` token only when the human can approve by reply. Text that begins `PMNM:` is not a card: it is a brake notice in your context, the reason of Claude Code's own permission prompt, or Claude Code's message for an operation the judge rated safe. In Claude Code, an operation the brake's rules already know as sensitive reaches the human as the host's own permission prompt instead of a card.
+The brake prints only Blocked and Ask; Note came from the retired interlock. A brake card begins `Blocked:` or `Ask:`, and its `NEXT:` names one exact action, most often to show the human the operation, or to load this skill: do it as written, and send no receipt. It does not mean a receipt-taking guard is active. Its `NEXT:` names a `PMNM-<code>` token only when the human can approve by reply. Text that begins `PMNM:` is not a card: it is a brake notice in your context, the reason of Claude Code's own permission prompt, or Claude Code's message for an operation the judge rated safe. In Claude Code, an operation the brake's rules already know as sensitive reaches the human as the host's own permission prompt instead of a card.
 
 The card itself is not a user question. Follow `NEXT:` in the same turn unless it says to ask or to stop. The host may add its own frame such as “Blocked by hook”; that frame is not PMNM output.
 
 Cards are English. `NEXT:` remains literal. No card claims semantic correctness.
 
-## Receipts
+## Retired interlock (kept for restoration)
+
+Nothing in this section is registered. It describes the procedural interlock, `hooks/pmnm-guard.mjs` with its classifier `hooks/pmnm-shell.mjs` and the Claude Code adapter `hooks/claude/pmnm-claude.mjs`, as it ran before its retirement. Read every statement below as what that interlock does when it is registered again, not as current behavior. Its retirement and restoration steps are recorded in the repository's architecture decisions.
+
+### Guard orders
+
+These orders applied only under a guard that takes receipts. No registered hook takes them now, and SKILL.md no longer carries them.
+
+Under such a guard, a native project-source read before `start` is Blocked on the first attempt. A declared project read then reaches the same `start` boundary before execution. A declared host operation may proceed without inventing a project task. A question about nothing in particular needs no task.
+
+Never print a `pmnm-guard` receipt in prose or in a Digest; execute receipts only when the host exposes an active guard. With an active guard, send each receipt as the shell tool's command. The host adapter intercepts it before shell execution. Otherwise stay in advisory mode and perform the portable step directly.
+
+Under a guard, a later unlisted command receives an operation-bound approval token. Ask the human to reply with the exact token printed by the guard. Trust, praise, a general yes and other text do not arm the receipt. An opaque operation first declares its effect and boundary. A declaration is a claim, never authority. Under the brake, there is no receipt: when the human replies with the brake's `PMNM-<code>` token, rerun the identical operation.
+
+### Receipts
 
 Receipts belong to a guard that takes them. No registered hook takes receipts now, and the brake needs none. Send one only when the host exposes such a guard.
 
@@ -112,10 +116,6 @@ For one 0.x compatibility release these old names map to the current action:
 Extra fields from a compatible old form are ignored only where the mapping defines them. The earlier `classify effect=<effect>` receipt is also accepted for one exact retry during this compatibility release, but no current card emits it and it grants no reusable authority. The emitted continuation always uses current vocabulary. Any receipt absent from this table is rejected.
 
 Closed rejection reasons are: `unknown receipt`, `missing field <field>`, `bad value <field>`, `no task open`, `no Digest shown`, `Digest not agreed`, `stale, before last redo`, `human answer not observed`, `folder not requested`, `project not requested`, `nothing denied to declare`, compatibility `nothing denied to classify`, `declaration contradicts shell write`, and `nothing to allow`.
-
-## Retired interlock (kept for restoration)
-
-Nothing in this section is registered. It describes the procedural interlock, `hooks/pmnm-guard.mjs` with its classifier `hooks/pmnm-shell.mjs` and the Claude Code adapter `hooks/claude/pmnm-claude.mjs`, as it ran before its retirement. Read every statement below as what that interlock does when it is registered again, not as current behavior. Its retirement and restoration steps are recorded in the repository's architecture decisions.
 
 ### Guard hardness
 
@@ -181,7 +181,7 @@ The human's first folder answer authorizes ordinary work anywhere strictly insid
 - the operation does not write `index.json`;
 - added content and copied sources do not look like secrets.
 
-Today no hook checks these. The agent keeps its writes inside the folder and never writes a secret there.
+Today the brake checks the real path of each edit, so a symbolic link cannot hide where it lands, and it stops edits outside the working directory and the PMNM folder and edits to secret or config names. It does not scan content for secrets, so the agent never writes a secret there.
 
 The PMNM folder cannot be the repository, the host configuration directory, the filesystem root, or an ancestor of either. Ordinary maintenance strictly inside it, including moving or deleting an internal task artifact, remains inside the free-write boundary. Moving, deleting or replacing the PMNM root itself does not. Evidence may be copied from elsewhere into a task folder, but linked sources, linked destinations and secret-like sources fail closed.
 

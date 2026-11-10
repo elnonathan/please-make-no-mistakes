@@ -6,11 +6,13 @@
 
 <p align="center"><strong>Epistemic integrity for software engineering with AI</strong></p>
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-72e0a8?style=flat-square)](LICENSE) [![OpenAI Codex plugin](https://img.shields.io/badge/OpenAI%20Codex-plugin-111827?style=flat-square)](SETUP.md#install-with-codex) [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-111827?style=flat-square)](SETUP.md#install-with-claude-code)
+[![License: MIT](https://img.shields.io/badge/license-MIT-72e0a8?style=flat-square)](LICENSE) [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-111827?style=flat-square)](SETUP.md#install-with-claude-code) [![OpenAI Codex plugin](https://img.shields.io/badge/OpenAI%20Codex-plugin-111827?style=flat-square)](SETUP.md#install-with-codex)
 
 [Install](#install) · [Getting started](docs/getting-started.md) · [Setup](SETUP.md) · [Security](SECURITY.md)
 
-Please, Make No Mistakes (PMNM) is a portable agent skill for work where context, evidence, and consequences matter. Its Codex and Claude Code plugins also include an optional lifecycle guard: a destructive-operation brake that stops deletions, overwrites, service restarts and other irreversible operations until you approve them, and asks the model you confirmed, by default the cheapest the host offers, only about what its rules cannot place.
+Please, Make No Mistakes (PMNM) is a portable agent skill for work where context, evidence, and consequences matter. It supports Claude Code and Codex. Integration with other coding agents is possible but not officially supported, and is work in progress.
+
+The Claude Code and Codex plugins also include an optional lifecycle guard: a destructive-operation brake that stops deletions, overwrites, service restarts and other irreversible operations until you approve them, and asks a judge model you confirmed only about what its rules cannot place.
 
 > “Please, make no mistakes” is an impossible request. This project does not promise infallibility. It makes avoidable mistakes harder to miss.
 
@@ -18,21 +20,29 @@ Please, Make No Mistakes (PMNM) is a portable agent skill for work where context
 
 Share [this repository](https://github.com/elnonathan/please-make-no-mistakes) with your coding agent and ask it to install PMNM by following [SETUP.md](SETUP.md). The setup guide identifies the host that is actually running, selects a supported registration route, preserves existing configuration, and verifies the installed skill and any host hook separately.
 
-This repository is a plugin marketplace for Codex and for Claude Code, and both marketplaces select the same exact npm version. Another host should use its own documented skill or plugin mechanism. npm can carry the exact artifact, but installing the package alone does not make a host load it.
+This repository is a plugin marketplace for Claude Code and for Codex, and both marketplaces select the same exact npm version. Another host is not officially supported. It can use its own documented skill or plugin mechanism. npm can carry the exact artifact, but installing the package alone does not make a host load it.
 
-The Agent Skill is the portable part of PMNM. The bundled lifecycle guard is one brake, implemented and tested for Codex and for Claude Code, each host registering it through its own hook file. Other hosts may discover the portable skill through their own supported mechanisms, but this repository does not yet claim their complete PMNM folder workflow. That workflow needs one documented literal pointer, and any host guard needs its own implementation and verification. Similar hook names do not establish compatibility, and a host adapter must not replace another host's hook or weaken its tested behavior.
+The Agent Skill is the portable part of PMNM. The bundled lifecycle guard is one brake, implemented and tested for Claude Code and for Codex, each host registering it through its own hook file. Other hosts may discover the portable skill through their own supported mechanisms, but this repository does not yet claim their complete PMNM folder workflow. That workflow needs one documented literal pointer, and any host guard needs its own implementation and verification. Similar hook names do not establish compatibility, and a host adapter must not replace another host's hook or weaken its tested behavior.
 
 ## Status by host
 
-| Capability | Codex | Claude Code |
+| Capability | Claude Code | Codex |
 | --- | --- | --- |
-| Portable skill | Included in the plugin and covered by source and installation checks | Included in the plugin and covered by source, marketplace and plugin validation checks |
-| PMNM folder pointer | `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path`, remembers the folder | `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path`, remembers the folder |
-| Lifecycle guard | Destructive-operation brake (`hooks/codex/hooks.json`); unplaced operations judged by the Codex model you confirmed, by default the cheapest; approval by exact token | The same brake (`hooks/claude/hooks.json`); unplaced operations judged by the Claude model you confirmed, by default the cheapest; the host's own prompt for deterministic sensitive operations |
-| Evidence in this repository | Release gate and brake suite cover the current revision. Installed-host behavior remains a separate check | Release gate, brake and hook discovery suites cover the current revision. Installed-host behavior remains a separate check |
+| Portable skill | Included in the plugin and covered by source, marketplace and plugin validation checks | Included in the plugin and covered by source and installation checks |
+| PMNM folder pointer | `<CLAUDE_CONFIG_DIR>/pmnm.path`, or `~/.claude/pmnm.path`, remembers the folder | `<CODEX_HOME>/pmnm.path`, or `~/.codex/pmnm.path`, remembers the folder |
+| Lifecycle guard | Destructive-operation brake (`hooks/claude/hooks.json`) on every tool call | The same brake (`hooks/codex/hooks.json`) on shell, file edit, patch and MCP tool calls |
+| Hook trust | Enabling the plugin runs the brake | You review and trust the hook in `/hooks`, and again after each change to it |
+| Approval | Claude Code's own permission prompt for operations the rules mark sensitive; the exact `PMNM-<code>` token for the rest | The exact `PMNM-<code>` token |
+| Judge model | The Claude model you confirmed. Claude Code keeps no model catalog, so your confirmation alone names it | The Codex model you confirmed, checked against the Codex model catalog |
+| Safe judge verdict | Runs with a notice that names the judge model | Runs without a notice |
+| Skill loading | A line on the first prompt asks the agent to load PMNM. If the agent has not loaded it, the first project call of the session is stopped once with a card that asks it to. `PMNM-SKIP` turns the stop off for the session | A line on the first prompt asks the agent to load PMNM |
+| Hook time limit | 30 seconds | 45 seconds for a tool call, 10 seconds for a prompt |
+| Evidence in this repository | Release gate, brake and hook discovery suites cover the current revision. Installed-host behavior remains a separate check | Release gate and brake suite cover the current revision, and `verify:published` checks a published version. Installed-host behavior remains a separate check |
 | Install route | Plugin from this repository's marketplace | Plugin from this repository's marketplace |
 
-The sections below describe portable PMNM. Host enforcement, the brake for Codex and Claude Code, is named explicitly.
+On both hosts, the brake blocks an operation when it fails while evaluating it. A brake that runs past its time limit or cannot start is handled by the host, which may let the operation run. The repository checks also run on Windows, but no live session there has exercised the brake on either host.
+
+The sections below describe portable PMNM. Host enforcement, the brake for Claude Code and Codex, is named explicitly.
 
 The public package contains the same runtime artifact under [skills/please-make-no-mistakes](skills/please-make-no-mistakes). Detailed installation, update, rollback, removal, and verification procedures live in SETUP so neither the user nor the agent has to invent missing steps.
 
@@ -62,13 +72,13 @@ PMNM asks the agent for four things: say the invariant, not the instance; say th
 
 7. **PMNM adapts to you and your project.** Reusable project knowledge keeps its source, scope, certainty and freshness. At audit, the agent decides what is genuinely reusable and leaves one-off findings with their task. When you give an always-or-never instruction, it asks once whether that rule belongs to this project or applies generally.
 
-8. **A brake stops irreversible operations.** On Codex and Claude Code an optional hook stops deletions, history rewrites, service restarts, publication and datastore drops before they run, and asks you for the exact approval token. Ordinary reads and project edits pass without asking. When its rules cannot place an operation, the model you confirmed, by default the cheapest the host offers, classifies it once; only a safe, high-confidence verdict runs without you. An approval covers one run of that exact operation. The model's rating of it is kept, so the same operation is not judged again: a safe rating runs and any other rating asks you directly. Guards, not jailers.
+8. **A brake stops irreversible operations.** On Claude Code and Codex an optional hook stops deletions, history rewrites, service restarts, publication and datastore drops before they run. It asks you for the exact approval token. In Claude Code, an operation its rules mark sensitive goes to Claude Code's own permission prompt instead. Ordinary reads and project edits pass without asking. When its rules cannot place an operation, a judge model classifies it once. The agent proposes the cheapest model the host offers and you confirm it; until you do, those operations stop for your token, and only a safe, high-confidence verdict runs without you. An approval covers one run of that exact operation. The model's rating of it is kept, so the same operation is not judged again: a safe rating runs and any other rating asks you directly. In Claude Code the brake also stops the first project call of each session once when the agent has not loaded PMNM, and asks it to load it; `PMNM-SKIP` turns that stop off for the session. Guards, not jailers.
 
 ## How it works
 
 PMNM has four parts.
 
-1. **The PMNM folder.** Its location is asked once per machine (`~/PMNM` is suggested) and remembered by the host, so setup does not become a recurring conversation. Inside live the general rules, one folder per project with human-owned rules and evidence-backed knowledge, and one folder per task with its plan, verification, permission forecast and evidence. The agent writes there without asking, and never writes a secret there.
+1. **The PMNM folder.** Its location is asked once per machine (`~/PMNM` is suggested) and remembered by the host, so setup does not become a recurring conversation. Inside live the general rules, one folder per project with human-owned rules and evidence-backed knowledge, and one folder per task with its plan, verification, permission forecast and evidence. The agent writes there without asking, and never writes a secret there. The brake still stops a deletion, a move, or an edit to a secret or configuration file there.
 
 2. **The flow.** Investigate, agree the files, states or deliverable and its limits, work inside them, verify, then audit before acceptance. You enter at the plan and at the audit at every effort level, and sooner when only you can decide or a new action needs a yes of its own.
 
@@ -84,7 +94,11 @@ The runtime contract, in the agent's own language, is one file that routes to su
 
 Once installed, work with your coding agent as usual. Ask it to investigate, design, implement, debug, refactor, review, verify, or resume software work. No special phrasing is required when the host supports implicit activation.
 
-When the host supports direct skill invocation, you can require it for a particular request:
+When the host supports direct skill invocation, you can require it for a particular request. In Claude Code:
+
+    /please-make-no-mistakes:please-make-no-mistakes <the work you need>
+
+In Codex:
 
     $please-make-no-mistakes <the work you need>
 
@@ -130,23 +144,23 @@ The skill does not:
 
 8. Store personal or project context inside the installed skill.
 
-9. Ask where its folder goes more than once, or ask permission for anything inside it.
+9. Ask where its folder goes more than once, or ask permission for ordinary writes inside it.
 
 10. Turn a brake approval or a judge verdict into proof of sufficient investigation, correct product intent, complete coverage, or valid human authority.
 
 ## Repository map
 
-1. [.codex-plugin/plugin.json](.codex-plugin/plugin.json): Plugin identity, skill route, presentation metadata, and the declared Codex hook file `hooks/codex/hooks.json`. No conventional `hooks/hooks.json` ships, so a Claude Code root does not merge the Codex hooks.
+1. [.claude-plugin/plugin.json](.claude-plugin/plugin.json): Claude Code plugin identity; its hooks are `hooks/claude/hooks.json`.
 
-2. [.agents/plugins/marketplace.json](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.agents/plugins/marketplace.json): GitHub marketplace catalog for Codex that pins the exact npm plugin version.
+2. [.claude-plugin/marketplace.json](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.claude-plugin/marketplace.json): GitHub marketplace catalog for Claude Code that pins the same exact npm plugin version.
 
-3. [.claude-plugin/plugin.json](.claude-plugin/plugin.json): Claude Code plugin identity; its hooks are `hooks/claude/hooks.json`.
+3. [.codex-plugin/plugin.json](.codex-plugin/plugin.json): Plugin identity, skill route, presentation metadata, and the declared Codex hook file `hooks/codex/hooks.json`. No conventional `hooks/hooks.json` ships, so a Claude Code root does not merge the Codex hooks.
 
-4. [.claude-plugin/marketplace.json](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.claude-plugin/marketplace.json): GitHub marketplace catalog for Claude Code that pins the same exact npm plugin version.
+4. [.agents/plugins/marketplace.json](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.agents/plugins/marketplace.json): GitHub marketplace catalog for Codex that pins the exact npm plugin version.
 
 5. [.github/workflows/publish.yml](https://github.com/elnonathan/please-make-no-mistakes/blob/main/.github/workflows/publish.yml): Tag only npm Trusted Publishing workflow.
 
-6. [hooks](hooks): The destructive-operation brake (`pmnm-brake.mjs`) and the Codex and Claude Code hook files that register it. The retired interlock engine and Claude adapter stay alongside, unregistered, for rollback.
+6. [hooks](hooks): The destructive-operation brake (`pmnm-brake.mjs`) and the Claude Code and Codex hook files that register it. The retired interlock engine and Claude adapter stay alongside, unregistered, for rollback.
 
 7. [skills/please-make-no-mistakes/SKILL.md](skills/please-make-no-mistakes/SKILL.md): The kernel: the four parts of PMNM and the reference table.
 
@@ -183,11 +197,11 @@ From the package root:
 
 The complete release candidate gate is available through npm run release:verify.
 
-After publishing an exact version, npm run verify:published checks the package and its tag pinned Codex installation. The install comparison and the retired interlock's action oracle, kept for rollback, remain available for maintainers who need to inspect a specific installed copy or an interlock transition sequence. These checks can detect the omissions and ordering failures they cover. They cannot establish semantic truth or guarantee that a running client loaded the current revision.
+After publishing an exact version, npm run verify:published checks the package and its tag pinned Codex installation. It covers Codex only. For Claude Code, the verification steps in SETUP.md check the installation. The install comparison and the retired interlock's action oracle, kept for rollback, remain available for maintainers who need to inspect a specific installed copy or an interlock transition sequence. These checks can detect the omissions and ordering failures they cover. They cannot establish semantic truth or guarantee that a running client loaded the current revision.
 
 ## Distribution boundary
 
-The tested distribution routes are a Codex plugin and a Claude Code plugin through this GitHub repository's marketplaces. Each marketplace pins the same exact npm artifact containing the portable skill and the bundled brake. npm install alone does not register the plugin, enable its skill, or trust its hook in Codex, Claude Code or another host. Another coding agent may use the portable skill only through its own verified skill or plugin mechanism.
+The tested distribution routes are a Claude Code plugin and a Codex plugin through this GitHub repository's marketplaces. Each marketplace pins the same exact npm artifact containing the portable skill and the bundled brake. npm install alone does not register the plugin, enable its skill, or trust its hook in Claude Code, Codex or another host. Another coding agent may use the portable skill only through its own verified skill or plugin mechanism, and that integration is not officially supported.
 
 This route does not depend on an OpenAI Plugins Directory listing. Installation and update procedures live in [SETUP.md](SETUP.md). Release and supply chain controls live in [docs/distribution.md](docs/distribution.md).
 

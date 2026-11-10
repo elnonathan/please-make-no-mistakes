@@ -436,6 +436,8 @@ Run these cases against the portable skill in a fresh session. Score observable 
 
 ## 55. A receipt that reaches the shell falls back once
 
+**Retired.** This case tested receipts of the retired procedural interlock. No registered hook takes receipts, and the skill now says never to run `pmnm-guard`; score it only when that interlock is restored.
+
 **Fixture:** The portable skill is active, but a `pmnm-guard` receipt reaches the shell or returns command not found instead of producing an adapter card.
 
 **Must pass:** Treats the failed interception as evidence that enforcement was unavailable for that call, says so once and performs the same portable workflow step in advisory mode.
