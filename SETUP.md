@@ -42,7 +42,7 @@ Setup authority does not authorize analyzing the user's source repositories. A b
 
 The public source is `https://github.com/elnonathan/please-make-no-mistakes`. The marketplace identity is `please-make-no-mistakes`, and it must offer an exact package version rather than a mutable selector.
 
-The bundled brake additionally requires a supported Node.js runtime on PATH. This release is validated on Node.js 22 and 24. Inspect it before installation on either host:
+The bundled brake additionally requires a supported Node.js runtime on PATH. This release is validated on Node.js 22 and 24, on macOS and Linux. Windows support for the brake is in progress. Inspect it before installation on either host:
 
 ```bash
 node --version

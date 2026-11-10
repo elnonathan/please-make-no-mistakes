@@ -6,7 +6,7 @@ from __future__ import annotations
 import subprocess
 import unittest
 
-from release_verify import FULL_CHECKS, PORTABLE_CHECKS, run_checks
+from release_verify import FULL_CHECKS, NOT_YET_PORTABLE, PORTABLE_CHECKS, run_checks
 
 
 class ReleaseVerifyTests(unittest.TestCase):
@@ -42,15 +42,13 @@ class ReleaseVerifyTests(unittest.TestCase):
     def test_portable_profile_omits_only_nonportable_runtime_checks(self) -> None:
         full_names = {name for name, _command in FULL_CHECKS}
         portable_names = {name for name, _command in PORTABLE_CHECKS}
-        self.assertEqual(full_names - portable_names, {"installed-tree"})
+        self.assertEqual(full_names - portable_names, set(NOT_YET_PORTABLE))
         self.assertIn("package-and-skill", portable_names)
         self.assertIn("source-validator-adversarial", portable_names)
-        self.assertIn("brake", portable_names)
-        self.assertIn("host-guard", portable_names)
+        self.assertIn("documentation-contract", portable_names)
+        self.assertIn("documentation-adversarial", portable_names)
         self.assertIn("agent-evaluation", portable_names)
-        self.assertIn("distribution-artifact", portable_names)
-        self.assertIn("claude-adapter", portable_names)
-        self.assertIn("claude-discovery", portable_names)
+        self.assertIn("release-aggregator", portable_names)
         self.assertIn("claude-adapter", full_names)
         order = [name for name, _command in FULL_CHECKS]
         self.assertEqual(order[order.index("host-guard") + 1], "claude-adapter")

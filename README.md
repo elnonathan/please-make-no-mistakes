@@ -26,7 +26,7 @@ The Claude Code and Codex plugins also include a safety brake. It pauses destruc
 
 ## Install
 
-Share [this repository](https://github.com/elnonathan/please-make-no-mistakes) with your coding agent and ask it to follow [SETUP.md](SETUP.md). The guide covers installation and verification in Claude Code and Codex, including the skill and the brake.
+Share [this repository](https://github.com/elnonathan/please-make-no-mistakes) with your coding agent and ask it to follow [SETUP.md](SETUP.md). The guide covers installation and verification in Claude Code and Codex, including the skill and the brake. The brake runs on macOS and Linux. Windows support is in progress.
 
 Both plugins use the same pinned npm package. Installing the package alone does not activate PMNM. A complete setup for another agent still needs a documented way to find the PMNM folder and testing on that host.
 

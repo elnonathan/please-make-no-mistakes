@@ -1183,13 +1183,19 @@ test("a held lock costs one short wait per call, not two", (t) => {
   // The session loads the skill before the lock is taken, so only the measured call meets the lock.
   handle(bash("true", "/work/repo"), {host: "codex", env, folder});
   fs.writeFileSync(path.join(stateDirectory(env), "approvals.json.lock"), "");
+
+  // A token reply takes the lock once, so its time is one wait on this machine, however slow it is.
+  const referenceStarted = Date.now();
+  handle(reply("PMNM-ZZZZ"), {host: "codex", env, folder});
+  const oneWait = Date.now() - referenceStarted;
+
   const started = Date.now();
   const output = handle(bash("rm -rf src", "/work/repo"), {host: "codex", env, folder});
   const waited = Date.now() - started;
+
   assert.match(output.hookSpecificOutput.permissionDecisionReason, /busy/);
-  // One wait measures about 240 ms (LOCK_ATTEMPTS × LOCK_WAIT_MS plus pause overshoot); a second wait in
-  // the same call makes it about 480. The bound sits halfway, so load in either direction has room.
-  assert.ok(waited < 360, "a held lock cost " + waited + " ms");
+  // A second wait in the same call would double the time. The bound sits halfway between one and two.
+  assert.ok(waited < oneWait * 1.5, "a held lock cost " + waited + " ms, one wait costs " + oneWait + " ms");
 });
 
 test("a file-tool path keeps its literal bytes, trailing blanks included", (t) => {

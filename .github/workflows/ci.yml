@@ -13,7 +13,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          # ubuntu-latest no longer offers Python 3.9, the oldest declared version.
+          - os: ubuntu-24.04
             node-version: "22"
             python-version: "3.9"
             profile: full

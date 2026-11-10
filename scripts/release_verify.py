@@ -29,8 +29,22 @@ FULL_CHECKS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("distribution-contract", (PYTHON, "scripts/test_distribution_smoke.py")),
     ("distribution-artifact", (PYTHON, "scripts/distribution_smoke.py")),
 )
+# Windows support is in progress: the brake does not yet model Windows paths or PowerShell, the
+# retired interlock was never ported, and the npm-driven package checks assume a POSIX shell.
+# The portable profile runs what already holds there. BACKLOG item WINDOWS-01 tracks the rest.
+NOT_YET_PORTABLE = frozenset(
+    {
+        "installed-tree",
+        "brake",
+        "host-guard",
+        "claude-adapter",
+        "claude-discovery",
+        "distribution-contract",
+        "distribution-artifact",
+    }
+)
 PORTABLE_CHECKS: tuple[tuple[str, tuple[str, ...]], ...] = tuple(
-    check for check in FULL_CHECKS if check[0] != "installed-tree"
+    check for check in FULL_CHECKS if check[0] not in NOT_YET_PORTABLE
 )
 
 
@@ -76,7 +90,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--profile",
         choices=("full", "portable"),
         default="full",
-        help="Use portable to omit POSIX-only optional-runtime and symlink checks.",
+        help="Use portable to run only the checks that already hold on Windows.",
     )
     return parser.parse_args(argv)
 
