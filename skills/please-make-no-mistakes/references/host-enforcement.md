@@ -41,18 +41,19 @@ Both hosts register the same brake module directly. The interlock reached one sh
 
 ## Read a card
 
-A PMNM card is always two lines.
+A PMNM card has two lines, and a third when the human can approve by reply: the token alone, so the human can copy it whole.
 
 ```text
 Blocked | Ask | Note: <what happened>
 NEXT: <one exact action>
+PMNM-<code>
 ```
 
 - **Blocked** means the attempted operation did not run.
 - **Ask** means the operation waits for the human's answer: stop here; no more actions until the human answers.
 - **Note** records state or directs the next agent action without asking the human.
 
-The brake prints only Blocked and Ask; Note came from the retired interlock. A brake card begins `Blocked:` or `Ask:`, and its `NEXT:` names one exact action, most often to show the human the operation, or to load this skill: do it as written, and send no receipt. It does not mean a receipt-taking guard is active. Its `NEXT:` names a `PMNM-<code>` token only when the human can approve by reply. Text that begins `PMNM:` is not a card: it is a brake notice in your context, the reason of Claude Code's own permission prompt, or Claude Code's message for an operation the judge rated safe. In Claude Code, an operation the brake's rules already know as sensitive reaches the human as the host's own permission prompt instead of a card.
+The brake prints only Blocked and Ask; Note came from the retired interlock. A brake card begins `Blocked:` or `Ask:`, and its `NEXT:` names one exact action, most often to show the human the operation, or to load this skill: do it as written, and send no receipt. It does not mean a receipt-taking guard is active. The card ends with a `PMNM-<code>` token on a line of its own only when the human can approve by reply; its `NEXT:` then says to reply with that token alone. Text that begins `PMNM:` is not a card: it is a brake notice in your context, the reason of Claude Code's own permission prompt, or Claude Code's message for an operation the judge rated safe. In Claude Code, an operation the brake's rules already know as sensitive reaches the human as the host's own permission prompt instead of a card.
 
 The card itself is not a user question. Follow `NEXT:` in the same turn unless it says to ask or to stop. The host may add its own frame such as “Blocked by hook”; that frame is not PMNM output.
 

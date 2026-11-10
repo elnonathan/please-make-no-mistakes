@@ -1561,8 +1561,9 @@ function touchesBrakeState(toolName, input, cwd, env) {
 function deny(reason) {
   return {hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason}};
 }
+// The token stands alone on the last line, so the human can copy it whole.
 function askWithToken(kind, why, token) {
-  return deny((kind === SAFETY.DESTRUCTIVE ? "Blocked: destructive operation — " : "Ask: ") + redact(why) + ".\nNEXT: stop and show the human this exact operation; it runs only if they reply exactly " + token + ", or they run it themselves.");
+  return deny((kind === SAFETY.DESTRUCTIVE ? "Blocked: destructive operation — " : "Ask: ") + redact(why) + ".\nNEXT: stop and show the human this exact operation; it runs only if they reply with this token alone, or they run it themselves:\n" + token);
 }
 function denyFull(kind, why, scope) {
   const where = scope === APPROVALS_FULL.SESSION ? "in this session (" + MAX_PENDING_PER_SESSION + ")" : "across sessions (" + MAX_PENDING_TOTAL + ")";

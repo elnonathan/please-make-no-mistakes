@@ -48,7 +48,7 @@ please-make-no-mistakes/
 - one PMNM folder per machine, where the agent writes freely
 - the flow: investigate, show the plan Digest, work inside it, verify, audit, then hand over the Test Digest at the human acceptance boundary
 - rules: one sentence each, written only after an always or a never and one question about their level
-- guards: how to read a two-line card and take its `NEXT:` action
+- guards: how to read a card and take its `NEXT:` action
 
 Its reference table is one level deep. A reference is loaded only when its condition applies. References add detail; they cannot weaken the kernel.
 
@@ -127,7 +127,7 @@ For each covered tool call it decides in two layers:
 1. Deterministic rules place known shapes as safe, sensitive or destructive, including commands inside wrappers, substitutions and heredocs. A compound command takes its most severe segment. Code that runs other code is classified by what it runs.
 2. What the rules cannot place goes first to a sealed stored verdict, then to the judge model the human confirmed. Only a safe verdict with high confidence runs without asking.
 
-A stop prints a two-line card: `Blocked:` or `Ask:` with what happened, and one `NEXT:` line with one exact action. `Blocked:` covers a destructive operation, an operation that reaches the brake's own state, an operation the brake could not evaluate, and the Claude Code load stop. `Ask:` covers any other stop. For a destructive or sensitive operation, the `NEXT:` line tells the agent to show the human the exact operation; it runs only if the human replies with its exact `PMNM-<code>` token, or runs it themselves. Some cards carry no token: the brake's own state, an evaluation error, the load stop, full or busy approvals, and an event without a session id. In Claude Code a deterministic sensitive operation uses the host's own permission prompt instead of a card. A failed or unavailable classification asks. An error the brake catches while evaluating blocks. A brake that runs past its time limit or cannot start is handled by the host, which may let the operation run.
+A stop prints a card: `Blocked:` or `Ask:` with what happened, one `NEXT:` line with one exact action, and, when the human can approve by reply, the `PMNM-<code>` token alone on a last line. `Blocked:` covers a destructive operation, an operation that reaches the brake's own state, an operation the brake could not evaluate, and the Claude Code load stop. `Ask:` covers any other stop. For a destructive or sensitive operation, the `NEXT:` line tells the agent to show the human the exact operation; it runs only if the human replies with its exact `PMNM-<code>` token, or runs it themselves. Some cards carry no token: the brake's own state, an evaluation error, the load stop, full or busy approvals, and an event without a session id. In Claude Code a deterministic sensitive operation uses the host's own permission prompt instead of a card. A failed or unavailable classification asks. An error the brake catches while evaluating blocks. A brake that runs past its time limit or cannot start is handled by the host, which may let the operation run.
 
 On `UserPromptSubmit` the brake recognizes the human's exact prompts: an approval token grants one rerun of that operation in that session, and the judge confirmation and MCP allowlist prompts change sealed state. The agent cannot send a prompt. When the judge needs a confirmation or a re-evaluation, the brake adds one notice to the agent's context, once per change, and the agent relays it to the human.
 

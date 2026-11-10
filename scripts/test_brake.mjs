@@ -1004,6 +1004,19 @@ test("tokens are PMNM- and four unambiguous characters, and any letter case appr
   assert.equal(decision(handle(bash("rm -rf src", "/work/repo"), {host: "codex", env, folder})), "allow");
 });
 
+test("the token stands alone on the card's last line, so the human can copy it", (t) => {
+  const {folder, env} = setup(t);
+
+  for (const host of ["claude", "codex"]) {
+    const output = handle(bash("rm -rf src", "/work/repo"), {host, env, folder});
+    const lines = output.hookSpecificOutput.permissionDecisionReason.split("\n");
+
+    assert.equal(lines.length, 3, host + ": what happened, NEXT, and the token");
+    assert.match(lines[1], /^NEXT: /);
+    assert.equal(lines[2], tokenIn(output), host + ": the last line is the token alone");
+  }
+});
+
 test("a reply shaped like a token that opens nothing says why", (t) => {
   const {folder, env} = setup(t);
   const output = handle({hook_event_name: "UserPromptSubmit", session_id: "s1", prompt: "PMNM-ZZZZ"}, {host: "codex", env, folder});
